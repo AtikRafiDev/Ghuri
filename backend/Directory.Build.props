@@ -1,0 +1,30 @@
+<Project>
+
+  <!-- Settings shared by EVERY project in backend/. MSBuild reads this file
+       automatically before each .csproj, so we write these once instead of
+       repeating them in eight project files. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Nullable reference types: the compiler warns when a string/object that
+         can be null is used as if it can never be null. Catches the classic
+         NullReferenceException at build time instead of at runtime. -->
+    <Nullable>enable</Nullable>
+
+    <!-- Adds common "using System;" style imports automatically. -->
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Warnings become errors on the CI server only, so a warning can never be
+         merged, but your local F5 still runs while you are mid-edit. -->
+    <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
+
+    <!-- Generates the XML file that OpenAPI/Scalar uses to show your
+         /// <summary> comments as API documentation. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 1591 = "missing XML comment". We want the doc file, not a nag on every
+         public member that has no comment yet. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

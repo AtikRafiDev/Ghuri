@@ -1,0 +1,37 @@
+# This file makes line-ending rules part of the REPO, not each person's local
+# git settings (core.autocrlf). Without it, your Windows machine and a
+# Linux CI runner could normalize the same file differently, producing noisy
+# "the whole file changed" diffs even when nobody touched the content.
+
+# Default: let git detect text files and normalize line endings to LF
+# inside the repository (on disk in your working copy, Windows tools still
+# show them fine; CRLF-vs-LF only matters when git stores/diffs the file).
+* text=auto eol=lf
+
+# C# and project files - always LF in the repo
+*.cs      text diff=csharp
+*.csproj  text
+*.slnx    text
+*.props   text
+*.targets text
+*.config  text
+*.json    text
+
+# Windows-only files MUST stay CRLF or Notepad/some tools misread them
+*.sln text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts MUST stay LF - a CRLF shell script fails inside Linux
+# Docker containers with a cryptic "bad interpreter" error
+*.sh text eol=lf
+
+# Binary files - never let git try to "fix" line endings in these
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.dll  binary
+*.exe  binary
+*.pdf  binary

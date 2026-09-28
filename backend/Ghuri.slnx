@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ghuri.Api/Ghuri.Api.csproj" />
+    <Project Path="src/Ghuri.Application/Ghuri.Application.csproj" />
+    <Project Path="src/Ghuri.Domain/Ghuri.Domain.csproj" />
+    <Project Path="src/Ghuri.Infrastructure/Ghuri.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ghuri.Api.IntegrationTests/Ghuri.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Ghuri.Application.Tests/Ghuri.Application.Tests.csproj" />
+    <Project Path="tests/Ghuri.ArchitectureTests/Ghuri.ArchitectureTests.csproj" />
+    <Project Path="tests/Ghuri.Domain.Tests/Ghuri.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Central Package Management.
+       With this turned on, a .csproj says WHICH package it needs and this file
+       says WHICH VERSION. One place to upgrade; no chance of two projects
+       quietly using two different versions of the same library. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Api">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.1" />
+  </ItemGroup>
+
+</Project>

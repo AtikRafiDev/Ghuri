@@ -1,0 +1,6 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ghuri.Domain\Ghuri.Domain.csproj" />
+  </ItemGroup>
+</Project>
