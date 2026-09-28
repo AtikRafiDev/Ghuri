@@ -1,5 +1,6 @@
 using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Entities.Cms;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Entities.Marketing;
 using Ghuri.Domain.Entities.Payment;
@@ -50,6 +51,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
+
+    // cms schema
+    public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<Page> Pages => Set<Page>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<MenuItem> MenuItems => Set<MenuItem>();
 
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
