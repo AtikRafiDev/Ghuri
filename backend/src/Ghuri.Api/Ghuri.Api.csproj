@@ -1,6 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Design-time only: gives the "dotnet ef" CLI tool something to talk to.
+         Api is the "startup project" for EF Core commands even though the
+         AppDbContext class itself lives in Ghuri.Infrastructure. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

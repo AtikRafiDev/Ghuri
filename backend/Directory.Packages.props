@@ -12,6 +12,15 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Persistence (EF Core)">
+    <!-- Lets Infrastructure talk to SQL Server / LocalDB. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <!-- Powers the "dotnet ef" command-line tool (migrations add/database update).
+         Only referenced by the STARTUP project (Api) - it is a design-time-only
+         tool, never needed while the app is actually running. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.1" />
   </ItemGroup>
