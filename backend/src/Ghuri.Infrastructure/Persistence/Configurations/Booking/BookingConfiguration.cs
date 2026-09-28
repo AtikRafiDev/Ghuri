@@ -1,5 +1,6 @@
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
+using Ghuri.Domain.Entities.Marketing;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -60,7 +61,12 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<BookingEnt
 
         builder.Property(b => b.BalanceDueDate).HasColumnType("date");
 
-        builder.Property(b => b.CouponId); // plain column, no FK - marketing.Coupons doesn't exist yet
+        builder.Property(b => b.CouponId);
+        // Was a plain column with no FK while marketing hadn't been built
+        // yet - now that Coupon exists, the real constraint goes here.
+        // Restrict, not Cascade: a coupon being deactivated should never
+        // silently delete someone's booking history.
+        builder.HasOne<Coupon>().WithMany().HasForeignKey(b => b.CouponId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(b => b.Status).HasConversion<byte>().IsRequired();
         builder.ToTable(t => t.HasCheckConstraint("CK_Bookings_Status", "[Status] IN (1,2,3,4,5,6)"));

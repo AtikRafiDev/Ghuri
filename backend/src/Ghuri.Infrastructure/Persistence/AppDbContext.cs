@@ -1,6 +1,7 @@
 using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
+using Ghuri.Domain.Entities.Marketing;
 using Ghuri.Domain.Entities.Payment;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +44,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
     public DbSet<Refund> Refunds => Set<Refund>();
+
+    // marketing schema
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
+    public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<Wishlist> Wishlists => Set<Wishlist>();
 
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
