@@ -4,6 +4,7 @@ using Ghuri.Domain.Entities.Cms;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Entities.Marketing;
 using Ghuri.Domain.Entities.Payment;
+using Ghuri.Domain.Entities.Support;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ghuri.Infrastructure.Persistence;
@@ -58,6 +59,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
 
+    // support schema
+    public DbSet<CustomTourRequest> CustomTourRequests => Set<CustomTourRequest>();
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
     /// package...) come from SQL SEQUENCE objects" - a real database object
@@ -76,6 +81,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// <summary>Same idea again, for payment.Refunds.RefundNo (RF1001).</summary>
     public const string RefundNoSequenceName = "RefundNoSequence";
 
+    /// <summary>Same idea again, for support.CustomTourRequests.RequestNo (CR1001).</summary>
+    public const string CustomTourRequestNoSequenceName = "CustomTourRequestNoSequence";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -93,6 +101,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .IncrementsBy(1);
 
         modelBuilder.HasSequence<int>(RefundNoSequenceName, schema: "payment")
+            .StartsAt(1001)
+            .IncrementsBy(1);
+
+        modelBuilder.HasSequence<int>(CustomTourRequestNoSequenceName, schema: "support")
             .StartsAt(1001)
             .IncrementsBy(1);
 
