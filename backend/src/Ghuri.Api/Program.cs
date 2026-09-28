@@ -3,7 +3,9 @@ using Ghuri.Api.ErrorHandling;
 using Ghuri.Application;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,8 +44,18 @@ var app = builder.Build();
 app.UseExceptionHandler();
 
 // One concise log line per HTTP request (method, path, status, duration)
-// instead of ASP.NET Core's several noisy lines.
-app.UseSerilogRequestLogging();
+// instead of ASP.NET Core's several noisy lines. Successful /health calls
+// are dropped to Verbose (hidden at our Information level): an uptime
+// monitor polls every few seconds, and thousands of "health OK" lines a
+// day would bury the logs that matter. A FAILING health check still logs.
+app.UseSerilogRequestLogging(options => options.GetLevel = (httpContext, _, exception) =>
+    exception is null
+    && httpContext.Response.StatusCode < 400
+    && httpContext.Request.Path.StartsWithSegments("/health")
+        ? LogEventLevel.Verbose
+        : httpContext.Response.StatusCode >= 500 || exception is not null
+            ? LogEventLevel.Error
+            : LogEventLevel.Information);
 
 if (app.Environment.IsDevelopment())
 {
@@ -55,5 +67,20 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Health endpoints (blueprint: "GET health/live · GET health/ready" and
+// "uptime monitoring on /health"). Deliberately outside /api/v1 - they
+// describe the running server, not a versioned business API.
+//
+// /health/live  - "is the process alive?" Runs NO checks (predicate false),
+//                 so it answers even if the database is down. Used to
+//                 decide "restart this app?" - restarting won't fix a
+//                 database outage, so the DB must not affect this one.
+// /health/ready - "can it serve real requests?" Runs the database check.
+//                 Used to decide "send traffic here?".
+// /health       - everything, for the uptime monitor (blueprint Day 14).
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(HealthCheckTags.Ready) });
+app.MapHealthChecks("/health");
 
 app.Run();

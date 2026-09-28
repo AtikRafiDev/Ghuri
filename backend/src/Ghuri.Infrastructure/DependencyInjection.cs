@@ -51,6 +51,12 @@ public static class DependencyInjection
         // The read side - a no-tracking view over the same AppDbContext.
         services.AddScoped<IReadDbContext, ReadDbContext>();
 
+        // "Can we actually reach SQL Server?" - tagged "ready" so it only
+        // runs on /health/ready, not on the lightweight /health/live
+        // (see Program.cs for why the two are different).
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>(name: "database", tags: [HealthCheckTags.Ready]);
+
         return services;
     }
 }

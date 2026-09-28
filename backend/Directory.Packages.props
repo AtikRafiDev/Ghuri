@@ -19,6 +19,8 @@
          handlers to call ToListAsync/FirstOrDefaultAsync on IReadDbContext.
          The one EF reference the blueprint allows in Application (sec 3.1). -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <!-- Health check that asks "can AppDbContext actually reach the database?" -->
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.12" />
     <!-- Powers the "dotnet ef" command-line tool (migrations add/database update).
          Only referenced by the STARTUP project (Api) - it is a design-time-only
          tool, never needed while the app is actually running. -->
