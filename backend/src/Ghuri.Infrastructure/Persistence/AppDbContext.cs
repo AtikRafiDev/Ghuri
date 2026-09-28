@@ -3,6 +3,7 @@ using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Cms;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Entities.Marketing;
+using Ghuri.Domain.Entities.Notify;
 using Ghuri.Domain.Entities.Payment;
 using Ghuri.Domain.Entities.Support;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // support schema
     public DbSet<CustomTourRequest> CustomTourRequests => Set<CustomTourRequest>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+
+    // notify schema
+    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
