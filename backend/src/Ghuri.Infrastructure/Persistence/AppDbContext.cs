@@ -1,6 +1,7 @@
 using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
+using Ghuri.Domain.Entities.Payment;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ghuri.Infrastructure.Persistence;
@@ -38,6 +39,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<BookingStatusHistory> BookingStatusHistory => Set<BookingStatusHistory>();
     public DbSet<CancellationPolicy> CancellationPolicies => Set<CancellationPolicy>();
 
+    // payment schema
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
+    public DbSet<Refund> Refunds => Set<Refund>();
+
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
     /// package...) come from SQL SEQUENCE objects" - a real database object
@@ -50,6 +56,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// <summary>Same idea as PackageCodeSequenceName, for booking.Bookings.BookingNo (TB100001).</summary>
     public const string BookingNoSequenceName = "BookingNoSequence";
 
+    /// <summary>Same idea again, for payment.Payments.PaymentNo (PAY100001).</summary>
+    public const string PaymentNoSequenceName = "PaymentNoSequence";
+
+    /// <summary>Same idea again, for payment.Refunds.RefundNo (RF1001).</summary>
+    public const string RefundNoSequenceName = "RefundNoSequence";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -60,6 +72,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
         modelBuilder.HasSequence<int>(BookingNoSequenceName, schema: "booking")
             .StartsAt(100001)
+            .IncrementsBy(1);
+
+        modelBuilder.HasSequence<int>(PaymentNoSequenceName, schema: "payment")
+            .StartsAt(100001)
+            .IncrementsBy(1);
+
+        modelBuilder.HasSequence<int>(RefundNoSequenceName, schema: "payment")
+            .StartsAt(1001)
             .IncrementsBy(1);
 
         // Finds every class in this project implementing
