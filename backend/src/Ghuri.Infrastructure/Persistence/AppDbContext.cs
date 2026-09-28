@@ -20,9 +20,32 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
 
+    // catalog schema
+    public DbSet<Destination> Destinations => Set<Destination>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<TourPackage> TourPackages => Set<TourPackage>();
+    public DbSet<PackageCategory> PackageCategories => Set<PackageCategory>();
+    public DbSet<PackageImage> PackageImages => Set<PackageImage>();
+    public DbSet<ItineraryDay> ItineraryDays => Set<ItineraryDay>();
+    public DbSet<PackageAddOn> PackageAddOns => Set<PackageAddOn>();
+    public DbSet<Departure> Departures => Set<Departure>();
+
+    /// <summary>
+    /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
+    /// package...) come from SQL SEQUENCE objects" - a real database object
+    /// that hands out 1001, 1002, 1003... one at a time, safely, even if
+    /// two people create a package at the exact same moment. The repository
+    /// (built on Day 4) reads the next value and formats it as "PKG1001".
+    /// </summary>
+    public const string PackageCodeSequenceName = "PackageCodeSequence";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.HasSequence<int>(PackageCodeSequenceName, schema: "catalog")
+            .StartsAt(1001)
+            .IncrementsBy(1);
 
         // Finds every class in this project implementing
         // IEntityTypeConfiguration<T> (like CountryConfiguration) and applies
