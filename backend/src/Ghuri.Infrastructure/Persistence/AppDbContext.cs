@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Entities.Iam;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ghuri.Infrastructure.Persistence;
@@ -11,6 +12,13 @@ namespace Ghuri.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Country> Countries => Set<Country>();
+
+    // iam schema
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
