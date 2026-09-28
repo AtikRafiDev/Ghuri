@@ -114,6 +114,33 @@ dotnet run --project src/Ghuri.Api
 | `git log -1` | See full details of the last commit |
 | `git commit --amend -m "..." -m "..."` | Replace the last commit's message entirely (only safe before it's pushed/shared) |
 
+### Branches
+
+| Branch | Purpose |
+|---|---|
+| `main` | Always working, always releasable. Only receives finished, tested work from `develop`. |
+| `develop` | Day-to-day work happens here. |
+
+```
+git switch develop                 # start working
+git switch main                    # when develop is ready to release:
+git merge develop
+git push origin main develop
+```
+
+### Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push and pull request: a fresh
+GitHub server restores, builds (Release, **warnings treated as errors**),
+and runs every test. Check the result on the repository's **Actions** tab,
+or the ✓ / ✗ next to each commit. To run the same checks locally first:
+
+```
+cd backend
+dotnet build --configuration Release -p:ContinuousIntegrationBuild=true
+dotnet test --configuration Release --no-build
+```
+
 ### EF Core migrations
 
 Every `dotnet ef` command needs `--project src/Ghuri.Infrastructure`

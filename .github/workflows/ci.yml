@@ -1,0 +1,50 @@
+# Continuous Integration: on every push, a fresh GitHub server downloads the
+# code, builds it, and runs every test. A red X on the commit means "this
+# broke something" - found in minutes, not days later on the live site.
+# (14-day plan, Day 1: "GitHub Actions: build + test on every push".)
+
+name: CI
+
+on:
+  push:            # every branch, every push
+  pull_request:    # and every pull request, before it can be merged
+
+# Only read access to the code - CI never needs to write to the repo.
+permissions:
+  contents: read
+
+# Push twice in a row? Cancel the older, now-pointless run of the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend - build & test
+    runs-on: ubuntu-latest   # Linux: also catches accidental Windows-only code (e.g. wrong path casing)
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore packages
+        run: dotnet restore
+
+      # ContinuousIntegrationBuild=true switches on warnings-as-errors
+      # (see Directory.Build.props) - on CI, a warning fails the build.
+      - name: Build (Release, warnings as errors)
+        run: dotnet build --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+  # A "frontend" job (install, lint, type-check, build) gets added here once
+  # the React app exists - blueprint section 14.1.
