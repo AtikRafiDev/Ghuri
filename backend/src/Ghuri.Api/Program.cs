@@ -1,5 +1,7 @@
+using Ghuri.Api.Authentication;
 using Ghuri.Api.ErrorHandling;
 using Ghuri.Application;
+using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Infrastructure;
 using Serilog;
 
@@ -17,6 +19,12 @@ builder.Services.AddSerilog((services, logger) => logger
 // FluentValidation or EF Core (blueprint: composition root).
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// "Who is the current user" is answered by the Api (it's the only layer
+// that knows about HTTP). The audit interceptor in Infrastructure depends
+// on this.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 // ProblemDetails (RFC 9457) as the JSON shape for EVERY error response,
 // plus our handler for exceptions nobody else caught.

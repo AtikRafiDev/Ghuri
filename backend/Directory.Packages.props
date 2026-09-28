@@ -15,6 +15,10 @@
   <ItemGroup Label="Persistence (EF Core)">
     <!-- Lets Infrastructure talk to SQL Server / LocalDB. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <!-- Core EF only (no SQL Server provider) - for Application's query
+         handlers to call ToListAsync/FirstOrDefaultAsync on IReadDbContext.
+         The one EF reference the blueprint allows in Application (sec 3.1). -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <!-- Powers the "dotnet ef" command-line tool (migrations add/database update).
          Only referenced by the STARTUP project (Api) - it is a design-time-only
          tool, never needed while the app is actually running. -->

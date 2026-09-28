@@ -18,5 +18,8 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <!-- Only for async LINQ in QUERY handlers (blueprint section 3.1).
+         Command handlers must never use it - they go through repositories. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
   </ItemGroup>
 </Project>
