@@ -1,3 +1,4 @@
+using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PackageAddOn> PackageAddOns => Set<PackageAddOn>();
     public DbSet<Departure> Departures => Set<Departure>();
 
+    // booking schema
+    public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingTraveller> BookingTravellers => Set<BookingTraveller>();
+    public DbSet<BookingAddOn> BookingAddOns => Set<BookingAddOn>();
+    public DbSet<BookingStatusHistory> BookingStatusHistory => Set<BookingStatusHistory>();
+    public DbSet<CancellationPolicy> CancellationPolicies => Set<CancellationPolicy>();
+
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
     /// package...) come from SQL SEQUENCE objects" - a real database object
@@ -39,12 +47,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// </summary>
     public const string PackageCodeSequenceName = "PackageCodeSequence";
 
+    /// <summary>Same idea as PackageCodeSequenceName, for booking.Bookings.BookingNo (TB100001).</summary>
+    public const string BookingNoSequenceName = "BookingNoSequence";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.HasSequence<int>(PackageCodeSequenceName, schema: "catalog")
             .StartsAt(1001)
+            .IncrementsBy(1);
+
+        modelBuilder.HasSequence<int>(BookingNoSequenceName, schema: "booking")
+            .StartsAt(100001)
             .IncrementsBy(1);
 
         // Finds every class in this project implementing
