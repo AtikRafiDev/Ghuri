@@ -62,7 +62,16 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// HTTP -> HTTPS redirect, but NOT in Development. Locally, the Vite dev
+// proxy talks to the API over plain http://localhost:5176; if Visual
+// Studio starts the "https" profile, this redirect would bounce every
+// proxied call to https://localhost:7273 - a DIFFERENT origin, so the
+// browser blocks it (CORS) and the page shows "API unreachable".
+// In production HTTPS is enforced anyway (Nginx, Day 7/14).
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 
