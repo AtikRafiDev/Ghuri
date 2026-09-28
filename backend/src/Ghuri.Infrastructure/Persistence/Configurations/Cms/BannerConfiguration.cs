@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Cms;
+using Ghuri.Domain.Entities.Ops;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,11 @@ internal sealed class BannerConfiguration : IEntityTypeConfiguration<Banner>
         builder.Property(b => b.Title).HasMaxLength(150).IsRequired();
         builder.Property(b => b.Subtitle).HasMaxLength(300);
 
-        builder.Property(b => b.ImageFileId).IsRequired(); // plain column, no FK yet - ops.FileObjects doesn't exist
+        // Was a plain column with no FK while ops hadn't been built yet -
+        // now that FileObject exists, the real constraint goes here.
+        // Required column, so Restrict, not SetNull.
+        builder.Property(b => b.ImageFileId).IsRequired();
+        builder.HasOne<FileObject>().WithMany().HasForeignKey(b => b.ImageFileId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(b => b.LinkUrl).HasMaxLength(500);
 

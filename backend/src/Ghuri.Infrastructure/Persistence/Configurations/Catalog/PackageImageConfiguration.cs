@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Entities.Ops;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,13 @@ internal sealed class PackageImageConfiguration : IEntityTypeConfiguration<Packa
         // reconfiguring the first index instead of creating a second one.
         builder.HasIndex(pi => pi.PackageId, "IX_PackageImages_PackageId");
 
-        builder.Property(pi => pi.FileId).IsRequired(); // plain column, no FK yet - ops.FileObjects doesn't exist
+        // Was a plain column with no FK while ops hadn't been built yet -
+        // now that FileObject exists, the real constraint goes here.
+        // Restrict, not SetNull: this column is required (an image with no
+        // file makes no sense), so the file can't be deleted while any
+        // image still points to it.
+        builder.Property(pi => pi.FileId).IsRequired();
+        builder.HasOne<FileObject>().WithMany().HasForeignKey(pi => pi.FileId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(pi => pi.Caption).HasMaxLength(200);
         builder.Property(pi => pi.SortOrder).IsRequired();

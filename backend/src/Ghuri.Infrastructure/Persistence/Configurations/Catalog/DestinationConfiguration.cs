@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -31,7 +32,10 @@ internal sealed class DestinationConfiguration : IEntityTypeConfiguration<Destin
         builder.HasIndex(d => d.Slug).IsUnique();
 
         builder.Property(d => d.Summary).HasMaxLength(500);
-        builder.Property(d => d.ImageFileId); // plain column, no FK yet - see Destination.ImageFileId
+        // Was a plain column with no FK while ops hadn't been built yet -
+        // now that FileObject exists, the real constraint goes here.
+        builder.Property(d => d.ImageFileId);
+        builder.HasOne<FileObject>().WithMany().HasForeignKey(d => d.ImageFileId).OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(d => d.IsFeatured).IsRequired();
         builder.HasIndex(d => d.IsFeatured);

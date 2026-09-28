@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Iam;
+using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -46,9 +47,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.GoogleSubject).HasMaxLength(100).IsUnicode(false);
         builder.HasIndex(u => u.GoogleSubject).IsUnique().HasFilter("[GoogleSubject] IS NOT NULL");
 
-        // Plain column, no FK yet - ops.FileObjects doesn't exist until we
-        // reach the ops schema (the last one we'll build).
+        // Was a plain column with no FK while ops hadn't been built yet -
+        // now that FileObject exists, the real constraint goes here.
         builder.Property(u => u.AvatarFileId);
+        builder.HasOne<FileObject>().WithMany().HasForeignKey(u => u.AvatarFileId).OnDelete(DeleteBehavior.SetNull);
 
         // Enum -> TINYINT, with an explicit CHECK so a bad value can never
         // land in the column even from outside EF Core.

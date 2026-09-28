@@ -1,5 +1,6 @@
 using Ghuri.Domain.Entities.Cms;
 using Ghuri.Domain.Entities.Iam;
+using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -27,7 +28,10 @@ internal sealed class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
         builder.Property(p => p.Excerpt).HasMaxLength(500);
         builder.Property(p => p.Content).IsRequired(); // NVARCHAR(MAX)
 
-        builder.Property(p => p.CoverFileId); // plain column, no FK yet - ops.FileObjects doesn't exist
+        // Was a plain column with no FK while ops hadn't been built yet -
+        // now that FileObject exists, the real constraint goes here.
+        builder.Property(p => p.CoverFileId);
+        builder.HasOne<FileObject>().WithMany().HasForeignKey(p => p.CoverFileId).OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(p => p.AuthorId).IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(p => p.AuthorId).OnDelete(DeleteBehavior.Restrict);

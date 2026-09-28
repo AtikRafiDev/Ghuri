@@ -4,6 +4,7 @@ using Ghuri.Domain.Entities.Cms;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Entities.Marketing;
 using Ghuri.Domain.Entities.Notify;
+using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.Entities.Payment;
 using Ghuri.Domain.Entities.Support;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +68,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // notify schema
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<Notification> Notifications => Set<Notification>();
+
+    // ops schema
+    public DbSet<FileObject> FileObjects => Set<FileObject>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     /// <summary>
     /// The blueprint's rule (section 5.1): "human-readable numbers (PKG1001
