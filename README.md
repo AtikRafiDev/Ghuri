@@ -101,6 +101,33 @@ dotnet run --project src/Ghuri.Api
 
 ---
 
+## 6. Run the frontend
+
+In a **second** terminal, with the API from step 5 still running:
+
+```
+cd frontend
+npm ci
+npm run dev
+```
+
+Open **http://localhost:5173**.
+
+- `npm ci` installs exactly the versions in `package-lock.json` (first time,
+  or after pulling changes to it).
+- The page calls the API through Vite's dev proxy (`frontend/vite.config.ts`),
+  which forwards `/api` and `/health` to `http://localhost:5176` - so the
+  browser sees one address and no CORS setup is needed.
+- If the page shows "API unreachable", the API from step 5 isn't running.
+
+| Command (in `frontend/`) | What it does |
+|---|---|
+| `npm run dev` | Development server with instant reload on save |
+| `npm run lint` | ESLint - code-quality checks |
+| `npm run build` | Type-check (`tsc`) + production build into `dist/` |
+
+---
+
 ## Everyday commands (reference)
 
 ### Git

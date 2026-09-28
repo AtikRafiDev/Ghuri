@@ -46,5 +46,35 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build
 
-  # A "frontend" job (install, lint, type-check, build) gets added here once
-  # the React app exists - blueprint section 14.1.
+  # Runs IN PARALLEL with the backend job - neither waits for the other.
+  frontend:
+    name: Frontend - lint, type-check & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Install Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'   # same major version as local development
+          cache: npm           # reuse downloaded packages between runs
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci, not npm install: installs EXACTLY what package-lock.json says,
+      # and fails if package.json and the lock file disagree - so CI builds
+      # the same versions you tested with.
+      - name: Install packages
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      # "build" = tsc -b (type-check: fails on any TypeScript error) followed
+      # by vite build (the production bundle).
+      - name: Type-check & build
+        run: npm run build

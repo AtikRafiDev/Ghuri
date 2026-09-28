@@ -1,0 +1,108 @@
+/* Minimal hand-written styles for the health page only. Tailwind +
+   shadcn/ui (blueprint 13) replace this in the next frontend step. */
+
+:root {
+  --text: #374151;
+  --heading: #111827;
+  --muted: #6b7280;
+  --bg: #f9fafb;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --ok: #16a34a;
+  --bad: #dc2626;
+  --wait: #9ca3af;
+
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #d1d5db;
+    --heading: #f9fafb;
+    --muted: #9ca3af;
+    --bg: #111827;
+    --card: #1f2937;
+    --border: #374151;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+h1 {
+  color: var(--heading);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.health-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.health-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--wait);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.health-card.healthy { border-left-color: var(--ok); }
+.health-card.unhealthy,
+.health-card.error { border-left-color: var(--bad); }
+
+.health-card h2 {
+  color: var(--heading);
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.health-card code {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.health-state {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 12px 0 4px;
+}
+
+.healthy .health-state { color: var(--ok); }
+.unhealthy .health-state,
+.error .health-state { color: var(--bad); }
+.loading .health-state { color: var(--wait); }
+
+.health-meaning,
+.health-card footer {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+
+.health-card footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.health-error {
+  color: var(--bad);
+}
