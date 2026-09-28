@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Structured logging. Api is where logs get their DESTINATION
+         (console, file...); Application only writes ILogger calls. -->
+    <PackageReference Include="Serilog.AspNetCore" />
     <!-- Design-time only: gives the "dotnet ef" CLI tool something to talk to.
          Api is the "startup project" for EF Core commands even though the
          AppDbContext class itself lives in Ghuri.Infrastructure. -->

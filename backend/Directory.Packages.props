@@ -21,6 +21,24 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Application (CQRS + validation)">
+    <!-- martinothamar/Mediator (MIT) - NOT MediatR, which went commercial in
+         2025 (blueprint section 1). Abstractions = the interfaces
+         (ICommand, IQuery, IPipelineBehavior...); SourceGenerator = writes
+         the dispatch code at compile time instead of using reflection. -->
+    <PackageVersion Include="Mediator.Abstractions" Version="3.0.2" />
+    <PackageVersion Include="Mediator.SourceGenerator" Version="3.0.2" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <!-- Only the ILogger<T> interface - no actual logging implementation.
+         Application writes log calls; Api decides where they go (Serilog). -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup Label="Logging">
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.1" />
   </ItemGroup>
