@@ -67,7 +67,7 @@ migrations against your machine's SQL Server LocalDB instance.
 
 ```
 cd backend
-dotnet ef database update --project src/Ghuri.Infrastructure --startup-project src/Ghuri.Api
+.\ef.cmd database update
 ```
 
 This reads the connection string from
@@ -116,20 +116,33 @@ dotnet run --project src/Ghuri.Api
 
 ### EF Core migrations
 
-Run these from the `backend` folder. `--project` always points at
-`Ghuri.Infrastructure` (where `AppDbContext` lives); `--startup-project`
-always points at `Ghuri.Api` (the runnable project with the connection
-string).
+Every `dotnet ef` command needs `--project src/Ghuri.Infrastructure`
+(where `AppDbContext` lives) and `--startup-project src/Ghuri.Api` (the
+runnable project with the connection string). Typing both every time is
+tedious, so `backend/ef.cmd` wraps `dotnet ef` with those two flags baked
+in — run it from the `backend` folder exactly like `dotnet ef`, just
+shorter:
+
+```
+.\ef.cmd migrations add <Name>
+.\ef.cmd database update
+.\ef.cmd migrations list
+```
+
+(In **PowerShell** the `.\` prefix is required — PowerShell refuses to run
+a script from the current folder unqualified, on purpose, as a security
+measure. In classic **cmd.exe**, plain `ef migrations add <Name>` also
+works.)
 
 | Command | What it does |
 |---|---|
-| `dotnet ef migrations add <Name>` | Generate a new migration after changing an entity or its EF configuration |
-| `dotnet ef migrations remove` | Delete the most recent **unapplied** migration (safe only if `database update` hasn't been run for it yet) |
-| `dotnet ef database update` | Apply all pending migrations to the real database — this is what actually changes the schema |
-| `dotnet ef migrations list` | See every migration and whether it's applied |
-| `dotnet ef --version` | Confirm the tool is installed and its version |
+| `.\ef.cmd migrations add <Name>` | Generate a new migration after changing an entity or its EF configuration |
+| `.\ef.cmd migrations remove` | Delete the most recent **unapplied** migration (safe only if `database update` hasn't been run for it yet) |
+| `.\ef.cmd database update` | Apply all pending migrations to the real database — this is what actually changes the schema |
+| `.\ef.cmd migrations list` | See every migration and whether it's applied |
+| `dotnet ef --version` | Confirm the tool is installed and its version (no project needed for this one) |
 
-Full form (always needed unless you `cd` into `src/Ghuri.Infrastructure` first):
+Long form, in case `ef.cmd` isn't available for some reason (e.g. a shell that can't run `.cmd` files):
 ```
 dotnet ef migrations add <Name> --project src/Ghuri.Infrastructure --startup-project src/Ghuri.Api
 dotnet ef database update --project src/Ghuri.Infrastructure --startup-project src/Ghuri.Api
@@ -156,6 +169,7 @@ Ghuri/
     ├── Directory.Packages.props                 ← every NuGet package's version, pinned in one place
     ├── nuget.config                             ← restricts package restore to nuget.org only
     ├── .config/dotnet-tools.json                ← local CLI tools (dotnet-ef), versioned with the repo
+    ├── ef.cmd                                    ← shortcut: ".\ef.cmd migrations add X" instead of the full dotnet ef command
     ├── src/
     │   ├── Ghuri.Domain/                        ← entities, business rules. No dependencies on anything.
     │   ├── Ghuri.Application/                   ← commands, queries, handlers. Depends only on Domain.
