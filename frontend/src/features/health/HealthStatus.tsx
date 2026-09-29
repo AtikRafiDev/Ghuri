@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import { fetchHealth, healthEndpoints, type HealthEndpoint } from './healthApi'
 
 // How often each card re-asks the API, so the page stays current without
@@ -24,36 +26,59 @@ function HealthCard({ endpoint }: { endpoint: HealthEndpoint }) {
   const text = isPending ? 'Checking…' : isError ? 'API unreachable' : data
 
   return (
-    <article className={`health-card ${state}`}>
-      <header>
-        <h2>{endpoint.label}</h2>
-        <code>GET {endpoint.path}</code>
-      </header>
-      <p className="health-state">{text}</p>
-      <p className="health-meaning">{endpoint.meaning}</p>
-      <footer>
-        {isError && <span className="health-error">{error.message}</span>}
+    <Card
+      className={cn(
+        'border-l-4',
+        state === 'healthy' && 'border-l-green-600',
+        (state === 'unhealthy' || state === 'error') && 'border-l-destructive',
+        state === 'loading' && 'border-l-muted-foreground',
+      )}
+    >
+      <CardHeader>
+        <CardTitle>{endpoint.label}</CardTitle>
+        <CardDescription>
+          <code>GET {endpoint.path}</code>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-1">
+        <p
+          className={cn(
+            'text-2xl font-semibold',
+            state === 'healthy' && 'text-green-600',
+            (state === 'unhealthy' || state === 'error') && 'text-destructive',
+            state === 'loading' && 'text-muted-foreground',
+          )}
+        >
+          {text}
+        </p>
+        <p className="text-sm text-muted-foreground">{endpoint.meaning}</p>
+      </CardContent>
+      <CardFooter className="flex-col items-start gap-0.5 text-sm text-muted-foreground">
+        {isError && <span className="text-destructive">{error.message}</span>}
         {dataUpdatedAt > 0 && (
           <span>
             Last checked {new Date(dataUpdatedAt).toLocaleTimeString()}
             {isFetching && ' · refreshing…'}
           </span>
         )}
-      </footer>
-    </article>
+      </CardFooter>
+    </Card>
   )
 }
 
+/** Admin → System: is the API up, and can it reach the database? */
 export function HealthStatus() {
   return (
-    <section>
-      <h1>Ghuri API health</h1>
-      <p className="subtitle">Refreshes every {refreshEveryMs / 1000} seconds.</p>
-      <div className="health-grid">
+    <div className="grid gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold">System health</h1>
+        <p className="text-muted-foreground">Refreshes every {refreshEveryMs / 1000} seconds.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {healthEndpoints.map((endpoint) => (
           <HealthCard key={endpoint.path} endpoint={endpoint} />
         ))}
       </div>
-    </section>
+    </div>
   )
 }

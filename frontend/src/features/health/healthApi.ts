@@ -1,4 +1,4 @@
-import { http } from '../../shared/api/http'
+import { http } from '@/shared/api/http'
 
 // The three states ASP.NET Core health checks can report. A union of string
 // literals instead of a TypeScript `enum`: this project's tsconfig has

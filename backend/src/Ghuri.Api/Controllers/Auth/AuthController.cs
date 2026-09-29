@@ -54,9 +54,12 @@ public sealed class AuthController(ISender sender) : ControllerBase
     {
         // No cookie = never logged in on this browser. Every visitor's
         // first page load asks, so answer without touching the database.
+        // "not_authenticated", NOT "session_expired": the frontend retries
+        // a session_expired once (another tab may have just replaced the
+        // cookie) - pointless when there was no cookie at all.
         var refreshToken = Request.Cookies[RefreshCookie.Name];
         if (string.IsNullOrEmpty(refreshToken))
-            return ResultExtensions.ToProblem(IdentityErrors.SessionExpired);
+            return ResultExtensions.ToProblem(IdentityErrors.NotAuthenticated);
 
         var result = await sender.Send(new RefreshSessionCommand(refreshToken), cancellationToken);
         if (result.IsSuccess)

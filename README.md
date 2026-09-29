@@ -6,7 +6,8 @@ Clean Architecture + CQRS blueprint.
 - **Backend:** ASP.NET Core on .NET 10, Clean Architecture (Domain →
   Application → Infrastructure → Api), CQRS, EF Core (code-first).
 - **Database:** SQL Server (LocalDB for local development).
-- **Frontend:** React + TypeScript (not started yet).
+- **Frontend:** React 19 + TypeScript (Vite), Tailwind CSS + shadcn/ui,
+  React Router, TanStack Query, React Hook Form + Zod.
 
 This file exists so the whole project can be set up on a brand-new PC by
 following the commands below, in order — nothing here should require
@@ -21,7 +22,7 @@ guessing or remembering.
 | [.NET 10 SDK](https://dotnet.microsoft.com/download) | Building/running the backend | `dotnet --list-sdks` |
 | [Git](https://git-scm.com/) | Version control | `git --version` |
 | SQL Server LocalDB | Local database (ships with Visual Studio's "Data storage and processing" workload, or the standalone [SQL Server Express LocalDB installer](https://learn.microsoft.com/sql/database-engine/configure-windows/sql-server-express-localdb)) | `sqllocaldb info` |
-| [Node.js](https://nodejs.org/) (LTS) | Frontend (once it exists) | `node --version` |
+| [Node.js](https://nodejs.org/) 24 LTS (same as CI) — or `winget install OpenJS.NodeJS.LTS` | Frontend | `node --version` — **fully restart VS Code** after installing (File → Exit): its terminals keep the PATH from when VS Code started. If PowerShell then says *"npm.ps1 cannot be loaded because running scripts is disabled"*, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or type `npm.cmd` instead of `npm`. |
 
 ---
 
@@ -186,6 +187,15 @@ npm run dev
 ```
 
 Open **http://localhost:5173**.
+
+| Page | Who |
+|---|---|
+| `/` · `/login` · `/register` · `/forgot-password` | everyone |
+| `/account` | any logged-in user |
+| `/admin` · `/admin/system` (API health) | staff only (SuperAdmin, Manager, Sales, Accounts) |
+
+In development, "Forgot password" emails are written to the **API's
+console** - copy the link from there into the browser.
 
 - `npm ci` installs exactly the versions in `package-lock.json` (first time,
   or after pulling changes to it).

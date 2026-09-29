@@ -86,12 +86,14 @@ public class AuthEndpointTests(GhuriApiFactory factory) : IClassFixture<GhuriApi
     }
 
     [Fact]
-    public async Task Refresh_WithoutACookie_Is401_SessionExpired()
+    public async Task Refresh_WithoutACookie_Is401_NotAuthenticated()
     {
+        // Not "session_expired" - there never was a session in this browser,
+        // so the frontend shouldn't bother retrying.
         var response = await factory.CreateClient().PostAsync("/api/v1/auth/refresh", content: null, Ct);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("session_expired", await ErrorCodeAsync(response));
+        Assert.Equal("not_authenticated", await ErrorCodeAsync(response));
     }
 
     private static async Task<string?> ErrorCodeAsync(HttpResponseMessage response) =>
