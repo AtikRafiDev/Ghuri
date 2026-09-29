@@ -1,4 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!-- Not a secret itself - just the NAME of the folder holding this
+         project's secrets, OUTSIDE the repo:
+         %APPDATA%\Microsoft\UserSecrets\<this id>\secrets.json
+         Read only in Development. Holds Jwt:SigningKey (see README). -->
+    <UserSecretsId>96022def-04b3-4188-8e01-78da1ba6d326</UserSecretsId>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <!-- Structured logging. Api is where logs get their DESTINATION

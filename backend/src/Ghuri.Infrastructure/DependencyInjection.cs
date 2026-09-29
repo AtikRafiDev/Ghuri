@@ -1,7 +1,13 @@
+using System.Text;
 using Ghuri.Application.Abstractions.Data;
+using Ghuri.Application.Abstractions.Ports;
+using Ghuri.Domain.Repositories;
+using Ghuri.Infrastructure.Messaging;
 using Ghuri.Infrastructure.Persistence;
 using Ghuri.Infrastructure.Persistence.Interceptors;
+using Ghuri.Infrastructure.Persistence.Repositories;
 using Ghuri.Infrastructure.Persistence.Seed;
+using Ghuri.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,13 +31,22 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' was not found in configuration.");
-
         // The real clock. "Try" = only if nobody registered one already, so
         // a test can register a fixed fake clock first and keep it.
         services.TryAddSingleton(TimeProvider.System);
+
+        services.AddPersistence(configuration);
+        services.AddSecurity();
+        services.AddEmail(configuration);
+
+        return services;
+    }
+
+    private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' was not found in configuration.");
 
         // Scoped, not singleton: it depends on ICurrentUser, which changes
         // with every request.
@@ -52,6 +67,13 @@ public static class DependencyInjection
         // The read side - a no-tracking view over the same AppDbContext.
         services.AddScoped<IReadDbContext, ReadDbContext>();
 
+        // The write side - one repository per aggregate, used only by
+        // command handlers. Scoped for the same reason as EfUnitOfWork:
+        // they must share the request's one AppDbContext.
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IOtpRepository, OtpRepository>();
+
         // Only ever resolved by SeedDatabaseAsync below ("dotnet run -- seed").
         services.AddScoped<DatabaseSeeder>();
 
@@ -60,8 +82,45 @@ public static class DependencyInjection
         // (see Program.cs for why the two are different).
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(name: "database", tags: [HealthCheckTags.Ready]);
+    }
 
-        return services;
+    private static void AddSecurity(this IServiceCollection services)
+    {
+        // Fill JwtOptions from the "Jwt" section and CHECK it when the app
+        // starts: a missing signing key stops the API immediately with a
+        // clear message, instead of failing at the first login.
+        services.AddOptions<JwtOptions>()
+            .BindConfiguration(JwtOptions.SectionName)
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Issuer) && !string.IsNullOrWhiteSpace(o.Audience),
+                "Jwt:Issuer and Jwt:Audience are required (appsettings.json).")
+            // HMAC-SHA256 needs a key of at least 256 bits = 32 bytes.
+            .Validate(o => Encoding.UTF8.GetByteCount(o.SigningKey) >= 32,
+                "Jwt:SigningKey is missing or shorter than 32 characters. Locally, set it with: " +
+                "dotnet user-secrets set \"Jwt:SigningKey\" \"<long random text>\" --project src/Ghuri.Api")
+            .Validate(o => o.AccessTokenMinutes is > 0 and <= 60,
+                "Jwt:AccessTokenMinutes must be between 1 and 60.")
+            .ValidateOnStart();
+
+        // Singletons: neither keeps any per-request state, so one shared
+        // instance for the whole app is safe and cheapest.
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ITokenService, JwtTokenService>();
+    }
+
+    private static void AddEmail(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Chosen by configuration, not by environment name: a staging
+        // server could use a real sender or the log, without code changes.
+        var sender = configuration["Email:Sender"];
+        switch (sender)
+        {
+            case "Log":
+                services.AddSingleton<IEmailSender, LogEmailSender>();
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Email:Sender '{sender}' is not supported. Use \"Log\" (development only - writes emails to the console).");
+        }
     }
 
     /// <summary>

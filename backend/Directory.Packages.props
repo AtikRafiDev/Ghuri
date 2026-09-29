@@ -41,6 +41,19 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Security (Infrastructure)">
+    <!-- Only the password hasher from ASP.NET Core Identity (PBKDF2,
+         blueprint section 8) - NOT Identity's EF tables (AspNetUsers...).
+         We keep our own iam.Users table and use just this one class. -->
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
+    <!-- Creates the signed JWT access tokens. Microsoft's current JWT
+         library (the older System.IdentityModel.Tokens.Jwt is legacy). -->
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+    <!-- Lets a settings class be filled from appsettings.json and checked
+         at startup (BindConfiguration + ValidateOnStart). -->
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
+  </ItemGroup>
+
   <ItemGroup Label="Logging">
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>

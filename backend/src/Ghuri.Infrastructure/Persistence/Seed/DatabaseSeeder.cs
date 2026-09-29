@@ -56,7 +56,7 @@ internal sealed class DatabaseSeeder(
 
         // Never silently promote an existing account (say, a customer who
         // registered with this phone) to Super Admin - make a human decide.
-        var normalizedEmail = email.ToUpperInvariant();
+        var normalizedEmail = User.NormalizeEmail(email);
         if (await db.Users.AnyAsync(u => u.NormalizedEmail == normalizedEmail || u.PhoneNumber == phone, cancellationToken))
             throw new InvalidOperationException(
                 $"A user with email '{email}' or phone '{phone}' already exists. " +

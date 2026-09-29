@@ -114,6 +114,57 @@ dotnet run --project src/Ghuri.Api -- seed
 
 ## 5. Run the API
 
+### One-time: create your JWT signing key
+
+The API signs login tokens with a secret key, and **refuses to start
+without one**. The key is a secret, so it's not in git - each machine
+creates its own, stored by `dotnet user-secrets` in your Windows profile
+(`%APPDATA%\Microsoft\UserSecrets\`), outside the repository.
+
+In PowerShell:
+```
+cd backend
+$bytes = New-Object byte[] 64; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String($bytes)) --project src/Ghuri.Api
+```
+
+- Check it's there: `dotnet user-secrets list --project src/Ghuri.Api`
+- On a server, set the environment variable `Jwt__SigningKey` instead.
+- Changing the key logs everyone out (their tokens no longer verify) -
+  harmless locally.
+- Run only `set` on a new PC, **not** `dotnet user-secrets init`: `init`
+  was done once and added the `UserSecretsId` line to
+  `src/Ghuri.Api/Ghuri.Api.csproj`, which every clone already has.
+
+#### Does every machine need the same key?
+
+No - each PC creates its **own, different** key, and that's intended.
+The key only has to match itself: the same API on the same PC both
+creates a token and later checks it. A token made on one PC won't work
+on another, but nobody needs that - each PC also has its own database
+and its own users.
+
+When a key **does** have to be shared:
+
+| Situation | Same key needed? | How it gets there |
+|---|---|---|
+| Two developer PCs | No | Each runs `set` itself |
+| Staging server vs production server | **No - and they should differ** | A staging token must never work on the live site |
+| Several copies of the API behind one address (production at scale) | **Yes** | A token signed by copy 1 must be accepted by copy 2 |
+
+- **Servers:** create the key once and give it to the server as the
+  environment variable `Jwt__SigningKey`. It never goes through git or
+  chat. Where that variable lives depends on the hosting - e.g. a `.env`
+  file on the server that isn't in git, or GitHub Actions secrets
+  injected during deployment (Day 7 staging, Day 14 production).
+- **Two people truly needing the same key:** share it through a password
+  manager - never through git, email or chat.
+- **Not related to the signing key:** the Super Admin's password. That's a
+  hash stored in each PC's own database - each PC runs `seed` (section 4)
+  and sets its own password.
+
+### Start it
+
 ```
 cd backend
 dotnet run --project src/Ghuri.Api

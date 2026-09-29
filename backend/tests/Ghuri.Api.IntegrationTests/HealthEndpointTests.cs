@@ -1,5 +1,4 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Ghuri.Api.IntegrationTests;
 
@@ -14,8 +13,8 @@ namespace Ghuri.Api.IntegrationTests;
 /// works on the CI server, which has no SQL Server. Database-backed tests
 /// come later, with a throwaway database (the blueprint's Testcontainers).
 /// </remarks>
-public class HealthEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests(GhuriApiFactory factory)
+    : IClassFixture<GhuriApiFactory>
 {
     [Fact]
     public async Task Live_ReturnsHealthy_WithoutNeedingADatabase()

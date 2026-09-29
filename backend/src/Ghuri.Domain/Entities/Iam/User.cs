@@ -76,13 +76,14 @@ public sealed class User : AggregateRoot, IAuditable
     public static User Create(string fullName, PhoneNumber phoneNumber, string? email, string? passwordHash)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
 
         return new User
         {
             FullName = fullName,
             PhoneNumber = phoneNumber,
             Email = email,
-            NormalizedEmail = email?.ToUpperInvariant(),
+            NormalizedEmail = email is null ? null : NormalizeEmail(email),
             PasswordHash = passwordHash,
             SecurityStamp = NewSecurityStamp(),
             Status = UserStatus.Active,
@@ -173,6 +174,14 @@ public sealed class User : AggregateRoot, IAuditable
     }
 
     public bool HasRole(SystemRole role) => _roles.Exists(r => r.RoleId == (byte)role);
+
+    /// <summary>
+    /// THE one rule for comparing emails: " Rahim@Mail.com" and
+    /// "rahim@mail.com" are the same address. Used when saving
+    /// NormalizedEmail AND when searching by it - two different rules
+    /// would make users impossible to find.
+    /// </summary>
+    public static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
 
     private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
 }
