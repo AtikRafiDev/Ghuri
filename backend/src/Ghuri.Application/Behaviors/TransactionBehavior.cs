@@ -7,7 +7,9 @@ namespace Ghuri.Application.Behaviors;
 /// <summary>
 /// Wraps every COMMAND in one database transaction: commit if the handler
 /// returned success, roll everything back if it returned a failure
-/// (blueprint section 7.2).
+/// (blueprint section 7.2) - unless that failure's Error says
+/// CommitChanges (e.g. a wrong password still saves the failed-attempt
+/// count).
 /// </summary>
 /// <remarks>
 /// "where TMessage : IBaseCommand" is the important line - Mediator only
@@ -23,6 +25,6 @@ public sealed class TransactionBehavior<TMessage, TResponse>(IUnitOfWork unitOfW
         TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken) =>
         new(unitOfWork.ExecuteInTransactionAsync(
             ct => next(message, ct).AsTask(),
-            response => response.IsSuccess,
+            response => response.IsSuccess || response.Error.CommitChanges,
             cancellationToken));
 }

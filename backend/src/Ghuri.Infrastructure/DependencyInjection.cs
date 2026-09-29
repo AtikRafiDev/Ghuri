@@ -1,6 +1,7 @@
 using Ghuri.Application.Abstractions.Data;
 using Ghuri.Infrastructure.Persistence;
 using Ghuri.Infrastructure.Persistence.Interceptors;
+using Ghuri.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +52,9 @@ public static class DependencyInjection
         // The read side - a no-tracking view over the same AppDbContext.
         services.AddScoped<IReadDbContext, ReadDbContext>();
 
+        // Only ever resolved by SeedDatabaseAsync below ("dotnet run -- seed").
+        services.AddScoped<DatabaseSeeder>();
+
         // "Can we actually reach SQL Server?" - tagged "ready" so it only
         // runs on /health/ready, not on the lightweight /health/live
         // (see Program.cs for why the two are different).
@@ -58,5 +62,17 @@ public static class DependencyInjection
             .AddDbContextCheck<AppDbContext>(name: "database", tags: [HealthCheckTags.Ready]);
 
         return services;
+    }
+
+    /// <summary>
+    /// Creates the first Super Admin if there isn't one (see DatabaseSeeder).
+    /// Program.cs calls this only for "dotnet run --project src/Ghuri.Api -- seed".
+    /// </summary>
+    public static async Task SeedDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        // A scope of its own, like one HTTP request gets - AppDbContext is
+        // scoped and can't be resolved from the root provider.
+        await using var scope = services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(cancellationToken);
     }
 }

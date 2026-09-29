@@ -18,6 +18,20 @@ public record Error(string Code, string Message, ErrorType Type)
     /// <summary>Placeholder carried by a successful Result, so Error is never null.</summary>
     public static readonly Error None = new(string.Empty, string.Empty, ErrorType.Failure);
 
+    /// <summary>
+    /// False (the default): TransactionBehavior rolls back everything the
+    /// handler changed. True: the answer is still a failure, but the
+    /// handler's changes are SAVED - for failures whose whole point is to
+    /// record something. A wrong password must still save the
+    /// failed-attempt count, or the account never locks; a reused refresh
+    /// token must still save the revoked token family, or the thief keeps
+    /// access.
+    /// </summary>
+    /// <example>
+    /// <code>Error.Unauthorized("invalid_credentials", "Wrong phone or password.") with { CommitChanges = true }</code>
+    /// </example>
+    public bool CommitChanges { get; init; }
+
     public static Error Failure(string code, string message) => new(code, message, ErrorType.Failure);
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);
     public static Error Conflict(string code, string message) => new(code, message, ErrorType.Conflict);

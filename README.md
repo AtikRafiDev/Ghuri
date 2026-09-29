@@ -90,6 +90,26 @@ sqllocaldb info MSSQLLocalDB
 ```
 Should show `State: Running`.
 
+### Create the first Super Admin
+
+```
+cd backend
+dotnet run --project src/Ghuri.Api -- seed
+```
+
+- Creates the Super Admin from the `Seed:SuperAdmin` settings in
+  `appsettings.Development.json` (name, email, phone), then exits - it
+  does not start the web server.
+- The account has **no password**. Set one with **Forgot password** on the
+  login page; in development the reset link is written to the API's log.
+  So no password ever sits in a config file or in git.
+- Safe to run again: if a Super Admin already exists, it does nothing.
+- The 5 roles (SuperAdmin, Manager, Sales, Accounts, Customer) are not
+  created here - they come with the migrations in `database update` above.
+- Other environments: set `Seed__SuperAdmin__FullName`,
+  `Seed__SuperAdmin__Email` and `Seed__SuperAdmin__Phone` as environment
+  variables, run `database update`, then run `seed` once.
+
 ---
 
 ## 5. Run the API

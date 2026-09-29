@@ -47,4 +47,20 @@ public class TransactionBehaviorTests
 
         Assert.False(unitOfWork.Committed);
     }
+
+    [Fact]
+    public async Task FailedHandler_Commits_WhenTheErrorAsksToKeepChanges()
+    {
+        // e.g. wrong password: the answer is 401, but the failed-attempt
+        // count must still be saved or the account never locks.
+        var unitOfWork = new RecordingUnitOfWork();
+        var behavior = new TransactionBehavior<TestCommand, Result>(unitOfWork);
+        var error = Error.Unauthorized("invalid_credentials", "Wrong phone or password.") with { CommitChanges = true };
+
+        var result = await behavior.Handle(
+            new TestCommand(), (_, _) => ValueTask.FromResult(Result.Failure(error)), CancellationToken.None);
+
+        Assert.True(unitOfWork.Committed);
+        Assert.True(result.IsFailure);
+    }
 }

@@ -39,6 +39,17 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// "dotnet run --project src/Ghuri.Api -- seed": create the first Super
+// Admin, then exit without starting the web server. A deliberate command,
+// never automatic on startup - the same rule the blueprint sets for
+// migrations (section 14.1). It also keeps the integration tests, which
+// boot this Program with no database, from ever touching SQL Server.
+if (args.Contains("seed"))
+{
+    await app.Services.SeedDatabaseAsync();
+    return;
+}
+
 // First in the pipeline on purpose: it has to wrap everything after it to
 // be able to catch their exceptions.
 app.UseExceptionHandler();

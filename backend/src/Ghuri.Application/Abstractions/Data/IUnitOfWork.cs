@@ -14,7 +14,8 @@ public interface IUnitOfWork
     /// Decides commit vs rollback from the handler's answer - a failed
     /// Result rolls back, even though nothing was thrown. Example from the
     /// blueprint: seats get reserved, THEN the coupon turns out invalid -
-    /// the seat reservation must be undone too.
+    /// the seat reservation must be undone too. (TransactionBehavior makes
+    /// one exception: a failure whose Error has CommitChanges = true.)
     /// </param>
     /// <param name="cancellationToken">Cancels the work if the HTTP request is aborted.</param>
     Task<T> ExecuteInTransactionAsync<T>(
