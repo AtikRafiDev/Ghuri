@@ -1,5 +1,6 @@
 using FluentValidation;
 using Ghuri.Application.Behaviors;
+using Ghuri.Application.Features.Identity;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,6 +44,28 @@ public static class DependencyInjection
         // it - adding a validator for a new command needs no extra wiring.
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
 
+        services.AddIdentityFeature();
+
         return services;
+    }
+
+    private static void AddIdentityFeature(this IServiceCollection services)
+    {
+        // The login numbers from the "Auth" section of appsettings.json,
+        // checked when the app STARTS - a typo or a missing value stops it
+        // immediately, instead of breaking the first login hours later.
+        services.AddOptions<AuthOptions>()
+            .BindConfiguration(AuthOptions.SectionName)
+            .Validate(o => o.MaxFailedLogins is >= 1 and <= byte.MaxValue,
+                "Auth:MaxFailedLogins must be between 1 and 255.")
+            .Validate(o => o.LockoutMinutes > 0 && o.RefreshTokenDays > 0
+                           && o.PasswordResetLinkMinutes > 0 && o.MaxResetEmailsPerHour > 0,
+                "Auth: LockoutMinutes, RefreshTokenDays, PasswordResetLinkMinutes and MaxResetEmailsPerHour must all be greater than 0.")
+            .Validate(o => Uri.TryCreate(o.PasswordResetUrl, UriKind.Absolute, out _),
+                "Auth:PasswordResetUrl must be a full address, e.g. http://localhost:5173/reset-password")
+            .ValidateOnStart();
+
+        // Scoped: it uses repositories, which share the request's DbContext.
+        services.AddScoped<SessionIssuer>();
     }
 }

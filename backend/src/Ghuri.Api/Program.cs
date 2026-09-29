@@ -27,6 +27,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // on this.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+// Same idea: "where is this request from?" (IP, browser) for new sessions.
+builder.Services.AddScoped<IClientInfo, HttpClientInfo>();
 
 // ProblemDetails (RFC 9457) as the JSON shape for EVERY error response,
 // plus our handler for exceptions nobody else caught.

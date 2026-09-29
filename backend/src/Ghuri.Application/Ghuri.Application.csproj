@@ -21,5 +21,14 @@
     <!-- Only for async LINQ in QUERY handlers (blueprint section 3.1).
          Command handlers must never use it - they go through repositories. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <!-- Fills AuthOptions from the "Auth" section and checks it at startup. -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Handlers are "internal" (nothing outside Application should call
+         them directly - everyone goes through ISender). This lets ONLY the
+         test project see them, so they can be unit-tested. -->
+    <InternalsVisibleTo Include="Ghuri.Application.Tests" />
   </ItemGroup>
 </Project>
