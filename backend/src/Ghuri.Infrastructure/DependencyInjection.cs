@@ -9,9 +9,11 @@ using Ghuri.Infrastructure.Persistence.Repositories;
 using Ghuri.Infrastructure.Persistence.Seed;
 using Ghuri.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Ghuri.Infrastructure;
 
@@ -56,7 +58,13 @@ public static class DependencyInjection
         // up the interceptor instance for ITS OWN request scope.
         services.AddDbContext<AppDbContext>((serviceProvider, options) => options
             .UseSqlServer(connectionString)
-            .AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>()));
+            .AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>())
+            // When the BROWSER hangs up mid-request, EF logs the cancelled
+            // transaction as an Error - noise that buries real errors.
+            // Lowered to Warning. Nothing is lost: a REAL transaction
+            // failure is still logged as an Error by the request log and
+            // by GlobalExceptionHandler.
+            .ConfigureWarnings(warnings => warnings.Log((RelationalEventId.TransactionError, LogLevel.Warning))));
 
         // Scoped, same as AppDbContext - the unit of work and the handler
         // must share the SAME DbContext instance within one request, or

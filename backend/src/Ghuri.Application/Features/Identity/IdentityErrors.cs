@@ -12,8 +12,10 @@ namespace Ghuri.Application.Features.Identity;
 /// attempt count, a lock, a revoked session. Without it, TransactionBehavior
 /// would roll that record back and the protection would silently never
 /// happen. When nothing was changed, committing is harmless.
+/// Public so the Api can reuse an error for a purely HTTP-level case
+/// (e.g. "no refresh cookie at all") instead of inventing a second copy.
 /// </remarks>
-internal static class IdentityErrors
+public static class IdentityErrors
 {
     // Login / change password. Unknown user and wrong password give the
     // SAME answer, so the login form never tells a stranger which accounts exist.

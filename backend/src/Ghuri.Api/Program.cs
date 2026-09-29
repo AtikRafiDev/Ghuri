@@ -1,5 +1,6 @@
 using Ghuri.Api.Authentication;
 using Ghuri.Api.ErrorHandling;
+using Ghuri.Api.RateLimiting;
 using Ghuri.Application;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Infrastructure;
@@ -35,6 +36,13 @@ builder.Services.AddScoped<IClientInfo, HttpClientInfo>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Security (see the files in Api/Authentication and Api/RateLimiting):
+// check the JWT on every request, role-based policies for [Authorize],
+// and per-IP limits on the sensitive auth endpoints.
+builder.Services.AddJwtAuthentication();
+builder.Services.AddAuthorizationPolicies();
+builder.Services.AddRateLimitPolicies();
+
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -61,8 +69,13 @@ app.UseExceptionHandler();
 // are dropped to Verbose (hidden at our Information level): an uptime
 // monitor polls every few seconds, and thousands of "health OK" lines a
 // day would bury the logs that matter. A FAILING health check still logs.
+// A request the BROWSER abandoned (tab closed, connection lost) is not our
+// bug: its cancellation surfaces as an exception, but logging it as an
+// Error would bury the real errors - so it's Information.
 app.UseSerilogRequestLogging(options => options.GetLevel = (httpContext, _, exception) =>
-    exception is null
+    httpContext.RequestAborted.IsCancellationRequested
+        ? LogEventLevel.Information
+    : exception is null
     && httpContext.Response.StatusCode < 400
     && httpContext.Request.Path.StartsWithSegments("/health")
         ? LogEventLevel.Verbose
@@ -86,6 +99,16 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// ORDER MATTERS in this block:
+// 1. Rate limiter first - the cheapest check. A flood is refused before
+//    any work (JWT signature check, database) is spent on it.
+// 2. Authentication - reads the "Authorization: Bearer ..." header, checks
+//    the JWT, and fills HttpContext.User. It never refuses anything itself.
+// 3. Authorization - NOW decides: [Authorize] endpoint and no valid user?
+//    401. Wrong role for the policy? 403. It needs step 2's result, so it
+//    must come after it.
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

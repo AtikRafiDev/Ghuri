@@ -1,6 +1,64 @@
-@Ghuri.Api_HostAddress = http://localhost:5176
+# Try the API by hand. Works with Visual Studio's .http editor and the
+# VS Code "REST Client" extension: click "Send Request" above each request.
+# Start the API first:  cd backend  ->  dotnet run --project src/Ghuri.Api
 
-GET {{Ghuri.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+@host = http://localhost:5176
+@auth = {{host}}/api/v1/auth
 
-###
+### Is the API up, and can it reach the database?
+GET {{host}}/health/ready
+
+###############################################################################
+# FIRST LOGIN AS SUPER ADMIN (run "dotnet run --project src/Ghuri.Api -- seed"
+# once before this). The seeded account has no password - set one via the
+# normal "forgot password" flow.
+###############################################################################
+
+### 1. Ask for a reset link. Always 204 (it never reveals if the email exists).
+#       Then look in the API's console for "DEVELOPMENT EMAIL" and copy the
+#       long value after "token=" (up to, not including, the closing quote).
+POST {{auth}}/password/forgot
+Content-Type: application/json
+
+{ "email": "admin@ghuri.local" }
+
+### 2. Paste the token here, choose your password (8+ characters), send. 204 = done.
+@resetToken = PASTE-THE-TOKEN-HERE
+@myPassword = choose-a-good-password
+
+POST {{auth}}/password/reset
+Content-Type: application/json
+
+{ "email": "admin@ghuri.local", "token": "{{resetToken}}", "newPassword": "{{myPassword}}" }
+
+### 3. Log in. 200 = { accessToken, expiresAtUtc } + a Set-Cookie header (the refresh token).
+# @name login
+POST {{auth}}/login
+Content-Type: application/json
+
+{ "phoneOrEmail": "admin@ghuri.local", "password": "{{myPassword}}" }
+
+### 4. Who am I? Uses the access token from step 3. Expect roles: ["SuperAdmin"].
+GET {{auth}}/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### 5. Refresh: trade the cookie for a new access token + a new cookie.
+# A browser sends the cookie by itself; this tool can't (the cookie is
+# "Secure" and this is plain http), so it's copied from step 3 by hand.
+# Each refresh token works ONCE - to refresh again, log in again (step 3).
+POST {{auth}}/refresh
+Cookie: {{login.response.headers.Set-Cookie}}
+
+### 6. Log out (ends the session from step 3). Always 204.
+POST {{auth}}/logout
+Cookie: {{login.response.headers.Set-Cookie}}
+
+###############################################################################
+# CUSTOMERS
+###############################################################################
+
+### Register a customer - logged in immediately (201 + access token + cookie).
+POST {{auth}}/register
+Content-Type: application/json
+
+{ "fullName": "Rahim Uddin", "phone": "01711000000", "email": "rahim@example.com", "password": "rahim-password" }

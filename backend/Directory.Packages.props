@@ -10,6 +10,9 @@
 
   <ItemGroup Label="Api">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <!-- Checks the "Authorization: Bearer <JWT>" header on every request:
+         signature, issuer, audience, expiry. Microsoft's official one. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Persistence (EF Core)">

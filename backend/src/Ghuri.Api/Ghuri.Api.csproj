@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <!-- Structured logging. Api is where logs get their DESTINATION
          (console, file...); Application only writes ILogger calls. -->
     <PackageReference Include="Serilog.AspNetCore" />
