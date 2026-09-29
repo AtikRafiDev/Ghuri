@@ -1,3 +1,5 @@
+using Ghuri.Domain.Exceptions;
+
 namespace Ghuri.Domain.Entities.Iam;
 
 /// <summary>
@@ -8,9 +10,11 @@ namespace Ghuri.Domain.Entities.Iam;
 /// </summary>
 /// <remarks>
 /// Only TokenHash is ever stored - never the raw token - so a stolen
-/// database backup can't be used to log in as anyone. Rotation and
-/// "reuse revokes the whole family" logic belongs to Day 2's Identity
-/// feature.
+/// database backup can't be used to log in as anyone.
+/// Rotation: every refresh spends the old token and issues a new one in
+/// the same family. If a SPENT token ever comes back (IsRotated), two
+/// parties hold it - the real user and a thief - and the handler revokes
+/// the whole family, logging both out (blueprint section 8).
 /// </remarks>
 public sealed class RefreshToken
 {
@@ -48,4 +52,32 @@ public sealed class RefreshToken
             CreatedByIp = createdByIp,
             UserAgent = userAgent
         };
+
+    /// <summary>Usable right now: not revoked (logout, rotation, reuse) and not past its deadline.</summary>
+    public bool IsActive(DateTime nowUtc) => RevokedAtUtc is null && nowUtc < ExpiresAtUtc;
+
+    /// <summary>
+    /// Already swapped for a newer token. Presenting it again is REUSE -
+    /// the signal of a stolen token. A token revoked by logout is not
+    /// rotated, so logging out and pressing Back is not mistaken for theft.
+    /// </summary>
+    public bool IsRotated => ReplacedByHash is not null;
+
+    /// <summary>Ends this token (logout, password change, reuse detected). Revoking twice keeps the first time.</summary>
+    public void Revoke(DateTime nowUtc) => RevokedAtUtc ??= nowUtc;
+
+    /// <summary>
+    /// Rotation: this token is spent and newTokenHash takes over. Only an
+    /// active token can be rotated - the handler must spot a revoked one
+    /// (and treat a rotated one as reuse) before getting here.
+    /// </summary>
+    public void ReplaceWith(string newTokenHash, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newTokenHash);
+        if (!IsActive(nowUtc))
+            throw new DomainException("refresh_token_inactive", "Your session has ended. Please log in again.");
+
+        ReplacedByHash = newTokenHash;
+        RevokedAtUtc = nowUtc;
+    }
 }

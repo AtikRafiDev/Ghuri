@@ -14,8 +14,11 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         // twice, and there's no reason for a surrogate id here.
         builder.HasKey(ur => new { ur.UserId, ur.RoleId });
 
+        // WithMany(u => u.Roles): the same foreign key as before, now also
+        // reachable as user.Roles - EF fills the private _roles list (found
+        // by naming convention) when a user is loaded with its roles.
         builder.HasOne<User>()
-            .WithMany()
+            .WithMany(u => u.Roles)
             .HasForeignKey(ur => ur.UserId)
             .OnDelete(DeleteBehavior.Cascade); // deleting a user removes their role assignments
 

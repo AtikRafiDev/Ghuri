@@ -24,7 +24,9 @@ internal sealed class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.Property(o => o.ExpiresAtUtc).IsRequired();
 
         builder.Property(o => o.Attempts).IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("CK_OtpCodes_Attempts", "[Attempts] <= 5"));
+        // Built from the Domain's constant, so the database limit and the
+        // code's limit are one number. (Same SQL text as before - no migration.)
+        builder.ToTable(t => t.HasCheckConstraint("CK_OtpCodes_Attempts", $"[Attempts] <= {OtpCode.MaxAttempts}"));
 
         builder.Property(o => o.ConsumedAtUtc);
         builder.Property(o => o.CreatedAtUtc).IsRequired();

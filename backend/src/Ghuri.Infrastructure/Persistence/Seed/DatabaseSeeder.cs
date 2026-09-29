@@ -63,8 +63,8 @@ internal sealed class DatabaseSeeder(
                 $"Put a different email/phone in {SuperAdminSection}, then seed again.");
 
         var user = User.Create(fullName, phone, email, passwordHash: null);
-        db.Users.Add(user);
-        db.UserRoles.Add(UserRole.Create(user.Id, superAdminRoleId, clock.GetUtcNow().UtcDateTime));
+        user.AssignRole(SystemRole.SuperAdmin, clock.GetUtcNow().UtcDateTime);
+        db.Users.Add(user); // adding the user also adds its role - they're one aggregate
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
