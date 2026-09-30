@@ -40,7 +40,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Booking.Booking", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("AddOnTotal")
@@ -196,7 +195,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Booking.BookingAddOn", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("AddOnId")
@@ -268,7 +266,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Booking.BookingTraveller", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("BookingId")
@@ -321,7 +318,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Booking.CancellationPolicy", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -364,7 +360,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.Category", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -453,7 +448,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.Departure", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("AdultPrice")
@@ -532,7 +526,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.Destination", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<short>("CountryId")
@@ -546,9 +539,6 @@ namespace Ghuri.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ImageFileId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -594,8 +584,6 @@ namespace Ghuri.Infrastructure.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.HasIndex("ImageFileId");
-
                     b.HasIndex("IsFeatured");
 
                     b.HasIndex("Slug")
@@ -605,10 +593,32 @@ namespace Ghuri.Infrastructure.Migrations
                     b.ToTable("Destinations", "catalog");
                 });
 
+            modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.DestinationImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DestinationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationId");
+
+                    b.HasIndex("FileId");
+
+                    b.ToTable("DestinationImages", "catalog");
+                });
+
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.ItineraryDay", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Accommodation")
@@ -646,7 +656,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.PackageAddOn", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -708,7 +717,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.PackageImage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Caption")
@@ -743,7 +751,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.TourPackage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("AvgRating")
@@ -882,7 +889,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Cms.Banner", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -951,7 +957,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Cms.BlogPost", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("AuthorId")
@@ -1034,7 +1039,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Cms.MenuItem", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -1081,7 +1085,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Cms.Page", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Content")
@@ -1300,7 +1303,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Iam.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte>("AccessFailedCount")
@@ -1414,7 +1416,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Marketing.Coupon", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Code")
@@ -1505,7 +1506,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Marketing.CouponRedemption", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("BookingId")
@@ -1538,7 +1538,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Marketing.Review", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("BookingId")
@@ -1692,7 +1691,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Notify.NotificationTemplate", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Body")
@@ -1801,7 +1799,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Ops.FileObject", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ContentType")
@@ -1891,7 +1888,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Ops.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte>("Attempts")
@@ -1961,7 +1957,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Payment.Payment", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Amount")
@@ -2109,7 +2104,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Payment.Refund", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Amount")
@@ -2202,7 +2196,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Support.ContactMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -2246,7 +2239,6 @@ namespace Ghuri.Infrastructure.Migrations
             modelBuilder.Entity("Ghuri.Domain.Entities.Support.CustomTourRequest", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte>("Adults")
@@ -2415,11 +2407,21 @@ namespace Ghuri.Infrastructure.Migrations
                         .HasForeignKey("CountryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.DestinationImage", b =>
+                {
+                    b.HasOne("Ghuri.Domain.Entities.Catalog.Destination", null)
+                        .WithMany("Images")
+                        .HasForeignKey("DestinationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Ghuri.Domain.Entities.Ops.FileObject", null)
                         .WithMany()
-                        .HasForeignKey("ImageFileId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.ItineraryDay", b =>
@@ -2683,6 +2685,11 @@ namespace Ghuri.Infrastructure.Migrations
                     b.Navigation("History");
 
                     b.Navigation("Travellers");
+                });
+
+            modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.Destination", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("Ghuri.Domain.Entities.Catalog.TourPackage", b =>

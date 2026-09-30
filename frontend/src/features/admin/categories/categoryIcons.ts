@@ -1,0 +1,60 @@
+import {
+  BikeIcon,
+  Building2Icon,
+  BriefcaseIcon,
+  CameraIcon,
+  CarIcon,
+  CompassIcon,
+  GraduationCapIcon,
+  HeartIcon,
+  LandmarkIcon,
+  MoonStarIcon,
+  MountainIcon,
+  PlaneIcon,
+  ShipIcon,
+  SnowflakeIcon,
+  SparklesIcon,
+  SunIcon,
+  TentIcon,
+  TrainFrontIcon,
+  TreePalmIcon,
+  TreesIcon,
+  UmbrellaIcon,
+  UsersIcon,
+  UtensilsIcon,
+  WavesIcon,
+  type LucideIcon,
+} from 'lucide-react'
+
+/**
+ * The icons an admin can pick for a category. The API stores the name
+ * ("umbrella"); the website draws the matching lucide icon. A hand-picked
+ * list instead of all ~1,600 lucide icons: easier to choose from, and only
+ * these few end up in the website's download.
+ */
+export const categoryIcons: Record<string, LucideIcon> = {
+  umbrella: UmbrellaIcon,
+  'tree-palm': TreePalmIcon,
+  waves: WavesIcon,
+  mountain: MountainIcon,
+  trees: TreesIcon,
+  tent: TentIcon,
+  compass: CompassIcon,
+  heart: HeartIcon,
+  'moon-star': MoonStarIcon,
+  users: UsersIcon,
+  landmark: LandmarkIcon,
+  'building-2': Building2Icon,
+  ship: ShipIcon,
+  plane: PlaneIcon,
+  'train-front': TrainFrontIcon,
+  car: CarIcon,
+  bike: BikeIcon,
+  snowflake: SnowflakeIcon,
+  sun: SunIcon,
+  sparkles: SparklesIcon,
+  camera: CameraIcon,
+  utensils: UtensilsIcon,
+  briefcase: BriefcaseIcon,
+  'graduation-cap': GraduationCapIcon,
+}

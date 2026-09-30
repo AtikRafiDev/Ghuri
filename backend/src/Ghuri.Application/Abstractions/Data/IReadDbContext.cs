@@ -37,6 +37,7 @@ public interface IReadDbContext
     // catalog
     IQueryable<Country> Countries { get; }
     IQueryable<Destination> Destinations { get; }
+    IQueryable<DestinationImage> DestinationImages { get; }
     IQueryable<Category> Categories { get; }
     IQueryable<TourPackage> TourPackages { get; }
     IQueryable<PackageCategory> PackageCategories { get; }

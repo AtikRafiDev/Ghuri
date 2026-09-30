@@ -13,7 +13,7 @@ export function AdminDashboardPage() {
     <div className="grid gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome, {user?.fullName}. Catalogue tools arrive next (Day 3).</p>
+        <p className="text-muted-foreground">Welcome, {user?.fullName}. Manage destinations and categories from the Catalogue menu.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {upcomingCards.map((title) => (

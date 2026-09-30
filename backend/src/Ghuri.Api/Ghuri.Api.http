@@ -105,7 +105,7 @@ POST {{host}}/api/v1/admin/destinations
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "countryId": {{bangladeshId}}, "name": "Mohastangarh", "slug": "", "summary": "The oldest city of Bengal.", "imageFileId": null,
+{ "countryId": {{bangladeshId}}, "name": "Mohastangarh", "slug": "", "summary": "The oldest city of Bengal.", "imageFileIds": [],
   "isFeatured": false, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
 
 ### Edit it (the whole form is sent every time)
@@ -114,7 +114,7 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "countryId": {{bangladeshId}}, "name": "Mahasthangarh", "slug": "mahasthangarh", "summary": "Ancient Pundranagar, near Bogura.",
-  "imageFileId": null, "isFeatured": true, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
+  "imageFileIds": [], "isFeatured": true, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
 
 ### Delete it (soft delete; 409 if packages use it)
 DELETE {{host}}/api/v1/admin/destinations/{{newDestination.response.body.$.id}}

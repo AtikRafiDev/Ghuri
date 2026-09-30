@@ -15,7 +15,8 @@ internal sealed class CreateDestinationHandler(IDestinationRepository destinatio
         if (!await destinations.CountryExistsAsync(command.CountryId, cancellationToken))
             return CatalogErrors.CountryNotFound;
 
-        if (command.ImageFileId is { } imageId && !await files.ExistsAsync(imageId, cancellationToken))
+        var imageFileIds = command.ImageFileIds ?? []; // "imageFileIds" left out of the JSON = no photos
+        if (!await files.AllExistAsync(imageFileIds, cancellationToken))
             return CatalogErrors.ImageNotFound;
 
         var slug = CatalogSlug.Build(command.Slug, command.Name);
@@ -23,8 +24,9 @@ internal sealed class CreateDestinationHandler(IDestinationRepository destinatio
             return CatalogErrors.DestinationSlugTaken;
 
         var destination = Destination.Create(
-            command.CountryId, command.Name, slug, command.Summary, command.ImageFileId,
+            command.CountryId, command.Name, slug, command.Summary,
             command.IsFeatured, command.SortOrder, command.SeoTitle, command.SeoDescription);
+        destination.SetImages(imageFileIds);
         destinations.Add(destination);
 
         return destination.Id;

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { AppError } from '@/shared/api/problem'
 
@@ -20,9 +21,13 @@ export function Providers({ children }: { children: ReactNode }) {
   // cache on every re-render and throw away all fetched data.
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } }))
 
+  // TooltipProvider: one shared timer for every tooltip (the collapsed admin
+  // sidebar's labels, "can't delete" hints) - shadcn's tooltip needs it once, at the top.
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
+      <TooltipProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }

@@ -1,5 +1,4 @@
 using Ghuri.Domain.Entities.Catalog;
-using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -32,10 +31,16 @@ internal sealed class DestinationConfiguration : IEntityTypeConfiguration<Destin
         builder.HasIndex(d => d.Slug).IsUnique().HasFilter(SoftDeleteConfigurationExtensions.NotDeleted);
 
         builder.Property(d => d.Summary).HasMaxLength(500);
-        // Was a plain column with no FK while ops hadn't been built yet -
-        // now that FileObject exists, the real constraint goes here.
-        builder.Property(d => d.ImageFileId);
-        builder.HasOne<FileObject>().WithMany().HasForeignKey(d => d.ImageFileId).OnDelete(DeleteBehavior.SetNull);
+
+        // The photo gallery (catalog.DestinationImages). EF reads and writes
+        // the private _images list directly - the public Images property is
+        // a sorted read-only copy. Cascade: the rows go if the destination
+        // is ever really deleted (a soft delete keeps them, like everything else).
+        builder.HasMany(d => d.Images)
+            .WithOne()
+            .HasForeignKey(i => i.DestinationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(d => d.Images).HasField("_images").UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Property(d => d.IsFeatured).IsRequired();
         builder.HasIndex(d => d.IsFeatured);

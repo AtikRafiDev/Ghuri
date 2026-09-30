@@ -13,9 +13,7 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
         var rows =
             from d in db.Destinations
             join c in db.Countries on d.CountryId equals c.Id
-            join f in db.FileObjects on d.ImageFileId equals (Guid?)f.Id into images
-            from f in images.DefaultIfEmpty()
-            select new { d, CountryName = c.Name, c.IsoCode, ImageKey = f == null ? null : f.StorageKey };
+            select new { d, CountryName = c.Name, c.IsoCode };
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -38,7 +36,13 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
             .Select(r => new
             {
                 r.d.Id, r.d.Name, r.d.Slug, r.d.Summary, r.d.CountryId, r.CountryName, r.IsoCode,
-                r.d.ImageFileId, r.ImageKey, r.d.IsFeatured, r.d.SortOrder, r.d.SeoTitle, r.d.SeoDescription,
+                r.d.IsFeatured, r.d.SortOrder, r.d.SeoTitle, r.d.SeoDescription,
+                // The whole gallery, in order - loaded for this page's rows only.
+                Images = (from i in db.DestinationImages
+                          join f in db.FileObjects on i.FileId equals f.Id
+                          where i.DestinationId == r.d.Id
+                          orderby i.SortOrder
+                          select new { i.FileId, f.StorageKey }).ToList(),
                 // Deleted packages are skipped automatically (soft-delete filter).
                 PackageCount = db.TourPackages.Count(p => p.DestinationId == r.d.Id)
             })
@@ -47,8 +51,7 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
         return page.Map(r => new AdminDestinationDto(
             r.Id, r.Name, r.Slug.Value, r.Summary, r.CountryId, r.CountryName, r.IsoCode,
             IsInternational: r.IsoCode != HomeCountry.IsoCode,
-            r.ImageFileId,
-            ImageUrl: r.ImageKey is null ? null : storage.GetPublicUrl(r.ImageKey),
+            Images: r.Images.Select(i => new DestinationImageDto(i.FileId, storage.GetPublicUrl(i.StorageKey))).ToList(),
             r.IsFeatured, r.SortOrder, r.SeoTitle, r.SeoDescription, r.PackageCount));
     }
 }

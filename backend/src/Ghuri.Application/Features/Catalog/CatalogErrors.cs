@@ -10,7 +10,7 @@ public static class CatalogErrors
         Error.Failure("country_not_found", "Choose a country from the list.");
 
     public static readonly Error ImageNotFound =
-        Error.Failure("image_not_found", "The image was not found. Please upload it again.");
+        Error.Failure("image_not_found", "A photo was not found. Please upload it again.");
 
     // Destinations
     public static readonly Error DestinationNotFound =

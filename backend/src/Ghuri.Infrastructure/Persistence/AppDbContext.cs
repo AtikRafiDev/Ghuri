@@ -1,3 +1,4 @@
+using Ghuri.Domain.Common;
 using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Cms;
@@ -29,6 +30,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     // catalog schema
     public DbSet<Destination> Destinations => Set<Destination>();
+    public DbSet<DestinationImage> DestinationImages => Set<DestinationImage>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<TourPackage> TourPackages => Set<TourPackage>();
     public DbSet<PackageCategory> PackageCategories => Set<PackageCategory>();
@@ -126,5 +128,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         // it automatically. This means adding a new entity later never
         // requires touching this file - just add its Configuration class.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Every BaseEntity gets its Guid id in C# (BaseEntity's constructor),
+        // never from the database. EF's default for a Guid key is "generated
+        // on add", which makes it assume that a child it finds with an id
+        // already set is an EXISTING row: a photo, itinerary day or traveller
+        // added to an already-saved package/booking would then be UPDATEd
+        // instead of INSERTed, and the save fails (DbUpdateConcurrencyException).
+        // "Never generated" = a child EF hasn't seen before is always new.
+        // Set here once, so a new child entity can't forget it.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(t => typeof(BaseEntity).IsAssignableFrom(t.ClrType)))
+        {
+            modelBuilder.Entity(entityType.ClrType).Property(nameof(BaseEntity.Id)).ValueGeneratedNever();
+        }
     }
 }

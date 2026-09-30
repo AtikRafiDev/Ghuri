@@ -25,6 +25,7 @@ internal sealed class ReadDbContext(AppDbContext db) : IReadDbContext
 
     public IQueryable<Country> Countries => db.Countries.AsNoTracking();
     public IQueryable<Destination> Destinations => db.Destinations.AsNoTracking();
+    public IQueryable<DestinationImage> DestinationImages => db.DestinationImages.AsNoTracking();
     public IQueryable<Category> Categories => db.Categories.AsNoTracking();
     public IQueryable<TourPackage> TourPackages => db.TourPackages.AsNoTracking();
     public IQueryable<PackageCategory> PackageCategories => db.PackageCategories.AsNoTracking();

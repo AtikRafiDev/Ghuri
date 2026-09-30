@@ -11,14 +11,22 @@ internal sealed class GetDestinationsHandler(IReadDbContext db, IFileStorage sto
 {
     public async ValueTask<Result<IReadOnlyList<DestinationDto>>> Handle(GetDestinationsQuery query, CancellationToken cancellationToken)
     {
-        // One SQL query: destination + its country + its cover image (LEFT
-        // JOIN - a destination without an image still appears).
+        // One SQL query: destination + its country + its cover photo (the
+        // gallery's first one; null when it has no photos yet).
         var rows =
             from d in db.Destinations
             join c in db.Countries on d.CountryId equals c.Id
-            join f in db.FileObjects on d.ImageFileId equals (Guid?)f.Id into images
-            from f in images.DefaultIfEmpty()
-            select new { d, CountryName = c.Name, c.IsoCode, ImageKey = f == null ? null : f.StorageKey };
+            select new
+            {
+                d,
+                CountryName = c.Name,
+                c.IsoCode,
+                ImageKey = (from i in db.DestinationImages
+                            join f in db.FileObjects on i.FileId equals f.Id
+                            where i.DestinationId == d.Id
+                            orderby i.SortOrder
+                            select f.StorageKey).FirstOrDefault()
+            };
 
         rows = query.Scope switch
         {

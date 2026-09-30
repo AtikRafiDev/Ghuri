@@ -8,7 +8,7 @@ public sealed record CreateDestinationCommand(
     string Name,
     string? Slug,
     string? Summary,
-    Guid? ImageFileId,
+    IReadOnlyList<Guid> ImageFileIds,
     bool IsFeatured,
     int SortOrder,
     string? SeoTitle,

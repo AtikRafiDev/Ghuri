@@ -58,6 +58,18 @@ export const router = createBrowserRouter([
         index: true,
         lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminDashboardPage')).AdminDashboardPage }),
       },
+      {
+        path: 'destinations',
+        lazy: async () => ({
+          Component: (await import('@/features/admin/destinations/pages/AdminDestinationsPage')).AdminDestinationsPage,
+        }),
+      },
+      {
+        path: 'categories',
+        lazy: async () => ({
+          Component: (await import('@/features/admin/categories/pages/AdminCategoriesPage')).AdminCategoriesPage,
+        }),
+      },
       { path: 'system', lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) },
     ],
   },
