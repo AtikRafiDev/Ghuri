@@ -29,7 +29,7 @@ internal sealed class DestinationConfiguration : IEntityTypeConfiguration<Destin
             .HasMaxLength(160)
             .IsUnicode(false)
             .IsRequired();
-        builder.HasIndex(d => d.Slug).IsUnique();
+        builder.HasIndex(d => d.Slug).IsUnique().HasFilter(SoftDeleteConfigurationExtensions.NotDeleted);
 
         builder.Property(d => d.Summary).HasMaxLength(500);
         // Was a plain column with no FK while ops hadn't been built yet -

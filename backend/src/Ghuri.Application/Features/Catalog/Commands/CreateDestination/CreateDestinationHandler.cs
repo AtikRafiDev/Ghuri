@@ -1,0 +1,32 @@
+using Ghuri.Application.Abstractions.Messaging;
+using Ghuri.Application.Common;
+using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Repositories;
+
+namespace Ghuri.Application.Features.Catalog.Commands.CreateDestination;
+
+internal sealed class CreateDestinationHandler(IDestinationRepository destinations, IFileObjectRepository files)
+    : ICommandHandler<CreateDestinationCommand, Guid>
+{
+    public async ValueTask<Result<Guid>> Handle(CreateDestinationCommand command, CancellationToken cancellationToken)
+    {
+        // Checked here so the admin gets a clear message instead of a
+        // database foreign-key / unique-index error (a 500).
+        if (!await destinations.CountryExistsAsync(command.CountryId, cancellationToken))
+            return CatalogErrors.CountryNotFound;
+
+        if (command.ImageFileId is { } imageId && !await files.ExistsAsync(imageId, cancellationToken))
+            return CatalogErrors.ImageNotFound;
+
+        var slug = CatalogSlug.Build(command.Slug, command.Name);
+        if (await destinations.SlugExistsAsync(slug, exceptId: null, cancellationToken))
+            return CatalogErrors.DestinationSlugTaken;
+
+        var destination = Destination.Create(
+            command.CountryId, command.Name, slug, command.Summary, command.ImageFileId,
+            command.IsFeatured, command.SortOrder, command.SeoTitle, command.SeoDescription);
+        destinations.Add(destination);
+
+        return destination.Id;
+    }
+}

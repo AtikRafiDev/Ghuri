@@ -72,6 +72,66 @@ Content-Type: image/jpeg
 --GhuriBoundary--
 
 ###############################################################################
+# CATALOGUE - public (no login)
+###############################################################################
+
+### All destinations (national + international)
+GET {{host}}/api/v1/destinations
+
+### Only inside Bangladesh / only abroad / only home-page featured
+GET {{host}}/api/v1/destinations?scope=national
+###
+GET {{host}}/api/v1/destinations?scope=international&featured=true
+
+### Categories, countries
+GET {{host}}/api/v1/categories
+###
+GET {{host}}/api/v1/countries
+
+###############################################################################
+# CATALOGUE - admin (log in as Super Admin with step 3 above first)
+###############################################################################
+
+### Destinations table: search + filter + paging
+GET {{host}}/api/v1/admin/destinations?search=bazar&scope=national&page=1&pageSize=20
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Add a destination. countryId = Bangladesh's "id" from GET /api/v1/countries
+# (the database assigns country ids, so look yours up once and paste it below).
+# slug empty = made from the name.
+@bangladeshId = PASTE-BANGLADESH-ID
+# @name newDestination
+POST {{host}}/api/v1/admin/destinations
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "countryId": {{bangladeshId}}, "name": "Mohastangarh", "slug": "", "summary": "The oldest city of Bengal.", "imageFileId": null,
+  "isFeatured": false, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
+
+### Edit it (the whole form is sent every time)
+PUT {{host}}/api/v1/admin/destinations/{{newDestination.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "countryId": {{bangladeshId}}, "name": "Mahasthangarh", "slug": "mahasthangarh", "summary": "Ancient Pundranagar, near Bogura.",
+  "imageFileId": null, "isFeatured": true, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
+
+### Delete it (soft delete; 409 if packages use it)
+DELETE {{host}}/api/v1/admin/destinations/{{newDestination.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Categories table
+GET {{host}}/api/v1/admin/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Add a category (icon = a lucide-react icon name)
+POST {{host}}/api/v1/admin/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "Photography Tour", "slug": null, "icon": "camera", "sortOrder": 160 }
+
+###############################################################################
 # CUSTOMERS
 ###############################################################################
 

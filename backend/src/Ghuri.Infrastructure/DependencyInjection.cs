@@ -107,9 +107,12 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IOtpRepository, OtpRepository>();
         services.AddScoped<IFileObjectRepository, FileObjectRepository>();
+        services.AddScoped<IDestinationRepository, DestinationRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
 
-        // Only ever resolved by SeedDatabaseAsync below ("dotnet run -- seed").
+        // Only ever resolved by the seed methods below ("dotnet run -- seed" / "-- seed-demo").
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<DemoDataSeeder>();
 
         // "Can we actually reach SQL Server?" - tagged "ready" so it only
         // runs on /health/ready, not on the lightweight /health/live
@@ -167,5 +170,16 @@ public static class DependencyInjection
         // scoped and can't be resolved from the root provider.
         await using var scope = services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Fills the catalogue with sample destinations and categories (see
+    /// DemoDataSeeder). Program.cs allows it only in Development, for
+    /// "dotnet run --project src/Ghuri.Api -- seed-demo".
+    /// </summary>
+    public static async Task SeedDemoDataAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(cancellationToken);
     }
 }

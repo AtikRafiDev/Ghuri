@@ -16,14 +16,14 @@ internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.HasSoftDeleteFilter();
 
         builder.Property(c => c.Name).HasMaxLength(100).IsRequired();
-        builder.HasIndex(c => c.Name).IsUnique();
+        builder.HasIndex(c => c.Name).IsUnique().HasFilter(SoftDeleteConfigurationExtensions.NotDeleted);
 
         builder.Property(c => c.Slug)
             .HasConversion(s => s.Value, v => Slug.Create(v))
             .HasMaxLength(120)
             .IsUnicode(false)
             .IsRequired();
-        builder.HasIndex(c => c.Slug).IsUnique();
+        builder.HasIndex(c => c.Slug).IsUnique().HasFilter(SoftDeleteConfigurationExtensions.NotDeleted);
 
         builder.Property(c => c.Icon).HasMaxLength(50).IsUnicode(false);
         builder.Property(c => c.SortOrder).IsRequired();

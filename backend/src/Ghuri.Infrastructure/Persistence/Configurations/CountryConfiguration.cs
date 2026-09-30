@@ -49,5 +49,9 @@ internal sealed class CountryConfiguration : IEntityTypeConfiguration<Country>
 
         builder.HasIndex(c => c.IsoCode)
             .IsUnique();
+
+        // No HasData here on purpose: the rows come from .NET's RegionInfo
+        // at seed time (DatabaseSeeder) - see the note there for why that
+        // can't live in a migration.
     }
 }

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.ValueObjects;
@@ -9,16 +11,17 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 
 /// <summary>
 /// Creates the data a migration can't hold because it differs per
-/// environment: the first Super Admin (blueprint section 15: "one Super
-/// Admin user without a password (activated by one-time code)"). Fixed
-/// data like the role list lives in migrations instead (RoleConfiguration).
+/// environment or per machine: the countries (from .NET's RegionInfo) and
+/// the first Super Admin (blueprint section 15: "one Super Admin user
+/// without a password (activated by one-time code)"). Fixed data like the
+/// role list lives in migrations instead (RoleConfiguration).
 /// </summary>
 /// <remarks>
 /// The account gets NO password. Whoever owns the configured email sets
 /// one through "Forgot password" - which proves they own that inbox - so
 /// no password ever sits in a config file, a secret store, or git.
-/// Safe to run any number of times: once a Super Admin exists, it does
-/// nothing.
+/// Safe to run any number of times: it only adds missing countries, and
+/// once a Super Admin exists it doesn't create another.
 /// </remarks>
 internal sealed class DatabaseSeeder(
     AppDbContext db, IConfiguration configuration, TimeProvider clock, ILogger<DatabaseSeeder> logger)
@@ -36,7 +39,51 @@ internal sealed class DatabaseSeeder(
             throw new InvalidOperationException(
                 "The database has pending migrations. Run \".\\ef.cmd database update\" first, then seed.");
 
+        await SeedCountriesAsync(cancellationToken);
         await SeedSuperAdminAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Blueprint: "Countries seeded". The list comes from .NET itself
+    /// (RegionInfo - the operating system's ICU country data, ~244 countries
+    /// incl. Bangladesh), not from a hand-typed list.
+    /// </summary>
+    /// <remarks>
+    /// Why here and not in a migration (HasData): a migration must give the
+    /// SAME rows on every machine forever, but ICU's list and names change
+    /// between OS versions ("Turkey" may become "Türkiye"), which would make
+    /// EF generate surprise migrations - and ids taken from list positions
+    /// would shift, pointing destinations at the wrong country. Here SQL
+    /// Server hands out each id once (IDENTITY) and it never changes.
+    /// Only ADDS countries that are missing - existing rows (and the ids
+    /// destinations point at) are never renamed or removed.
+    /// </remarks>
+    private async Task SeedCountriesAsync(CancellationToken cancellationToken)
+    {
+        var available = CultureInfo.GetCultures(CultureTypes.SpecificCultures)
+            .Select(culture => new RegionInfo(culture.Name))
+            // Skips world/continent "regions" like 001 (World) and 150 (Europe).
+            .Where(region => region.TwoLetterISORegionName.Length == 2 && char.IsAsciiLetter(region.TwoLetterISORegionName[0]))
+            .DistinctBy(region => region.TwoLetterISORegionName)
+            .OrderBy(region => region.EnglishName)
+            .ToList();
+
+        // A Linux server in "globalization-invariant" mode (common in small
+        // Docker images) has no ICU data at all - fail loudly rather than
+        // silently seed zero countries.
+        if (available.Count == 0)
+            throw new InvalidOperationException(
+                "This machine's .NET has no country data (globalization-invariant mode, no ICU). " +
+                "Install ICU or set InvariantGlobalization=false, then seed again.");
+
+        var existing = (await db.Countries.Select(c => c.IsoCode).ToListAsync(cancellationToken)).ToHashSet();
+        var missing = available.Where(region => !existing.Contains(region.TwoLetterISORegionName)).ToList();
+
+        foreach (var region in missing)
+            db.Countries.Add(Country.Create(region.EnglishName, region.TwoLetterISORegionName));
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Countries: added {Added}, already had {Existing}.", missing.Count, existing.Count);
     }
 
     private async Task SeedSuperAdminAsync(CancellationToken cancellationToken)

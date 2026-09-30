@@ -63,6 +63,17 @@ if (args.Contains("seed"))
     return;
 }
 
+// "dotnet run --project src/Ghuri.Api -- seed-demo": sample destinations and
+// categories for building the UI. Development only - fake data must never
+// end up on a real server.
+if (args.Contains("seed-demo"))
+{
+    if (!app.Environment.IsDevelopment())
+        throw new InvalidOperationException("seed-demo only runs in the Development environment.");
+    await app.Services.SeedDemoDataAsync();
+    return;
+}
+
 // First in the pipeline on purpose: it has to wrap everything after it to
 // be able to catch their exceptions.
 app.UseExceptionHandler();
