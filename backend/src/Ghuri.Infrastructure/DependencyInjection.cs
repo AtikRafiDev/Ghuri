@@ -2,12 +2,14 @@ using System.Text;
 using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Domain.Repositories;
+using Ghuri.Infrastructure.Images;
 using Ghuri.Infrastructure.Messaging;
 using Ghuri.Infrastructure.Persistence;
 using Ghuri.Infrastructure.Persistence.Interceptors;
 using Ghuri.Infrastructure.Persistence.Repositories;
 using Ghuri.Infrastructure.Persistence.Seed;
 using Ghuri.Infrastructure.Security;
+using Ghuri.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -40,8 +42,31 @@ public static class DependencyInjection
         services.AddPersistence(configuration);
         services.AddSecurity();
         services.AddEmail(configuration);
+        services.AddFileStorage();
 
         return services;
+    }
+
+    private static void AddFileStorage(this IServiceCollection services)
+    {
+        services.AddOptions<LocalDiskStorageOptions>()
+            .BindConfiguration(LocalDiskStorageOptions.SectionName)
+            // Turn "uploads" into "F:\...\Ghuri.Api\uploads" once, at startup,
+            // so the storage and the Api's file serving use the exact same folder.
+            .PostConfigure(o =>
+            {
+                if (!string.IsNullOrWhiteSpace(o.RootPath))
+                    o.RootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(o.RootPath));
+            })
+            .Validate(o => !string.IsNullOrWhiteSpace(o.RootPath),
+                "Storage:RootPath is required (appsettings.json), e.g. \"uploads\".")
+            .Validate(o => o.PublicBaseUrl.StartsWith('/') && !o.PublicBaseUrl.EndsWith('/'),
+                "Storage:PublicBaseUrl must start with / and not end with one, e.g. \"/files\".")
+            .ValidateOnStart();
+
+        // Singletons: neither keeps per-request state.
+        services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
     }
 
     private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
@@ -81,6 +106,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IOtpRepository, OtpRepository>();
+        services.AddScoped<IFileObjectRepository, FileObjectRepository>();
 
         // Only ever resolved by SeedDatabaseAsync below ("dotnet run -- seed").
         services.AddScoped<DatabaseSeeder>();
@@ -103,8 +129,8 @@ public static class DependencyInjection
                 "Jwt:Issuer and Jwt:Audience are required (appsettings.json).")
             // HMAC-SHA256 needs a key of at least 256 bits = 32 bytes.
             .Validate(o => Encoding.UTF8.GetByteCount(o.SigningKey) >= 32,
-                "Jwt:SigningKey is missing or shorter than 32 characters. Locally, set it with: " +
-                "dotnet user-secrets set \"Jwt:SigningKey\" \"<long random text>\" --project src/Ghuri.Api")
+                "Jwt:SigningKey is missing or shorter than 32 characters. Locally it comes from " +
+                "appsettings.Development.json; on a server, from the Jwt__SigningKey environment variable.")
             .Validate(o => o.AccessTokenMinutes is > 0 and <= 60,
                 "Jwt:AccessTokenMinutes must be between 1 and 60.")
             .ValidateOnStart();

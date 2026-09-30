@@ -4,7 +4,10 @@ using Ghuri.Api.RateLimiting;
 using Ghuri.Application;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Infrastructure;
+using Ghuri.Infrastructure.Storage;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 
@@ -98,6 +101,26 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Uploaded images at /files/... (see LocalDiskFileStorage). On the real
+// server Nginx serves this folder itself and the request never reaches us;
+// this makes local development - and a server without Nginx - work the same.
+// Before the rate limiter and auth on purpose: catalogue images are public.
+var storage = app.Services.GetRequiredService<IOptions<LocalDiskStorageOptions>>().Value;
+Directory.CreateDirectory(storage.RootPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(storage.RootPath),
+    RequestPath = storage.PublicBaseUrl,
+    OnPrepareResponse = context =>
+    {
+        // Every upload gets a brand-new name, so a file's content never
+        // changes - browsers may keep it for a year without asking again.
+        context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        // "Trust the Content-Type, don't guess" - a browser never treats an image as a page.
+        context.Context.Response.Headers.XContentTypeOptions = "nosniff";
+    }
+});
 
 // ORDER MATTERS in this block:
 // 1. Rate limiter first - the cheapest check. A flood is refused before

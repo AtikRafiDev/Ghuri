@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Uploaded images (Storage:RootPath) - user data, not source code
+backend/src/Ghuri.Api/uploads/
+
 # User-specific files
 *.rsuser
 *.suo

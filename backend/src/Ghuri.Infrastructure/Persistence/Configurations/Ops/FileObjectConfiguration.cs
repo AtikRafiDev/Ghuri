@@ -19,7 +19,7 @@ internal sealed class FileObjectConfiguration : IEntityTypeConfiguration<FileObj
         builder.Property(f => f.ContentType).HasMaxLength(100).IsUnicode(false).IsRequired();
 
         builder.Property(f => f.SizeBytes).IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("CK_FileObjects_SizeBytes", "[SizeBytes] <= 10485760")); // 10 MB
+        builder.ToTable(t => t.HasCheckConstraint("CK_FileObjects_SizeBytes", $"[SizeBytes] <= {FileObject.MaxSizeBytes}"));
 
         builder.Property(f => f.Sha256).HasMaxLength(64).IsFixedLength().IsUnicode(false).IsRequired();
         builder.Property(f => f.IsPublic).IsRequired();

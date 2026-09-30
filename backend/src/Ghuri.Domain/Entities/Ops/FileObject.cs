@@ -5,6 +5,9 @@ namespace Ghuri.Domain.Entities.Ops;
 /// <summary>Metadata for one uploaded file (blueprint: ops.FileObjects). The actual bytes live in blob/disk storage (IFileStorage, an Infrastructure port) - this row just tracks what and where.</summary>
 public sealed class FileObject : BaseEntity
 {
+    /// <summary>Blueprint: SizeBytes CK ≤ 10 MB (setting Files.MaxUploadMb). One number for the entity, the database check, the validator and the upload endpoint.</summary>
+    public const long MaxSizeBytes = 10 * 1024 * 1024;
+
     /// <summary>The path/key inside blob storage - not the file's public URL.</summary>
     public string StorageKey { get; private set; } = string.Empty;
 
@@ -34,7 +37,7 @@ public sealed class FileObject : BaseEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(originalName);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
         ArgumentException.ThrowIfNullOrWhiteSpace(sha256);
-        if (sizeBytes > 10 * 1024 * 1024)
+        if (sizeBytes > MaxSizeBytes)
             throw new ArgumentOutOfRangeException(nameof(sizeBytes), "Files larger than 10 MB are not allowed.");
 
         return new FileObject

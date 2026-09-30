@@ -57,6 +57,14 @@
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Images (Infrastructure)">
+    <!-- Decodes, rotates, resizes and re-encodes uploads to WebP (MIT licence;
+         ImageSharp was avoided for its revenue-based licence). Brings the
+         Windows/Mac native parts; a Linux server also needs
+         SkiaSharp.NativeAssets.Linux.NoDependencies (Day 7). -->
+    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Logging">
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>

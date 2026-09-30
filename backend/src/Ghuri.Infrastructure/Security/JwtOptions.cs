@@ -6,10 +6,13 @@ namespace Ghuri.Infrastructure.Security;
 /// configuration validated at startup").
 /// </summary>
 /// <remarks>
-/// Issuer, Audience and AccessTokenMinutes are not secret and live in
-/// appsettings.json. SigningKey IS secret and never goes into git: locally
-/// it comes from "dotnet user-secrets", on a server from the
-/// Jwt__SigningKey environment variable.
+/// Issuer, Audience and AccessTokenMinutes live in appsettings.json.
+/// SigningKey lives in appsettings.Development.json and IS committed to
+/// git - acceptable only because this is a local learning project that
+/// never runs anywhere else. A real deployment must move it back to
+/// "dotnet user-secrets" locally / the Jwt__SigningKey environment
+/// variable on a server, since anyone with this value can forge a valid
+/// token for any user.
 /// Public because the Api's JWT validation (Day 2, step 4) must check
 /// tokens with exactly these values.
 /// </remarks>

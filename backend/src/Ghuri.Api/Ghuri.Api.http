@@ -54,6 +54,24 @@ POST {{auth}}/logout
 Cookie: {{login.response.headers.Set-Cookie}}
 
 ###############################################################################
+# FILE UPLOAD (staff only - log in as Super Admin with step 3 above first)
+###############################################################################
+
+### Upload an image. Put any JPEG/PNG next to this file and name it test.jpg
+# (or change the path). 201 = { id, url, width, height }; open
+# {{host}}{url} in a browser to see the stored WebP.
+POST {{host}}/api/v1/files
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: multipart/form-data; boundary=GhuriBoundary
+
+--GhuriBoundary
+Content-Disposition: form-data; name="file"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+--GhuriBoundary--
+
+###############################################################################
 # CUSTOMERS
 ###############################################################################
 

@@ -27,6 +27,8 @@ export default defineConfig({
     proxy: {
       '/api': { target: apiTarget, changeOrigin: true },
       '/health': { target: apiTarget, changeOrigin: true },
+      // Uploaded images (backend Storage:PublicBaseUrl).
+      '/files': { target: apiTarget, changeOrigin: true },
     },
   },
 })

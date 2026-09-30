@@ -3,7 +3,9 @@
     <!-- Not a secret itself - just the NAME of the folder holding this
          project's secrets, OUTSIDE the repo:
          %APPDATA%\Microsoft\UserSecrets\<this id>\secrets.json
-         Read only in Development. Holds Jwt:SigningKey (see README). -->
+         Read only in Development. Jwt:SigningKey now lives in
+         appsettings.Development.json instead (learning project, not
+         deployed) - this id is free for any future local-only secret. -->
     <UserSecretsId>96022def-04b3-4188-8e01-78da1ba6d326</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
