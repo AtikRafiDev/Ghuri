@@ -38,15 +38,19 @@ export function ImageGalleryUpload({ id, value, onChange, max, onBusyChange, inv
   const freeSlots = max - value.length
 
   const addFiles = async (files: File[]) => {
-    const problems: string[] = []
+    // A second batch while one is running would start from the same old
+    // `value` and, when it finished, overwrite the first batch's photos.
+    if (busy || freeSlots <= 0) return
+
+    const rejected: string[] = []
     const accepted: File[] = []
     for (const file of files) {
-      if (!acceptedImageTypes.includes(file.type)) problems.push(`${file.name}: not a JPEG, PNG or WebP image.`)
-      else if (file.size > maxUploadBytes) problems.push(`${file.name}: larger than 10 MB.`)
-      else if (accepted.length >= freeSlots) problems.push(`${file.name}: skipped - at most ${max} photos.`)
+      if (!acceptedImageTypes.includes(file.type)) rejected.push(`${file.name}: not a JPEG, PNG or WebP image.`)
+      else if (file.size > maxUploadBytes) rejected.push(`${file.name}: larger than 10 MB.`)
+      else if (accepted.length >= freeSlots) rejected.push(`${file.name}: skipped - at most ${max} photos.`)
       else accepted.push(file)
     }
-    setErrors(problems)
+    setErrors(rejected)
     if (accepted.length === 0) return
 
     // All upload at the same time; each shows its own progress.
@@ -63,17 +67,20 @@ export function ImageGalleryUpload({ id, value, onChange, max, onBusyChange, inv
     )
 
     const uploaded: UploadedImage[] = []
+    const failed: string[] = []
     results.forEach((result, i) => {
       if (result.status === 'fulfilled') uploaded.push({ id: result.value.id, url: result.value.url })
       else {
         const appError = toAppError(result.reason)
-        problems.push(`${jobs[i].file.name}: ${appError.fieldErrors.file ?? appError.message}`)
+        failed.push(`${jobs[i].file.name}: ${appError.fieldErrors.file ?? appError.message}`)
       }
     })
     // One update, in the order the files were chosen. Safe to use `value`
-    // from when the upload started: every other control is disabled meanwhile.
+    // from when the upload started: every control that could change it -
+    // including the file input itself - is disabled meanwhile.
     onChange([...value, ...uploaded])
-    setErrors(problems)
+    // A NEW array: React skips an update when it's handed the same one again.
+    setErrors([...rejected, ...failed])
     setUploading([])
     onBusyChange?.(false)
     if (inputRef.current) inputRef.current.value = '' // choosing the same file again still triggers a change
@@ -89,7 +96,7 @@ export function ImageGalleryUpload({ id, value, onChange, max, onBusyChange, inv
   const onDrop = (event: DragEvent) => {
     event.preventDefault()
     setDragOver(false)
-    if (!busy && freeSlots > 0) void addFiles(Array.from(event.dataTransfer.files))
+    void addFiles(Array.from(event.dataTransfer.files))
   }
 
   return (
@@ -109,6 +116,9 @@ export function ImageGalleryUpload({ id, value, onChange, max, onBusyChange, inv
         multiple
         accept={acceptedImageTypes.join(',')}
         className="sr-only"
+        // Not only the "Add photos" button: the "Photos" label and keyboard
+        // focus also reach this input, so it must be switched off itself.
+        disabled={busy || freeSlots <= 0}
         onChange={(event) => void addFiles(Array.from(event.target.files ?? []))}
       />
 

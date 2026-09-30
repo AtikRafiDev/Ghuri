@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { slugProblem } from '@/shared/lib/slug'
+import { maxDestinationImages } from '../api/destinations.api'
 
 // The SAME limits as the API's DestinationFieldsValidator (and the database
 // columns) - instant feedback here, the API stays the real judge.
@@ -11,7 +12,9 @@ export const destinationSchema = z
     countryId: z.string().min(1, 'Choose a country.'),
     summary: z.string().trim().max(500, 'At most 500 characters.'),
     // The gallery, in order - the first is the cover.
-    images: z.array(z.object({ id: z.string(), url: z.string() })).max(10, 'At most 10 photos.'),
+    images: z
+      .array(z.object({ id: z.string(), url: z.string() }))
+      .max(maxDestinationImages, `At most ${maxDestinationImages} photos.`),
     isFeatured: z.boolean(),
     sortOrder: z
       .number({ error: 'Enter a whole number.' })

@@ -29,6 +29,7 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
             _ => rows
         };
 
+        var photos = db.DestinationPhotos();
         var page = await rows
             // Id last: two rows with the same order and name still have a
             // fixed order, so no row ever shows up on two pages.
@@ -37,12 +38,10 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
             {
                 r.d.Id, r.d.Name, r.d.Slug, r.d.Summary, r.d.CountryId, r.CountryName, r.IsoCode,
                 r.d.IsFeatured, r.d.SortOrder, r.d.SeoTitle, r.d.SeoDescription,
-                // The whole gallery, in order - loaded for this page's rows only.
-                Images = (from i in db.DestinationImages
-                          join f in db.FileObjects on i.FileId equals f.Id
-                          where i.DestinationId == r.d.Id
-                          orderby i.SortOrder
-                          select new { i.FileId, f.StorageKey }).ToList(),
+                // The whole gallery, in order - the edit dialog opens from
+                // this row. Loaded for this page's rows only.
+                Images = photos.Where(p => p.DestinationId == r.d.Id).OrderBy(p => p.SortOrder)
+                    .Select(p => new { p.FileId, p.StorageKey }).ToList(),
                 // Deleted packages are skipped automatically (soft-delete filter).
                 PackageCount = db.TourPackages.Count(p => p.DestinationId == r.d.Id)
             })

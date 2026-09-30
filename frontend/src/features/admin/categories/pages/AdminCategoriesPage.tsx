@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog'
+import { RowActions } from '../../components/RowActions'
+import { usedByPackagesReason } from '../../deleteBlockedReason'
 import { categoriesApi, categoryKeys, type AdminCategory } from '../api/categories.api'
 import { CategoryFormDialog } from '../components/CategoryFormDialog'
 import { CategoryIcon } from '../components/CategoryIcon'
@@ -92,32 +93,12 @@ export function AdminCategoriesPage() {
                 <TableCell className="text-right tabular-nums">{c.sortOrder}</TableCell>
                 <TableCell className="text-right tabular-nums">{c.packageCount}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon-sm" aria-label={`Edit ${c.name}`} onClick={() => setForm({ open: true, category: c })}>
-                      <PencilIcon />
-                    </Button>
-                    {c.packageCount > 0 ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span tabIndex={0}>
-                            <Button variant="ghost" size="icon-sm" disabled aria-label={`Delete ${c.name}`}>
-                              <Trash2Icon />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Used by {c.packageCount} package(s) - can't delete</TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Delete ${c.name}`}
-                        onClick={() => setToDelete({ open: true, category: c })}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    )}
-                  </div>
+                  <RowActions
+                    name={c.name}
+                    onEdit={() => setForm({ open: true, category: c })}
+                    onDelete={() => setToDelete({ open: true, category: c })}
+                    deleteBlockedReason={usedByPackagesReason(c.packageCount)}
+                  />
                 </TableCell>
               </TableRow>
             ))}

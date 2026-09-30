@@ -13,6 +13,7 @@ internal sealed class GetDestinationsHandler(IReadDbContext db, IFileStorage sto
     {
         // One SQL query: destination + its country + its cover photo (the
         // gallery's first one; null when it has no photos yet).
+        var photos = db.DestinationPhotos();
         var rows =
             from d in db.Destinations
             join c in db.Countries on d.CountryId equals c.Id
@@ -21,11 +22,8 @@ internal sealed class GetDestinationsHandler(IReadDbContext db, IFileStorage sto
                 d,
                 CountryName = c.Name,
                 c.IsoCode,
-                ImageKey = (from i in db.DestinationImages
-                            join f in db.FileObjects on i.FileId equals f.Id
-                            where i.DestinationId == d.Id
-                            orderby i.SortOrder
-                            select f.StorageKey).FirstOrDefault()
+                ImageKey = photos.Where(p => p.DestinationId == d.Id).OrderBy(p => p.SortOrder)
+                    .Select(p => p.StorageKey).FirstOrDefault()
             };
 
         rows = query.Scope switch

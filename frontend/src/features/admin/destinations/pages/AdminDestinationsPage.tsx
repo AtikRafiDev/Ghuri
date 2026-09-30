@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImageIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
+import { ImageIcon, PlusIcon, SearchIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog'
+import { RowActions } from '../../components/RowActions'
+import { usedByPackagesReason } from '../../deleteBlockedReason'
 import {
   destinationKeys,
   destinationsApi,
@@ -200,33 +201,12 @@ export function AdminDestinationsPage() {
                 <TableCell className="text-right tabular-nums">{d.sortOrder}</TableCell>
                 <TableCell className="text-right tabular-nums">{d.packageCount}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon-sm" aria-label={`Edit ${d.name}`} onClick={() => setForm({ open: true, destination: d })}>
-                      <PencilIcon />
-                    </Button>
-                    {d.packageCount > 0 ? (
-                      // A disabled button gets no mouse events, so the tooltip hangs on a wrapper.
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span tabIndex={0}>
-                            <Button variant="ghost" size="icon-sm" disabled aria-label={`Delete ${d.name}`}>
-                              <Trash2Icon />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Used by {d.packageCount} package(s) - can't delete</TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Delete ${d.name}`}
-                        onClick={() => setToDelete({ open: true, destination: d })}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    )}
-                  </div>
+                  <RowActions
+                    name={d.name}
+                    onEdit={() => setForm({ open: true, destination: d })}
+                    onDelete={() => setToDelete({ open: true, destination: d })}
+                    deleteBlockedReason={usedByPackagesReason(d.packageCount)}
+                  />
                 </TableCell>
               </TableRow>
             ))}
