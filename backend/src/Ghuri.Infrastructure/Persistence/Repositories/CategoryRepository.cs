@@ -23,5 +23,15 @@ internal sealed class CategoryRepository(AppDbContext db) : ICategoryRepository
             pc => pc.CategoryId == categoryId && db.TourPackages.Any(p => p.Id == pc.PackageId),
             cancellationToken);
 
+    public async Task<bool> AllExistAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+            return true;
+        var distinct = ids.Distinct().ToList();
+        // One query for the whole list; the soft-delete filter means a deleted category doesn't count.
+        var found = await db.Categories.CountAsync(c => distinct.Contains(c.Id), cancellationToken);
+        return found == distinct.Count;
+    }
+
     public void Add(Category category) => db.Categories.Add(category);
 }

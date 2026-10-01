@@ -16,5 +16,8 @@ public interface ICategoryRepository
     /// <summary>Is any (not deleted) tour package tagged with this category?</summary>
     Task<bool> IsUsedByPackagesAsync(Guid categoryId, CancellationToken cancellationToken);
 
+    /// <summary>Lets the package handlers reject unknown (or deleted) category ids, instead of a database FK error.</summary>
+    Task<bool> AllExistAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     void Add(Category category);
 }
