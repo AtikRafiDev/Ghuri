@@ -13,8 +13,10 @@ namespace Ghuri.Api.IntegrationTests;
 /// developer PC that key comes from user-secrets, but the CI server has
 /// none - so tests provide a throwaway key of their own. It signs nothing
 /// real and is useless anywhere else.
+/// Not sealed: SqlServerFixture builds on it to point the Api at a test
+/// database container.
 /// </remarks>
-public sealed class GhuriApiFactory : WebApplicationFactory<Program>
+public class GhuriApiFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

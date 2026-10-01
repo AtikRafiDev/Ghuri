@@ -18,12 +18,21 @@ type ConfirmDeleteDialogProps = {
   onOpenChange: (open: boolean) => void
   title: string
   description: ReactNode
+  /** The button text - "Delete" unless set (e.g. "Close departure"). */
+  confirmLabel?: string
   /** The actual delete. If it throws, the API's message is shown and the dialog stays open. */
   onConfirm: () => Promise<void>
 }
 
 /** "Are you sure?" before any delete - an accidental click must never remove data. */
-export function ConfirmDeleteDialog({ open, onOpenChange, title, description, onConfirm }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel = 'Delete',
+  onConfirm,
+}: ConfirmDeleteDialogProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,7 +75,7 @@ export function ConfirmDeleteDialog({ open, onOpenChange, title, description, on
             }}
           >
             {pending && <Spinner />}
-            Delete
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
