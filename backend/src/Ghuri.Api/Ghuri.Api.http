@@ -307,6 +307,52 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 # "Add at least one open departure date."
 
 ###############################################################################
+# PUBLIC SITE - what customers see. NO login: these work without a token.
+# Only PUBLISHED packages exist here (publish yours above first).
+# Enums in the URL may be names: mode=FlexibleStay, sort=PriceLow.
+###############################################################################
+
+### Search: published packages, "from" price per adult worked out LIVE
+# (only dates that can still be booked). priceFrom null = no upcoming dates.
+GET {{host}}/api/v1/packages?sort=Recommended&page=1&pageSize=12
+
+### Only fixed-departure packages, cheapest first (the next requests use the first one).
+# @name fixedSearch
+GET {{host}}/api/v1/packages?mode=FixedDepartures&sort=PriceLow
+
+### Only flexible stays (the next requests use the first one).
+# @name flexSearch
+GET {{host}}/api/v1/packages?mode=FlexibleStay
+
+### More filters: text, destination/category by their slug, price range.
+GET {{host}}/api/v1/packages?q=beach&minPrice=5000&maxPrice=20000&sort=PriceHigh
+
+### One package page by its URL name. A draft or archived one: 404.
+GET {{host}}/api/v1/packages/{{fixedSearch.response.body.$.items[0].slug}}
+
+### Its dates that can still be booked, earliest first (seatsLeft 0 = sold out).
+# @name publicDepartures
+GET {{host}}/api/v1/packages/{{fixedSearch.response.body.$.items[0].slug}}/departures
+
+### Quote a FIXED trip: 2 adults + 1 child on the first available date.
+# Read "lines" - one per traveller type - and "total". Nothing is reserved.
+GET {{host}}/api/v1/packages/{{fixedSearch.response.body.$.items[0].slug}}/quote?departureId={{publicDepartures.response.body.$[0].id}}&adults=2&children=1
+
+### The same with a single room: adds the single supplement (400 single_room_not_offered if the date has none).
+GET {{host}}/api/v1/packages/{{fixedSearch.response.body.$.items[0].slug}}/quote?departureId={{publicDepartures.response.body.$[0].id}}&adults=1&singleRooms=1
+
+### Quote a FLEXIBLE stay: pick a start date at least MinLeadDays away, and the nights.
+# total = (basePrice + extra nights × extraNightPrice) × people (children pay the adult rate for now).
+@flexStart = 2026-12-20
+GET {{host}}/api/v1/packages/{{flexSearch.response.body.$.items[0].slug}}/quote?startDate={{flexStart}}&nights=3&adults=2
+
+### Too many nights: 400 nights_out_of_range. Too soon a start: 400 start_date_too_soon.
+GET {{host}}/api/v1/packages/{{flexSearch.response.body.$.items[0].slug}}/quote?startDate={{flexStart}}&nights=30&adults=2
+
+### No adult: 400 with a field error on "adults".
+GET {{host}}/api/v1/packages/{{flexSearch.response.body.$.items[0].slug}}/quote?startDate={{flexStart}}&nights=3&adults=0
+
+###############################################################################
 # CUSTOMERS
 ###############################################################################
 
