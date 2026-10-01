@@ -82,7 +82,13 @@ public static class DependencyInjection
         // The (serviceProvider, options) overload lets each DbContext pick
         // up the interceptor instance for ITS OWN request scope.
         services.AddDbContext<AppDbContext>((serviceProvider, options) => options
-            .UseSqlServer(connectionString)
+            // Split queries by default: a query that loads several lists
+            // (a package's photos AND days AND categories) runs one SELECT
+            // per list, instead of one JOIN returning every combination of
+            // them (15 photos × 10 days × 3 categories = 450 rows for one
+            // package - "cartesian explosion"). Set here so Application's
+            // query handlers get it without referencing SQL-specific EF.
+            .UseSqlServer(connectionString, sql => sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
             .AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>())
             // When the BROWSER hangs up mid-request, EF logs the cancelled
             // transaction as an Error - noise that buries real errors.

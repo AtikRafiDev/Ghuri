@@ -15,17 +15,15 @@ internal sealed class TourPackageRepository(AppDbContext db) : ITourPackageRepos
         "SELECT NEXT VALUE FOR [catalog].[" + AppDbContext.PackageCodeSequenceName + "] AS [Value]";
 
     /// <summary>
-    /// AsSplitQuery: one SELECT per collection instead of one big JOIN.
-    /// Joining photos, days and categories in one query returns every
-    /// combination - 15 photos × 10 days × 3 categories = 450 rows for one
-    /// package. Split, it's 1 + 15 + 10 + 3 rows over 4 small queries.
+    /// One SELECT per list instead of one big JOIN - split queries are the
+    /// default (see AddPersistence). Joined, photos × days × categories
+    /// would return every combination: 450 rows for one package instead of 29.
     /// </summary>
     public Task<TourPackage?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.TourPackages
             .Include(p => p.Images)
             .Include(p => p.ItineraryDays)
             .Include(p => p.Categories)
-            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>

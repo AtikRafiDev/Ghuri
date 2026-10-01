@@ -34,4 +34,31 @@ public static class CatalogErrors
 
     public static readonly Error CategoryInUse =
         Error.Conflict("category_in_use", "Tour packages still use this category. Remove it from them first.");
+
+    // Tour packages - the package form points at destinations and categories,
+    // so an unknown one is a form mistake (400), not a missing page (404).
+    public static readonly Error PackageDestinationNotFound =
+        Error.Failure("destination_not_found", "Choose a destination from the list.");
+
+    public static readonly Error PackageCategoryNotFound =
+        Error.Failure("category_not_found", "A category was not found. Refresh the page and choose again.");
+
+    public static readonly Error PackageNotFound =
+        Error.NotFound("package_not_found", "This package does not exist or was deleted.");
+
+    public static readonly Error PackageSlugTaken =
+        Error.Conflict("package_slug_taken", "Another package already uses this URL name.");
+
+    public static readonly Error PackagePricingModeLocked =
+        Error.Conflict("package_pricing_mode_locked", "The pricing mode can only be changed while the package is a draft.");
+
+    public static readonly Error PackageAlreadyPublished =
+        Error.Conflict("package_already_published", "This package is already published.");
+
+    public static readonly Error PackageAlreadyArchived =
+        Error.Conflict("package_already_archived", "This package is already archived.");
+
+    /// <summary>The message lists every problem - see TourPackage.GetPublishProblems.</summary>
+    public static Error PackageNotPublishable(IReadOnlyList<string> problems) =>
+        Error.Conflict("package_not_publishable", string.Join(" ", problems));
 }

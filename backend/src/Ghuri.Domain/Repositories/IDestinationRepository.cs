@@ -9,6 +9,9 @@ public interface IDestinationRepository
     Task<Destination?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>Is this slug used by another destination? exceptId = the one being edited, which may keep its own slug.</summary>
+    /// <summary>Cheaper than GetByIdAsync when only "is it there?" matters - no photos are loaded.</summary>
+    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken);
+
     Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken);
 
     Task<bool> CountryExistsAsync(short countryId, CancellationToken cancellationToken);

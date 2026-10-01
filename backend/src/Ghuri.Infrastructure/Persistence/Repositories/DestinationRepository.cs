@@ -12,6 +12,9 @@ internal sealed class DestinationRepository(AppDbContext db) : IDestinationRepos
     public Task<Destination?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Destinations.Include(d => d.Images).FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken) =>
+        db.Destinations.AnyAsync(d => d.Id == id, cancellationToken);
+
     public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>
         db.Destinations.AnyAsync(d => d.Slug == slug && d.Id != exceptId, cancellationToken);
 

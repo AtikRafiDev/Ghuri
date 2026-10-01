@@ -16,6 +16,9 @@ internal sealed class FakeDestinationRepository : IDestinationRepository
     public Task<Destination?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(Destinations.Find(d => d.Id == id));
 
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Destinations.Exists(d => d.Id == id));
+
     public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>
         // Equals, not ==: Slug compares by value only through Equals (inside an
         // EF query == is translated to SQL, but in plain C# it compares references).
@@ -28,6 +31,44 @@ internal sealed class FakeDestinationRepository : IDestinationRepository
         Task.FromResult(false);
 
     public void Add(Destination destination) => Destinations.Add(destination);
+}
+
+internal sealed class FakeCategoryRepository : ICategoryRepository
+{
+    /// <summary>The ids of categories that "exist".</summary>
+    public HashSet<Guid> CategoryIds { get; } = [];
+
+    public Task<Category?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult<Category?>(null);
+
+    public Task<bool> NameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken) => Task.FromResult(false);
+
+    public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) => Task.FromResult(false);
+
+    public Task<bool> IsUsedByPackagesAsync(Guid categoryId, CancellationToken cancellationToken) => Task.FromResult(false);
+
+    public Task<bool> AllExistAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
+        Task.FromResult(ids.All(CategoryIds.Contains));
+
+    public void Add(Category category) => CategoryIds.Add(category.Id);
+}
+
+internal sealed class FakeTourPackageRepository : ITourPackageRepository
+{
+    private int _nextCode = 1001;
+
+    public List<TourPackage> Packages { get; } = [];
+
+    public Task<TourPackage?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Packages.Find(p => p.Id == id));
+
+    public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>
+        Task.FromResult(Packages.Exists(p => p.Slug.Equals(slug) && p.Id != exceptId));
+
+    /// <summary>Counts up like the real SQL SEQUENCE: PKG1001, PKG1002...</summary>
+    public Task<string> NextPackageCodeAsync(CancellationToken cancellationToken) =>
+        Task.FromResult($"PKG{_nextCode++}");
+
+    public void Add(TourPackage package) => Packages.Add(package);
 }
 
 internal sealed class FakeFileObjectRepository : IFileObjectRepository
