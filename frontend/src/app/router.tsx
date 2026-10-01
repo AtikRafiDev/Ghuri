@@ -65,6 +65,24 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'packages',
+        lazy: async () => ({ Component: (await import('@/features/admin/packages/pages/AdminPackagesPage')).AdminPackagesPage }),
+      },
+      {
+        // "new" is listed before ":packageId", but React Router ranks a fixed
+        // segment above a parameter anyway - /admin/packages/new never reaches the edit route.
+        path: 'packages/new',
+        lazy: async () => ({
+          Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
+        }),
+      },
+      {
+        path: 'packages/:packageId',
+        lazy: async () => ({
+          Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
+        }),
+      },
+      {
         path: 'categories',
         lazy: async () => ({
           Component: (await import('@/features/admin/categories/pages/AdminCategoriesPage')).AdminCategoriesPage,

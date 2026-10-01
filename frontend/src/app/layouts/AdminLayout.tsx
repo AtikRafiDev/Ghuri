@@ -4,6 +4,7 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   MapPinIcon,
+  PackageIcon,
   TagsIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -30,12 +31,13 @@ import { useAuth } from '@/features/auth/useAuth'
 
 type MenuItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 
-// The admin menu, in groups. Day 4+ adds Packages, Bookings, Payments... here.
+// The admin menu, in groups. Later days add Bookings, Payments... here.
 const adminMenu: { label: string; items: MenuItem[] }[] = [
   { label: 'Overview', items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboardIcon, end: true }] },
   {
     label: 'Catalogue',
     items: [
+      { to: '/admin/packages', label: 'Packages', icon: PackageIcon },
       { to: '/admin/destinations', label: 'Destinations', icon: MapPinIcon },
       { to: '/admin/categories', label: 'Categories', icon: TagsIcon },
     ],
