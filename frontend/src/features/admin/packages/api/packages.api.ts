@@ -95,6 +95,44 @@ export const maxPackageImages = 15
 /** Must match the API's PackagePricing.MaxDays. */
 export const maxItineraryDays = 60
 
+export const DepartureStatus = { Open: 1, Closed: 2, Cancelled: 3, Completed: 4 } as const
+export type DepartureStatus = (typeof DepartureStatus)[keyof typeof DepartureStatus]
+
+export const departureStatusLabels: Record<DepartureStatus, string> = { 1: 'Open', 2: 'Closed', 3: 'Cancelled', 4: 'Completed' }
+
+/** One row of GET .../packages/{id}/departures (backend: AdminDepartureDto). Dates are "yyyy-MM-dd". */
+export type AdminDeparture = {
+  id: string
+  startDate: string
+  /** Worked out by the API from the package's duration. */
+  endDate: string
+  adultPrice: number
+  childPrice: number
+  infantPrice: number
+  singleSupplement: number | null
+  totalSeats: number
+  reservedSeats: number
+  seatsLeft: number
+  bookingCutoffDays: number
+  status: DepartureStatus
+  /** Started before today (Bangladesh time). */
+  isPast: boolean
+}
+
+/** Body of POST .../departures and PUT /admin/departures/{id} (backend: Create/UpdateDepartureCommand). */
+export type DepartureRequest = {
+  startDate: string
+  adultPrice: number
+  childPrice: number
+  infantPrice: number
+  singleSupplement: number | null
+  totalSeats: number
+  bookingCutoffDays: number
+}
+
+/** Must match the API's Departure.MaxSeats. */
+export const maxDepartureSeats = 1000
+
 /** The lists the form's dropdowns need (public endpoints). */
 export type DestinationOption = { id: string; name: string; countryName: string; isInternational: boolean }
 export type CategoryOption = { id: string; name: string; icon: string | null }
@@ -156,6 +194,24 @@ export const packagesApi = {
     await http.post(`${base}/${id}/archive`)
   },
 
+  async departures(packageId: string): Promise<AdminDeparture[]> {
+    const { data } = await http.get<AdminDeparture[]>(`${base}/${packageId}/departures`)
+    return data
+  },
+
+  async addDeparture(packageId: string, body: DepartureRequest): Promise<string> {
+    const { data } = await http.post<{ id: string }>(`${base}/${packageId}/departures`, body)
+    return data.id
+  },
+
+  async updateDeparture(id: string, body: DepartureRequest): Promise<void> {
+    await http.put(`/api/v1/admin/departures/${id}`, body)
+  },
+
+  async closeDeparture(id: string): Promise<void> {
+    await http.post(`/api/v1/admin/departures/${id}/close`)
+  },
+
   async destinations(): Promise<DestinationOption[]> {
     const { data } = await http.get<DestinationOption[]>('/api/v1/destinations')
     return data
@@ -175,6 +231,9 @@ export const packageKeys = {
   all: ['admin', 'packages'] as const,
   list: (params: PackageListParams) => [...packageKeys.all, 'list', params] as const,
   detail: (id: string) => [...packageKeys.all, 'detail', id] as const,
+  // Under "all" too: a departure change also moves the package's "from"
+  // price and publish problems, so one invalidate refreshes all of them.
+  departures: (packageId: string) => [...packageKeys.all, 'departures', packageId] as const,
 }
 
 export const packageQueryOptions = (id: string) =>
@@ -196,6 +255,32 @@ export const categoryOptionsQuery = queryOptions({
 /** "৳8,000" - Bangladeshi digit grouping (en-IN groups thousands the same way). */
 export function formatTaka(amount: number): string {
   return `৳${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+}
+
+/**
+ * Today in Bangladesh as "yyyy-MM-dd" - the same "today" the API uses
+ * (UTC+6, no daylight saving), whatever time zone this computer is set to.
+ */
+export function todayInBangladesh(): string {
+  return new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+/** "yyyy-MM-dd" + days → "yyyy-MM-dd". Done in UTC so no time zone can shift the day. */
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** "2026-12-20" → "Sun, 20 Dec 2026". */
+export function formatDate(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 /** "3 days / 2 nights" or "2–7 nights". */

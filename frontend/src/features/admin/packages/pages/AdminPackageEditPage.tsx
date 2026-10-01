@@ -6,7 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { toAppError } from '@/shared/api/problem'
-import { packageQueryOptions } from '../api/packages.api'
+import { packageQueryOptions, PricingMode } from '../api/packages.api'
+import { PackageDeparturesTab } from '../components/PackageDeparturesTab'
 import { PackageForm } from '../components/PackageForm'
 import { PackageItineraryTab } from '../components/PackageItineraryTab'
 import { PackagePhotosTab } from '../components/PackagePhotosTab'
@@ -76,6 +77,7 @@ export function AdminPackageEditPage() {
   }
 
   const pkg = existing.data
+  const isFixed = pkg.pricingMode === PricingMode.FixedDepartures
   return (
     <div className="grid gap-6">
       <div className="grid gap-1">
@@ -98,11 +100,16 @@ export function AdminPackageEditPage() {
       <PackagePublishBar pkg={pkg} />
 
       {/* The open tab lives in the URL (?tab=photos): refresh and the back button keep it. */}
-      <Tabs value={tab} onValueChange={(value) => setSearchParams({ tab: value }, { replace: true })}>
+      <Tabs
+        // A flexible package has no Departures tab - an old ?tab=departures link falls back to Details.
+        value={tab === 'departures' && !isFixed ? 'details' : tab}
+        onValueChange={(value) => setSearchParams({ tab: value }, { replace: true })}
+      >
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="photos">Photos ({pkg.images.length})</TabsTrigger>
           <TabsTrigger value="itinerary">Itinerary ({pkg.itineraryDays.length})</TabsTrigger>
+          {isFixed && <TabsTrigger value="departures">Departures</TabsTrigger>}
         </TabsList>
 
         {/* forceMount + hidden: every tab stays mounted, so switching tabs never
@@ -117,12 +124,19 @@ export function AdminPackageEditPage() {
         <TabsContent value="itinerary" forceMount className="data-[state=inactive]:hidden">
           <PackageItineraryTab key={pkg.id} pkg={pkg} />
         </TabsContent>
+        {isFixed && (
+          // Not forceMount: it has no unsaved typing (edits happen in a dialog),
+          // so it can load its list only when opened.
+          <TabsContent value="departures">
+            <PackageDeparturesTab pkg={pkg} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
 }
 
-const tabs = ['details', 'photos', 'itinerary'] as const
+const tabs = ['details', 'photos', 'itinerary', 'departures'] as const
 type Tab = (typeof tabs)[number]
 
 function toTab(value: string | null): Tab {
