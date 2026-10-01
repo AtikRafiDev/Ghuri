@@ -228,6 +228,26 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
         EnsureStillPublishable();
     }
 
+    /// <summary>Flexible packages only: the earliest start date a customer may pick today.</summary>
+    public DateOnly EarliestFlexibleStart(DateOnly today) =>
+        PricingMode == PricingMode.FlexibleStay
+            ? today.AddDays(MinLeadDays!.Value)
+            : throw new DomainException("package_not_flexible", "Only a flexible-stay package has a chosen start date.");
+
+    /// <summary>
+    /// Can a flexible stay of <paramref name="nights"/> nights from
+    /// <paramref name="startDate"/> be booked today? Used by the quote
+    /// (Day 6) and the booking (Day 8), so they always agree.
+    /// </summary>
+    public FlexibleStayBookability CheckFlexibleStay(DateOnly today, DateOnly startDate, int nights)
+    {
+        if (nights < MinNights || nights > MaxNights)
+            return FlexibleStayBookability.NightsOutOfRange;
+        if (startDate < EarliestFlexibleStart(today))
+            return FlexibleStayBookability.TooSoon;
+        return FlexibleStayBookability.Bookable;
+    }
+
     /// <summary>
     /// Fixed packages only: "from ৳…" = the lowest adult price among the
     /// open, upcoming departures (null = none left, shown as 0). Called by

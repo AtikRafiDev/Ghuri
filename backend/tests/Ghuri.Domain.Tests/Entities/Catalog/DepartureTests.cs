@@ -98,4 +98,36 @@ public class DepartureTests
         Assert.Equal(DepartureStatus.Closed, departure.Status);
         Assert.Equal("departure_not_open", Assert.Throws<DomainException>(departure.Close).Code);
     }
+
+    // ---------- CheckBookable: departs 20 Dec, booking closes 2 days before ----------
+
+    [Fact]
+    public void LastBookingDate_IsCutoffDaysBeforeTheStart() =>
+        Assert.Equal(new DateOnly(2026, 12, 18), NewDeparture().LastBookingDate);
+
+    [Theory]
+    [InlineData(2026, 12, 18, DepartureBookability.Bookable)]      // the last booking day itself still works
+    [InlineData(2026, 12, 19, DepartureBookability.BookingClosed)] // one day later: closed
+    [InlineData(2026, 12, 25, DepartureBookability.BookingClosed)] // already departed
+    public void CheckBookable_ClosesAfterTheLastBookingDate(int year, int month, int day, DepartureBookability expected) =>
+        Assert.Equal(expected, NewDeparture().CheckBookable(new DateOnly(year, month, day), seats: 1));
+
+    [Fact]
+    public void CheckBookable_ExactlyTheSeatsLeft_IsFine_OneMoreIsNot()
+    {
+        var departure = WithBookedSeats(NewDeparture(totalSeats: 20), 17); // 3 left
+        var today = new DateOnly(2026, 12, 1);
+
+        Assert.Equal(DepartureBookability.Bookable, departure.CheckBookable(today, seats: 3));
+        Assert.Equal(DepartureBookability.NotEnoughSeats, departure.CheckBookable(today, seats: 4));
+    }
+
+    [Fact]
+    public void CheckBookable_ClosedDeparture_IsNotOpen()
+    {
+        var departure = NewDeparture();
+        departure.Close();
+
+        Assert.Equal(DepartureBookability.NotOpen, departure.CheckBookable(new DateOnly(2026, 12, 1), seats: 1));
+    }
 }

@@ -43,6 +43,25 @@ public sealed class Departure : AggregateRoot, IAuditable
 
     public int SeatsLeft => TotalSeats - ReservedSeats;
 
+    /// <summary>The last day a customer can book: BookingCutoffDays before StartDate.</summary>
+    public DateOnly LastBookingDate => StartDate.AddDays(-BookingCutoffDays);
+
+    /// <summary>
+    /// Can <paramref name="seats"/> seats be booked today? The quote (Day 6)
+    /// and the booking (Day 8) both ask this, so they always agree. The seat
+    /// count is a snapshot - only TryReserveSeatsAsync actually takes seats.
+    /// </summary>
+    public DepartureBookability CheckBookable(DateOnly today, int seats)
+    {
+        if (Status != DepartureStatus.Open)
+            return DepartureBookability.NotOpen;
+        if (today > LastBookingDate)
+            return DepartureBookability.BookingClosed;
+        if (seats > SeatsLeft)
+            return DepartureBookability.NotEnoughSeats;
+        return DepartureBookability.Bookable;
+    }
+
     private Departure()
     {
     }

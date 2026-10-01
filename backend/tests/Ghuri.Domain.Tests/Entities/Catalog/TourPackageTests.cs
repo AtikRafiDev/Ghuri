@@ -296,6 +296,25 @@ public class TourPackageTests
         Assert.Equal(0, package.PriceFrom);
     }
 
+    // ---------- CheckFlexibleStay: 2-7 nights, book at least 3 days ahead ----------
+
+    [Theory]
+    [InlineData(4, 2, FlexibleStayBookability.Bookable)]         // 1 Oct + 3 lead days = 4 Oct: the earliest start
+    [InlineData(3, 2, FlexibleStayBookability.TooSoon)]          // one day too early
+    [InlineData(10, 1, FlexibleStayBookability.NightsOutOfRange)]
+    [InlineData(10, 8, FlexibleStayBookability.NightsOutOfRange)]
+    [InlineData(10, 7, FlexibleStayBookability.Bookable)]        // exactly MaxNights
+    public void CheckFlexibleStay_LeadDaysAndNightsRange(int startDay, int nights, FlexibleStayBookability expected)
+    {
+        var today = new DateOnly(2026, 10, 1);
+
+        Assert.Equal(expected, NewPackage(TwoToSevenNights).CheckFlexibleStay(today, new DateOnly(2026, 10, startDay), nights));
+    }
+
+    [Fact]
+    public void EarliestFlexibleStart_OnAFixedPackage_IsRejected() =>
+        Assert.Throws<DomainException>(() => NewPackage().EarliestFlexibleStart(new DateOnly(2026, 10, 1)));
+
     [Fact]
     public void SetLowestDeparturePrice_OnAFlexiblePackage_IsRejected() =>
         Assert.Throws<DomainException>(() => NewPackage(TwoToSevenNights).SetLowestDeparturePrice(5000));
