@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { staffRoles } from '@/features/auth/auth.types'
 import { useAuth } from '@/features/auth/useAuth'
+import { site } from '@/shared/config/site'
 
 /** The top bar on every page: brand on the left, account actions on the right. */
 export function SiteHeader() {
@@ -23,9 +24,14 @@ export function SiteHeader() {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-        <Link to="/" className="text-lg font-semibold tracking-tight">
-          Ghuri
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-lg font-semibold tracking-tight">
+            {site.name}
+          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/packages">Packages</Link>
+          </Button>
+        </div>
         <nav className="flex items-center gap-1">
           {status === 'authenticated' && user && (
             <>

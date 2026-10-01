@@ -252,41 +252,7 @@ export const categoryOptionsQuery = queryOptions({
   staleTime: 60_000,
 })
 
-/** "৳8,000" - Bangladeshi digit grouping (en-IN groups thousands the same way). */
-export function formatTaka(amount: number): string {
-  return `৳${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
-}
-
-/**
- * Today in Bangladesh as "yyyy-MM-dd" - the same "today" the API uses
- * (UTC+6, no daylight saving), whatever time zone this computer is set to.
- */
-export function todayInBangladesh(): string {
-  return new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10)
-}
-
-/** "yyyy-MM-dd" + days → "yyyy-MM-dd". Done in UTC so no time zone can shift the day. */
-export function addDays(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-
-/** "2026-12-20" → "Sun, 20 Dec 2026". */
-export function formatDate(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
-
-/** "3 days / 2 nights" or "2–7 nights". */
-export function describeDuration(p: Pick<AdminPackageListItem, 'pricingMode' | 'durationDays' | 'durationNights' | 'minNights' | 'maxNights'>): string {
-  if (p.pricingMode === PricingMode.FlexibleStay && p.minNights !== null && p.maxNights !== null) {
-    return p.minNights === p.maxNights ? `${p.minNights} nights` : `${p.minNights}–${p.maxNights} nights`
-  }
-  return `${p.durationDays} days / ${p.durationNights} nights`
-}
+// Shared with the public site - kept importable from here so the admin
+// screens didn't need new imports when they moved to shared/lib.
+export { describeDuration, formatTaka } from '@/shared/lib/format'
+export { addDays, formatDate, todayInBangladesh } from '@/shared/lib/dates'
