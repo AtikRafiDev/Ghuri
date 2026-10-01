@@ -19,20 +19,23 @@ public sealed class ItineraryDay : BaseEntity
     {
     }
 
-    internal static ItineraryDay Create(
-        Guid packageId, byte dayNo, string title, string description, string? meals = null, string? accommodation = null)
+    internal static ItineraryDay Create(Guid packageId, byte dayNo, ItineraryDayDetails details)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        var day = new ItineraryDay { PackageId = packageId, DayNo = dayNo };
+        day.Update(details);
+        return day;
+    }
 
-        return new ItineraryDay
-        {
-            PackageId = packageId,
-            DayNo = dayNo,
-            Title = title,
-            Description = description,
-            Meals = meals,
-            Accommodation = accommodation
-        };
+    /// <summary>Replaces the day's text. DayNo never changes - TourPackage.SetItinerary keeps each row on its own day.</summary>
+    internal void Update(ItineraryDayDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+        ArgumentException.ThrowIfNullOrWhiteSpace(details.Title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(details.Description);
+
+        Title = details.Title.Trim();
+        Description = details.Description.Trim();
+        Meals = string.IsNullOrWhiteSpace(details.Meals) ? null : details.Meals.Trim();
+        Accommodation = string.IsNullOrWhiteSpace(details.Accommodation) ? null : details.Accommodation.Trim();
     }
 }

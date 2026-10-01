@@ -46,6 +46,30 @@ internal sealed class TourPackageConfiguration : IEntityTypeConfiguration<TourPa
         builder.Property(p => p.TourType).HasConversion<byte>().IsRequired();
         builder.ToTable(t => t.HasCheckConstraint("CK_TourPackages_TourType", "[TourType] IN (1,2,3)"));
 
+        builder.Property(p => p.PricingMode).HasConversion<byte>().IsRequired();
+        builder.ToTable(t => t.HasCheckConstraint("CK_TourPackages_PricingMode", "[PricingMode] IN (1,2)"));
+
+        // Flexible-stay fields: nullable, because fixed packages don't use them.
+        builder.Property(p => p.MinNights);
+        builder.Property(p => p.MaxNights);
+        builder.Property(p => p.BasePrice).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.ExtraNightPrice).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.MinLeadDays);
+
+        // The same rules as PackagePricing, as a last line of defence in
+        // the database: fixed = all five NULL; flexible = all five filled
+        // and sensible. The "IS NOT NULL" checks are not redundant - in SQL,
+        // "NULL >= 1" is UNKNOWN (not FALSE), and a CHECK constraint lets
+        // UNKNOWN through. Without them a flexible row with NULL prices
+        // would be accepted.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_TourPackages_FlexibleStay",
+            "([PricingMode] = 1 AND [MinNights] IS NULL AND [MaxNights] IS NULL AND [BasePrice] IS NULL "
+            + "AND [ExtraNightPrice] IS NULL AND [MinLeadDays] IS NULL) "
+            + "OR ([PricingMode] = 2 AND [MinNights] IS NOT NULL AND [MaxNights] IS NOT NULL AND [BasePrice] IS NOT NULL "
+            + "AND [ExtraNightPrice] IS NOT NULL AND [MinLeadDays] IS NOT NULL "
+            + "AND [MinNights] >= 1 AND [MaxNights] >= [MinNights] AND [BasePrice] > 0 AND [ExtraNightPrice] >= 0)"));
+
         ConfigureJsonStringList(builder.Property(p => p.Inclusions));
         ConfigureJsonStringList(builder.Property(p => p.Exclusions));
 

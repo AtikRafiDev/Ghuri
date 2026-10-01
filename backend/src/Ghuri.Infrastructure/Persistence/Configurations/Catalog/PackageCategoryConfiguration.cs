@@ -13,7 +13,7 @@ internal sealed class PackageCategoryConfiguration : IEntityTypeConfiguration<Pa
         builder.HasKey(pc => new { pc.PackageId, pc.CategoryId });
 
         builder.HasOne<TourPackage>()
-            .WithMany()
+            .WithMany(p => p.Categories) // TourPackage.SetCategories adds/removes these rows
             .HasForeignKey(pc => pc.PackageId)
             .OnDelete(DeleteBehavior.Cascade); // deleting a package removes its category links
 

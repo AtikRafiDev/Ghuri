@@ -1,11 +1,10 @@
 namespace Ghuri.Domain.Entities.Catalog;
 
 /// <summary>
-/// Many-to-many packages ⇄ categories. Unlike PackageImage/ItineraryDay/
-/// PackageAddOn, this Create is public - Category is its own independent
-/// aggregate (it has its own ICategoryRepository per the blueprint), so
-/// this join isn't "owned" by either side the way an image is owned by
-/// its package. Same shape as iam.UserRole.
+/// Many-to-many packages ⇄ categories. The link belongs to the package -
+/// it's changed only through TourPackage.SetCategories, so Create is
+/// internal like PackageImage's. Category itself stays its own
+/// independent aggregate: deleting a link never touches the category.
 /// </summary>
 public sealed class PackageCategory
 {
@@ -16,6 +15,6 @@ public sealed class PackageCategory
     {
     }
 
-    public static PackageCategory Create(Guid packageId, Guid categoryId) =>
+    internal static PackageCategory Create(Guid packageId, Guid categoryId) =>
         new() { PackageId = packageId, CategoryId = categoryId };
 }
