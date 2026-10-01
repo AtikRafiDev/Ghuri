@@ -58,6 +58,37 @@ public static class CatalogErrors
     public static readonly Error PackageAlreadyArchived =
         Error.Conflict("package_already_archived", "This package is already archived.");
 
+    public static readonly Error PackageHasDepartures =
+        Error.Conflict("package_has_departures", "This package has departure dates, so it must stay a fixed-departure package.");
+
+    public static readonly Error PackageDurationLocked =
+        Error.Conflict("package_duration_locked", "Seats are booked on a departure - the package's duration can't change.");
+
+    // Departures
+    public static readonly Error DepartureNotFound =
+        Error.NotFound("departure_not_found", "This departure does not exist.");
+
+    public static readonly Error DepartureNeedsFixedPackage =
+        Error.Conflict("departure_needs_fixed_package", "Departures are only for fixed-departure packages.");
+
+    public static readonly Error DepartureDateInPast =
+        Error.Failure("departure_date_in_past", "Choose today or a later date.");
+
+    public static readonly Error DepartureDateTaken =
+        Error.Conflict("departure_date_taken", "This package already has a departure on that date.");
+
+    public static readonly Error DepartureNotEditable =
+        Error.Conflict("departure_not_editable", "A cancelled or completed departure can't be changed.");
+
+    public static readonly Error DepartureDatesLocked =
+        Error.Conflict("departure_dates_locked", "Seats are already booked - the date can't be moved.");
+
+    public static readonly Error DepartureNotOpen =
+        Error.Conflict("departure_not_open", "Only an open departure can be closed.");
+
+    public static Error DepartureSeatsBelowReserved(short reserved) =>
+        Error.Conflict("departure_seats_below_reserved", $"{reserved} seats are already booked - total seats can't be lower.");
+
     /// <summary>The message lists every problem - see TourPackage.GetPublishProblems.</summary>
     public static Error PackageNotPublishable(IReadOnlyList<string> problems) =>
         Error.Conflict("package_not_publishable", string.Join(" ", problems));

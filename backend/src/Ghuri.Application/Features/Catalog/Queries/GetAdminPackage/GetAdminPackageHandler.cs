@@ -2,11 +2,12 @@ using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
+using Ghuri.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ghuri.Application.Features.Catalog.Queries.GetAdminPackage;
 
-internal sealed class GetAdminPackageHandler(IReadDbContext db, IFileStorage storage)
+internal sealed class GetAdminPackageHandler(IReadDbContext db, IFileStorage storage, TimeProvider clock)
     : IQueryHandler<GetAdminPackageQuery, AdminPackageDto>
 {
     public async ValueTask<Result<AdminPackageDto>> Handle(GetAdminPackageQuery query, CancellationToken cancellationToken)
@@ -23,6 +24,10 @@ internal sealed class GetAdminPackageHandler(IReadDbContext db, IFileStorage sto
             .FirstOrDefaultAsync(p => p.Id == query.Id, cancellationToken);
         if (package is null)
             return CatalogErrors.PackageNotFound;
+
+        var today = clock.Today();
+        var hasOpenDeparture = await db.Departures.AnyAsync(
+            d => d.PackageId == package.Id && d.Status == DepartureStatus.Open && d.StartDate >= today, cancellationToken);
 
         var fileIds = package.Images.Select(i => i.FileId).ToList();
         var storageKeys = await db.FileObjects
@@ -65,6 +70,6 @@ internal sealed class GetAdminPackageHandler(IReadDbContext db, IFileStorage sto
             ItineraryDays: package.ItineraryDays
                 .Select(d => new ItineraryDayDto(d.DayNo, d.Title, d.Description, d.Meals, d.Accommodation))
                 .ToList(),
-            PublishProblems: package.GetPublishProblems());
+            PublishProblems: package.GetPublishProblems(hasOpenDeparture));
     }
 }

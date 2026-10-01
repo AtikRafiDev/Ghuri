@@ -85,7 +85,7 @@ public class TourPackageTests
     public void ChangePricing_OtherModeAfterPublishing_IsRejected()
     {
         var package = ReadyPackage();
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
 
         var error = Assert.Throws<DomainException>(() => package.ChangePricing(TwoToSevenNights));
         Assert.Equal("package_pricing_mode_locked", error.Code);
@@ -139,7 +139,7 @@ public class TourPackageTests
     [Fact]
     public void GetPublishProblems_EmptyPackage_ListsPhotoAndItinerary()
     {
-        var problems = NewPackage().GetPublishProblems();
+        var problems = NewPackage().GetPublishProblems(hasOpenDeparture: true);
 
         Assert.Equal(2, problems.Count);
     }
@@ -151,7 +151,7 @@ public class TourPackageTests
         package.SetImages([PhotoA]);
         package.SetItinerary(Days(2));
 
-        Assert.Contains("2 days, but the package lasts 3 days", Assert.Single(package.GetPublishProblems()));
+        Assert.Contains("2 days, but the package lasts 3 days", Assert.Single(package.GetPublishProblems(hasOpenDeparture: true)));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class TourPackageTests
         package.SetImages([PhotoA]);
         package.SetItinerary(Days(9)); // 7 nights = 8 days at most
 
-        Assert.Single(package.GetPublishProblems());
+        Assert.Single(package.GetPublishProblems(hasOpenDeparture: true));
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class TourPackageTests
         package.SetImages([PhotoA]);
         package.SetItinerary(Days(1));
 
-        Assert.Empty(package.GetPublishProblems());
+        Assert.Empty(package.GetPublishProblems(hasOpenDeparture: true));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class TourPackageTests
     {
         var package = ReadyPackage();
 
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
 
         Assert.Equal(PackageStatus.Published, package.Status);
         Assert.Equal(Now, package.PublishedAtUtc);
@@ -190,7 +190,7 @@ public class TourPackageTests
     {
         var package = NewPackage();
 
-        var error = Assert.Throws<DomainException>(() => package.Publish(Now));
+        var error = Assert.Throws<DomainException>(() => package.Publish(Now, hasOpenDeparture: true));
 
         Assert.Equal("package_not_publishable", error.Code);
         Assert.Equal(PackageStatus.Draft, package.Status);
@@ -200,16 +200,16 @@ public class TourPackageTests
     public void Publish_Twice_IsRejected()
     {
         var package = ReadyPackage();
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
 
-        Assert.Equal("package_already_published", Assert.Throws<DomainException>(() => package.Publish(Now)).Code);
+        Assert.Equal("package_already_published", Assert.Throws<DomainException>(() => package.Publish(Now, hasOpenDeparture: true)).Code);
     }
 
     [Fact]
     public void Published_RemovingEveryPhoto_IsRejected()
     {
         var package = ReadyPackage();
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
 
         var error = Assert.Throws<DomainException>(() => package.SetImages([]));
         Assert.Equal("package_must_stay_publishable", error.Code);
@@ -219,7 +219,7 @@ public class TourPackageTests
     public void Published_ChangingTheDurationWithoutTheItinerary_IsRejected()
     {
         var package = ReadyPackage();
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
 
         Assert.Throws<DomainException>(() => package.ChangePricing(PackagePricing.FixedDepartures(4, 3)));
     }
@@ -228,12 +228,12 @@ public class TourPackageTests
     public void Archived_CanBeChangedFreely_AndRepublished_KeepingTheFirstPublishDate()
     {
         var package = ReadyPackage();
-        package.Publish(Now);
+        package.Publish(Now, hasOpenDeparture: true);
         package.Archive();
 
         package.SetImages([]); // allowed: archived packages aren't on the site
         package.SetImages([PhotoB]);
-        package.Publish(Now.AddDays(5));
+        package.Publish(Now.AddDays(5), hasOpenDeparture: true);
 
         Assert.Equal(PackageStatus.Published, package.Status);
         Assert.Equal(Now, package.PublishedAtUtc);
@@ -247,4 +247,56 @@ public class TourPackageTests
 
         Assert.Equal("package_already_archived", Assert.Throws<DomainException>(package.Archive).Code);
     }
+
+    [Fact]
+    public void GetPublishProblems_FixedWithoutAnOpenDeparture_IsAProblem()
+    {
+        var problem = Assert.Single(ReadyPackage().GetPublishProblems(hasOpenDeparture: false));
+
+        Assert.Contains("departure", problem);
+    }
+
+    [Fact]
+    public void GetPublishProblems_FlexibleNeedsNoDeparture()
+    {
+        var package = NewPackage(TwoToSevenNights);
+        package.SetImages([PhotoA]);
+        package.SetItinerary(Days(3));
+
+        Assert.Empty(package.GetPublishProblems(hasOpenDeparture: false));
+    }
+
+    [Fact]
+    public void Publish_FixedWithoutAnOpenDeparture_IsRejected() =>
+        Assert.Equal(
+            "package_not_publishable",
+            Assert.Throws<DomainException>(() => ReadyPackage().Publish(Now, hasOpenDeparture: false)).Code);
+
+    [Fact]
+    public void Published_LosingItsLastDeparture_IsAllowed_SoldOutIsNormal()
+    {
+        var package = ReadyPackage();
+        package.Publish(Now, hasOpenDeparture: true);
+
+        // A content change after the last date closed must still work.
+        package.SetImages([PhotoB]);
+
+        Assert.Equal(PackageStatus.Published, package.Status);
+    }
+
+    [Fact]
+    public void SetLowestDeparturePrice_SetsPriceFrom_AndNoneLeftMeansZero()
+    {
+        var package = NewPackage();
+
+        package.SetLowestDeparturePrice(12_500);
+        Assert.Equal(12_500, package.PriceFrom);
+
+        package.SetLowestDeparturePrice(null);
+        Assert.Equal(0, package.PriceFrom);
+    }
+
+    [Fact]
+    public void SetLowestDeparturePrice_OnAFlexiblePackage_IsRejected() =>
+        Assert.Throws<DomainException>(() => NewPackage(TwoToSevenNights).SetLowestDeparturePrice(5000));
 }

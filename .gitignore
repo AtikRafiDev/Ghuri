@@ -211,6 +211,10 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+# ...and except the React feature folder for TOUR packages - source code,
+# not NuGet output. Without this line, frontend/src/features/admin/packages/
+# was silently left out of every commit.
+!frontend/src/**/[Pp]ackages/*
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

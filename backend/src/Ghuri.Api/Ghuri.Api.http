@@ -193,11 +193,11 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 GET {{host}}/api/v1/admin/packages?search=PKG
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
-### One package - look at "publishProblems": photo + itinerary still missing.
+### One package - look at "publishProblems": photo, itinerary and a departure still missing.
 GET {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
-### Try to publish now: 409 package_not_publishable, listing both problems.
+### Try to publish now: 409 package_not_publishable, listing what is missing (photo, itinerary, a departure).
 POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/publish
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
@@ -218,6 +218,18 @@ Content-Type: application/json
     { "title": "Arrive", "description": "Check in, evening on the beach.", "meals": "D", "accommodation": "Sea Pearl" },
     { "title": "Inani & Himchari", "description": "Day trip along Marine Drive.", "meals": "B,D", "accommodation": "Sea Pearl" },
     { "title": "Leave", "description": "Breakfast, check out.", "meals": "B", "accommodation": null } ] }
+
+# (Publishing now would STILL be 409 - "Add at least one open departure date." - a fixed package needs a date to sell.)
+
+### Add a departure (more in the DEPARTURES section below). 201 = { id }.
+# The package's "from" price becomes 12000.
+# @name departure1
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/departures
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "startDate": "2026-12-20", "adultPrice": 12000, "childPrice": 9000, "infantPrice": 0,
+  "singleSupplement": 3000, "totalSeats": 20, "bookingCutoffDays": 2 }
 
 ### Publish again: 204 this time.
 POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/publish
@@ -241,6 +253,58 @@ Content-Type: application/json
 ### Archive it (204), then it can be changed freely and published again.
 POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/archive
 Authorization: Bearer {{login.response.body.$.accessToken}}
+
+###############################################################################
+# DEPARTURES - dated trips of a FIXED package, each with its own prices and
+# seats. endDate is never sent: it's worked out from the package's duration.
+# Dates are "yyyy-MM-dd"; "today" means today in Bangladesh (UTC+6).
+###############################################################################
+
+### (departure1 - 20 Dec, ৳12,000 - was added above, before publishing.)
+
+### A cheaper date: "from" drops to 10500.
+# @name departure2
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/departures
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "startDate": "2027-01-10", "adultPrice": 10500, "childPrice": 8000, "infantPrice": 0,
+  "singleSupplement": null, "totalSeats": 15, "bookingCutoffDays": 2 }
+
+### The same date again: 409 departure_date_taken. A past date: 400 departure_date_in_past.
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/departures
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "startDate": "2026-12-20", "adultPrice": 12000, "childPrice": 9000, "infantPrice": 0, "totalSeats": 20, "bookingCutoffDays": 2 }
+
+### On the FLEXIBLE package: 409 departure_needs_fixed_package (the customer picks the dates).
+POST {{host}}/api/v1/admin/packages/{{flexiblePackage.response.body.$.id}}/departures
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "startDate": "2026-12-20", "adultPrice": 12000, "childPrice": 9000, "infantPrice": 0, "totalSeats": 20, "bookingCutoffDays": 2 }
+
+### The package's departures, earliest first - see endDate, seatsLeft, isPast.
+GET {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/departures
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Edit one: new price and more seats (204). Check the package list: "from" follows.
+PUT {{host}}/api/v1/admin/departures/{{departure2.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "startDate": "2027-01-10", "adultPrice": 11000, "childPrice": 8000, "infantPrice": 0,
+  "singleSupplement": null, "totalSeats": 25, "bookingCutoffDays": 3 }
+
+### Close it (204): no new bookings. "from" goes back to the other date's 12000.
+# Send it twice: 409 departure_not_open.
+POST {{host}}/api/v1/admin/departures/{{departure2.response.body.$.id}}/close
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### A brand-new fixed package with NO departures can't be published -
+# publishProblems in GET admin/packages/{id} now includes
+# "Add at least one open departure date."
 
 ###############################################################################
 # CUSTOMERS

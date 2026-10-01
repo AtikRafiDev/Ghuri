@@ -116,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IDestinationRepository, DestinationRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<ITourPackageRepository, TourPackageRepository>();
+        services.AddScoped<IDepartureRepository, DepartureRepository>();
 
         // Only ever resolved by the seed methods below ("dotnet run -- seed" / "-- seed-demo").
         services.AddScoped<DatabaseSeeder>();

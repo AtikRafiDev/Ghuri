@@ -52,8 +52,8 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
 
     /// <summary>
     /// The "from ৳…" price on cards, per adult. Flexible: the BasePrice.
-    /// Fixed: the lowest adult price of the open departures - kept in sync
-    /// by the Day 5 departure commands, 0 until then.
+    /// Fixed: the lowest adult price of the open, upcoming departures (see
+    /// SetLowestDeparturePrice) - 0 while there are none.
     /// </summary>
     public decimal PriceFrom { get; private set; }
 
@@ -228,6 +228,20 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
         EnsureStillPublishable();
     }
 
+    /// <summary>
+    /// Fixed packages only: "from ৳…" = the lowest adult price among the
+    /// open, upcoming departures (null = none left, shown as 0). Called by
+    /// the departure commands after every change.
+    /// </summary>
+    public void SetLowestDeparturePrice(decimal? lowestAdultPrice)
+    {
+        if (PricingMode != PricingMode.FixedDepartures)
+            throw new DomainException(
+                "package_not_fixed", "Only a fixed-departure package takes its price from departures.");
+
+        PriceFrom = lowestAdultPrice ?? 0;
+    }
+
     public PackageAddOn AddAddOn(string name, decimal price, PricingUnit pricingUnit)
     {
         var addOn = PackageAddOn.Create(Id, name, price, pricingUnit);
@@ -240,12 +254,27 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
     /// admin. Empty = ready to publish. The PublishPackage handler shows
     /// the whole list at once instead of one error at a time.
     /// </summary>
-    /// <remarks>
-    /// Flexible-stay nights and prices aren't checked here: PackagePricing
-    /// can't be created without them. Day 5 adds "a fixed package needs at
-    /// least one open departure" - departures don't exist yet on Day 4.
-    /// </remarks>
-    public IReadOnlyList<string> GetPublishProblems()
+    /// <param name="hasOpenDeparture">
+    /// Does this package have an open departure from today on? Departures
+    /// are their own aggregate, so the caller looks it up and passes the
+    /// answer in - the RULE still lives here, with all the others.
+    /// </param>
+    /// <remarks>Flexible-stay nights and prices aren't checked here: PackagePricing can't be created without them.</remarks>
+    public IReadOnlyList<string> GetPublishProblems(bool hasOpenDeparture)
+    {
+        var problems = ContentProblems();
+        if (PricingMode == PricingMode.FixedDepartures && !hasOpenDeparture)
+            problems.Add("Add at least one open departure date.");
+        return problems;
+    }
+
+    /// <summary>
+    /// The rules about the package's own content (photos, itinerary).
+    /// Departures are left out on purpose: closing the last departure of a
+    /// live package is normal ("sold out"), so that rule is only checked at
+    /// the moment of publishing, not after every change.
+    /// </summary>
+    private List<string> ContentProblems()
     {
         var problems = new List<string>();
 
@@ -264,12 +293,12 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
     }
 
     /// <summary>Puts the package on the public site. Works from Draft and from Archived.</summary>
-    public void Publish(DateTime nowUtc)
+    public void Publish(DateTime nowUtc, bool hasOpenDeparture)
     {
         if (Status == PackageStatus.Published)
             throw new DomainException("package_already_published", "This package is already published.");
 
-        var problems = GetPublishProblems();
+        var problems = GetPublishProblems(hasOpenDeparture);
         if (problems.Count > 0)
             throw new DomainException("package_not_publishable", string.Join(" ", problems));
 
@@ -302,7 +331,7 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
         if (Status != PackageStatus.Published)
             return;
 
-        var problems = GetPublishProblems();
+        var problems = ContentProblems();
         if (problems.Count > 0)
             throw new DomainException(
                 "package_must_stay_publishable",

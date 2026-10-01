@@ -1,6 +1,7 @@
 using Ghuri.Api.Authentication;
 using Ghuri.Api.ErrorHandling;
 using Ghuri.Application.Features.Catalog.Commands.ArchivePackage;
+using Ghuri.Application.Features.Catalog.Commands.CreateDeparture;
 using Ghuri.Application.Features.Catalog.Commands.CreatePackage;
 using Ghuri.Application.Features.Catalog.Commands.PublishPackage;
 using Ghuri.Application.Features.Catalog.Commands.SavePackageItinerary;
@@ -8,6 +9,7 @@ using Ghuri.Application.Features.Catalog.Commands.SetPackageImages;
 using Ghuri.Application.Features.Catalog.Commands.UpdatePackage;
 using Ghuri.Application.Features.Catalog.Queries.GetAdminPackage;
 using Ghuri.Application.Features.Catalog.Queries.GetAdminPackages;
+using Ghuri.Application.Features.Catalog.Queries.GetPackageDepartures;
 using Ghuri.Domain.Enums;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
@@ -72,6 +74,21 @@ public sealed class AdminPackagesController(ISender sender) : ControllerBase
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(Guid id, CancellationToken cancellationToken) =>
         (await sender.Send(new PublishPackageCommand(id), cancellationToken)).ToActionResult();
+
+    /// <summary>The package's departures, earliest first (fixed-departure packages only have any).</summary>
+    [HttpGet("{id:guid}/departures")]
+    public async Task<IActionResult> Departures(Guid id, CancellationToken cancellationToken) =>
+        (await sender.Send(new GetPackageDeparturesQuery(id), cancellationToken)).ToActionResult();
+
+    /// <summary>Add a departure date. EndDate is worked out from the package's duration. 201 = { id }.</summary>
+    [HttpPost("{id:guid}/departures")]
+    public async Task<IActionResult> AddDeparture(Guid id, CreateDepartureCommand command, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command with { PackageId = id }, cancellationToken);
+        return result.IsSuccess
+            ? Created((string?)null, new CreatedResponse(result.Value))
+            : ResultExtensions.ToProblem(result.Error);
+    }
 
     /// <summary>Take it off the public site (it can be published again later).</summary>
     [HttpPost("{id:guid}/archive")]
