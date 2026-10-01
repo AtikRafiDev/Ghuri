@@ -46,6 +46,10 @@ public static class CatalogErrors
     public static readonly Error PackageNotFound =
         Error.NotFound("package_not_found", "This package does not exist or was deleted.");
 
+    /// <summary>The public site's 404: also for a draft or archived package - the public mustn't learn it exists.</summary>
+    public static readonly Error PublicPackageNotFound =
+        Error.NotFound("package_not_found", "This package does not exist or is no longer for sale.");
+
     public static readonly Error PackageSlugTaken =
         Error.Conflict("package_slug_taken", "Another package already uses this URL name.");
 

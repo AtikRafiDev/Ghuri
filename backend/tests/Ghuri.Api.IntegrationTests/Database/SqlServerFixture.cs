@@ -29,6 +29,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public IServiceProvider Services => _factory?.Services ?? throw new InvalidOperationException("Not started.");
 
+    /// <summary>An HTTP client for the Api running on the container's database.</summary>
+    public HttpClient CreateClient() => _factory?.CreateClient() ?? throw new InvalidOperationException("Not started.");
+
     public async ValueTask InitializeAsync()
     {
         await _sql.StartAsync();
@@ -52,6 +55,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         var bangladesh = Country.Create("Bangladesh", "BD");
         db.Countries.Add(bangladesh);
         await db.SaveChangesAsync();
+        CountryId = bangladesh.Id;
 
         var destination = Destination.Create(bangladesh.Id, "Cox's Bazar", Slug.Create("Cox's Bazar"));
         db.Destinations.Add(destination);
@@ -79,6 +83,26 @@ public sealed class SqlServerFixture : IAsyncLifetime
         db.Departures.Add(departure);
         await db.SaveChangesAsync();
         return departure.Id;
+    }
+
+    /// <summary>Bangladesh, added at start-up - for tests that need their own destinations.</summary>
+    public short CountryId { get; private set; }
+
+    /// <summary>Adds these entities in one new scope and saves them - like one request would.</summary>
+    public async Task SaveAsync(params object[] entities)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.AddRange(entities);
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Sends a query through the app's real pipeline (validation, logging) - no HTTP needed.</summary>
+    public async Task<Ghuri.Application.Common.Result<TResponse>> SendAsync<TResponse>(
+        Ghuri.Application.Abstractions.Messaging.IQuery<TResponse> query)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<Mediator.ISender>().Send(query);
     }
 
     /// <summary>ReservedSeats as stored in the database right now (a fresh, untracked read).</summary>
