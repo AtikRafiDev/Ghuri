@@ -132,6 +132,117 @@ Content-Type: application/json
 { "name": "Photography Tour", "slug": null, "icon": "camera", "sortOrder": 160 }
 
 ###############################################################################
+# TOUR PACKAGES - admin (log in as Super Admin with step 3 above first)
+# Enums are numbers: pricingMode 1 = Fixed departures, 2 = Flexible stay;
+# status 1 = Draft, 2 = Published, 3 = Archived; tourType 1 = Group,
+# 2 = Private, 3 = Custom.
+###############################################################################
+
+### Pick a destination and a category to use below (the first of each list).
+# @name anyDestination
+GET {{host}}/api/v1/destinations
+###
+# @name anyCategory
+GET {{host}}/api/v1/categories
+
+### Add a FIXED-departure package (3 days / 2 nights). 201 = { id }.
+# Send it twice to see 409 package_slug_taken.
+# @name fixedPackage
+POST {{host}}/api/v1/admin/packages
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "destinationId": "{{anyDestination.response.body.$[0].id}}", "title": "Beach Escape 3 Days", "slug": null,
+  "summary": "Three days by the sea with hotel and breakfast.", "description": null, "tourType": 1,
+  "categoryIds": ["{{anyCategory.response.body.$[0].id}}"], "inclusions": ["Hotel stay", "Breakfast"], "exclusions": ["Air fare"],
+  "termsAndPolicy": null, "minAge": null, "isFeatured": false, "seoTitle": null, "seoDescription": null,
+  "pricingMode": 1, "durationDays": 3, "durationNights": 2,
+  "minNights": null, "maxNights": null, "basePrice": null, "extraNightPrice": null, "minLeadDays": null }
+
+### Add a FLEXIBLE-stay package: 2-7 nights, ৳8,000 per adult for 2 nights,
+# ৳3,000 per extra night, book at least 3 days ahead. Duration is worked out (3 days / 2 nights).
+# @name flexiblePackage
+POST {{host}}/api/v1/admin/packages
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "destinationId": "{{anyDestination.response.body.$[0].id}}", "title": "Sea Pearl Flexible Stay", "slug": null,
+  "summary": "Pick your dates and how many nights.", "description": null, "tourType": 2,
+  "categoryIds": [], "inclusions": ["Sea-view room"], "exclusions": [],
+  "termsAndPolicy": "Subject to hotel confirmation within 24 hours.", "minAge": null, "isFeatured": true,
+  "seoTitle": null, "seoDescription": null,
+  "pricingMode": 2, "durationDays": null, "durationNights": null,
+  "minNights": 2, "maxNights": 7, "basePrice": 8000, "extraNightPrice": 3000, "minLeadDays": 3 }
+
+### Flexible WITHOUT prices: 400 with errors on basePrice and extraNightPrice.
+POST {{host}}/api/v1/admin/packages
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "destinationId": "{{anyDestination.response.body.$[0].id}}", "title": "Broken Flexible", "summary": "x", "tourType": 1,
+  "pricingMode": 2, "minNights": 2, "maxNights": 7, "minLeadDays": 0 }
+
+### Packages table (both new packages, newest first, PKG codes, "from" price)
+GET {{host}}/api/v1/admin/packages?page=1&pageSize=20
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Only flexible packages / search by code
+GET {{host}}/api/v1/admin/packages?pricingMode=2
+Authorization: Bearer {{login.response.body.$.accessToken}}
+###
+GET {{host}}/api/v1/admin/packages?search=PKG
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### One package - look at "publishProblems": photo + itinerary still missing.
+GET {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Try to publish now: 409 package_not_publishable, listing both problems.
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/publish
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Add the photos: ids from the FILE UPLOAD request above (first = cover).
+@photoId = PASTE-AN-UPLOADED-FILE-ID
+PUT {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/images
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "imageFileIds": ["{{photoId}}"] }
+
+### Add the itinerary - 3 days, matching the 3-day duration.
+PUT {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/itinerary
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "days": [
+    { "title": "Arrive", "description": "Check in, evening on the beach.", "meals": "D", "accommodation": "Sea Pearl" },
+    { "title": "Inani & Himchari", "description": "Day trip along Marine Drive.", "meals": "B,D", "accommodation": "Sea Pearl" },
+    { "title": "Leave", "description": "Breakfast, check out.", "meals": "B", "accommodation": null } ] }
+
+### Publish again: 204 this time.
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/publish
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Switch the PUBLISHED fixed package to flexible: 409 package_pricing_mode_locked.
+PUT {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "destinationId": "{{anyDestination.response.body.$[0].id}}", "title": "Beach Escape 3 Days", "summary": "Three days by the sea.",
+  "tourType": 1, "pricingMode": 2, "minNights": 2, "maxNights": 5, "basePrice": 9000, "extraNightPrice": 2500, "minLeadDays": 2 }
+
+### Remove every photo from the PUBLISHED package: 422 package_must_stay_publishable.
+PUT {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/images
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "imageFileIds": [] }
+
+### Archive it (204), then it can be changed freely and published again.
+POST {{host}}/api/v1/admin/packages/{{fixedPackage.response.body.$.id}}/archive
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+###############################################################################
 # CUSTOMERS
 ###############################################################################
 
