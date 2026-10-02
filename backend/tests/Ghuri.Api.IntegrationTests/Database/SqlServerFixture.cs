@@ -6,49 +6,63 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Testcontainers.MsSql;
 
 namespace Ghuri.Api.IntegrationTests.Database;
 
 /// <summary>
-/// A real, empty SQL Server 2022 in Docker, with the REAL migrations
-/// applied, and the real Api wired to it. Started once for a test class,
-/// thrown away afterwards. Needs Docker running (Docker Desktop locally;
-/// GitHub's ubuntu CI machines have it built in).
+/// A real, empty SQL Server database on LocalDB - the same SQL Server the
+/// app uses on this PC - with the REAL migrations applied, and the real Api
+/// wired to it. Created once for a test class, deleted afterwards. Needs
+/// only SQL Server LocalDB (it comes with Visual Studio, and GitHub's
+/// Windows CI machines have it too) - no Docker.
 /// </summary>
 /// <remarks>
 /// Why not a fake: seat reservation depends on what SQL Server itself
 /// does when 20 requests update one row at the same moment (row locks).
 /// An in-memory list can't show that - only the real engine can.
+/// Each fixture gets its OWN database (GhuriTest_&lt;random&gt;), so test
+/// classes running in parallel never see each other's rows, and the
+/// development database GhuriDb is never touched.
 /// </remarks>
 public sealed class SqlServerFixture : IAsyncLifetime
 {
-    private readonly MsSqlContainer _sql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
-    private ContainerApiFactory? _factory;
+    /// <summary>Every test database starts with this, so a stray one is easy to spot (and the safety check below can rely on it).</summary>
+    private const string TestDatabasePrefix = "GhuriTest_";
+
+    private readonly string _connectionString = new SqlConnectionStringBuilder
+    {
+        DataSource = @"(localdb)\MSSQLLocalDB",
+        InitialCatalog = TestDatabasePrefix + Guid.NewGuid().ToString("N"),
+        IntegratedSecurity = true,
+        TrustServerCertificate = true,
+    }.ConnectionString;
+
+    private TestDatabaseApiFactory? _factory;
     private Guid _destinationId;
 
     public IServiceProvider Services => _factory?.Services ?? throw new InvalidOperationException("Not started.");
 
-    /// <summary>An HTTP client for the Api running on the container's database.</summary>
+    /// <summary>An HTTP client for the Api running on the test database.</summary>
     public HttpClient CreateClient() => _factory?.CreateClient() ?? throw new InvalidOperationException("Not started.");
 
     public async ValueTask InitializeAsync()
     {
-        await _sql.StartAsync();
-        _factory = new ContainerApiFactory(_sql.GetConnectionString());
+        _factory = new TestDatabaseApiFactory(_connectionString);
 
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Safety net: these tests write data. If the Api were still pointed
-        // at the development database, stop BEFORE touching it. Compares the
-        // server address only - the password part may be rewritten.
-        var expected = new SqlConnectionStringBuilder(_sql.GetConnectionString()).DataSource;
-        var actual = new SqlConnectionStringBuilder(db.Database.GetConnectionString()).DataSource;
-        if (actual != expected)
+        // Safety net: these tests write data, and DisposeAsync DELETES the
+        // database. If the Api were still pointed at the development
+        // database GhuriDb (same LocalDB server!), stop BEFORE touching it.
+        var expected = new SqlConnectionStringBuilder(_connectionString).InitialCatalog;
+        var actual = new SqlConnectionStringBuilder(db.Database.GetConnectionString()).InitialCatalog;
+        if (actual != expected || !actual.StartsWith(TestDatabasePrefix, StringComparison.Ordinal))
             throw new InvalidOperationException(
-                $"The Api uses server '{actual}', not the test container '{expected}' - refusing to run.");
+                $"The Api uses database '{actual}', not the test database '{expected}' - refusing to run.");
 
+        // Creates the database, then applies every migration - exactly what
+        // ".\ef.cmd database update" does to GhuriDb.
         await db.Database.MigrateAsync();
 
         // The minimum a departure needs above it: country → destination → package.
@@ -115,13 +129,24 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        if (_factory is not null)
-            await _factory.DisposeAsync();
-        await _sql.DisposeAsync();
+        if (_factory is null)
+            return;
+
+        // Delete the test database while the Api's services still exist,
+        // so LocalDB doesn't fill up with old GhuriTest_ databases. EF
+        // closes the open connections first. (A run killed half-way can
+        // leave one behind - harmless; delete it in SSMS if you like.)
+        await using (var scope = Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.EnsureDeletedAsync();
+        }
+
+        await _factory.DisposeAsync();
     }
 
-    /// <summary>The usual test Api, with the connection string swapped for the container's.</summary>
-    private sealed class ContainerApiFactory(string connectionString) : GhuriApiFactory
+    /// <summary>The usual test Api, with the connection string swapped for the test database's.</summary>
+    private sealed class TestDatabaseApiFactory(string connectionString) : GhuriApiFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

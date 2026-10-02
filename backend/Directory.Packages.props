@@ -75,10 +75,9 @@
          send it real HTTP requests - Microsoft's official way to test an
          ASP.NET Core app end to end. -->
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
-    <!-- Starts a real, throwaway SQL Server in Docker for a test run and
-         deletes it afterwards - for tests that need the real database
-         engine (row locks, constraints, migrations), which no fake has. -->
-    <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0" />
+    <!-- Tests that need the real database engine (row locks, constraints,
+         migrations) use a throwaway database on LocalDB instead - no
+         package needed (see Ghuri.Api.IntegrationTests/Database/SqlServerFixture.cs). -->
   </ItemGroup>
 
 </Project>

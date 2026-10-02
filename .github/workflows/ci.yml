@@ -21,7 +21,9 @@ concurrency:
 jobs:
   backend:
     name: Backend - build & test
-    runs-on: ubuntu-latest   # Linux: also catches accidental Windows-only code (e.g. wrong path casing)
+    # Windows, like development: the database tests use SQL Server LocalDB,
+    # which only exists on Windows (GitHub's Windows machines include it).
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: backend
@@ -42,6 +44,11 @@ jobs:
       # (see Directory.Build.props) - on CI, a warning fails the build.
       - name: Build (Release, warnings as errors)
         run: dotnet build --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
+
+      # The database tests create (and delete) their own databases on LocalDB.
+      # "start" also creates the default instance if it doesn't exist yet.
+      - name: Start SQL Server LocalDB
+        run: sqllocaldb start MSSQLLocalDB
 
       - name: Test
         run: dotnet test --configuration Release --no-build

@@ -4,8 +4,9 @@ namespace Ghuri.Api.Authentication;
 
 /// <summary>IClientInfo, answered from the current HTTP request.</summary>
 /// <remarks>
-/// Behind Nginx (Day 7), RemoteIpAddress will be Nginx's own address
-/// unless the forwarded-headers middleware is switched on - a Day 7 task.
+/// Behind a reverse proxy (Nginx/IIS), RemoteIpAddress will be the proxy's
+/// own address unless the forwarded-headers middleware is switched on - a
+/// deployment task, done when the finished project goes to a server.
 /// </remarks>
 internal sealed class HttpClientInfo(IHttpContextAccessor httpContextAccessor) : IClientInfo
 {

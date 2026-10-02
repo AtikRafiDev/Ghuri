@@ -10,8 +10,8 @@ namespace Ghuri.Api.IntegrationTests;
 /// </summary>
 /// <remarks>
 /// Tests /health/live on purpose: it runs no database check, so this test
-/// works on the CI server, which has no SQL Server. Database-backed tests
-/// come later, with a throwaway database (the blueprint's Testcontainers).
+/// needs no database at all. Database-backed tests live in Database/ and
+/// use a throwaway LocalDB database (SqlServerFixture).
 /// </remarks>
 public class HealthEndpointTests(GhuriApiFactory factory)
     : IClassFixture<GhuriApiFactory>

@@ -293,6 +293,13 @@ dotnet ef database update --project src/Ghuri.Infrastructure --startup-project s
 | `dotnet build` | Build every project in the solution |
 | `dotnet test` | Run every test project |
 
+The database tests (`Ghuri.Api.IntegrationTests/Database`) need only
+SQL Server LocalDB, no Docker. Each test class creates its own
+`GhuriTest_<random>` database, applies the migrations, and deletes it at
+the end. Your `GhuriDb` is never touched. If a run is killed halfway, a
+leftover `GhuriTest_...` database is harmless: delete it in SSMS if you
+like.
+
 ---
 
 ## Project structure
