@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Common;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -25,9 +26,11 @@ public sealed class LoggingBehavior<TMessage, TResponse>(ILogger<LoggingBehavior
         TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
         var name = typeof(TMessage).Name;
+        // A timer-driven message (IQuietMessage) only shows up when it fails.
+        var successLevel = message is IQuietMessage ? LogLevel.Debug : LogLevel.Information;
         var started = Stopwatch.GetTimestamp();
 
-        logger.LogInformation("Handling {MessageName}", name);
+        logger.Log(successLevel, "Handling {MessageName}", name);
 
         var response = await next(message, cancellationToken);
         var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
@@ -39,7 +42,7 @@ public sealed class LoggingBehavior<TMessage, TResponse>(ILogger<LoggingBehavior
         }
         else
         {
-            logger.LogInformation("Handled {MessageName} in {ElapsedMs:0} ms", name, elapsedMs);
+            logger.Log(successLevel, "Handled {MessageName} in {ElapsedMs:0} ms", name, elapsedMs);
         }
 
         return response;

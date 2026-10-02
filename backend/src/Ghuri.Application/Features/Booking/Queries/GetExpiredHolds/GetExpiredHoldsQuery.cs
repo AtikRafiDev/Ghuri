@@ -9,8 +9,9 @@ namespace Ghuri.Application.Features.Booking.Queries.GetExpiredHolds;
 /// <summary>
 /// The bookings still waiting for payment whose 20-minute hold is over -
 /// what the expiry job works through, oldest first, at most <paramref name="Max"/> per run.
+/// Quiet: it runs every minute, so only a failure is logged (IQuietMessage).
 /// </summary>
-public sealed record GetExpiredHoldsQuery(int Max) : IQuery<IReadOnlyList<Guid>>;
+public sealed record GetExpiredHoldsQuery(int Max) : IQuery<IReadOnlyList<Guid>>, IQuietMessage;
 
 internal sealed class GetExpiredHoldsHandler(IReadDbContext db, TimeProvider clock)
     : IQueryHandler<GetExpiredHoldsQuery, IReadOnlyList<Guid>>
