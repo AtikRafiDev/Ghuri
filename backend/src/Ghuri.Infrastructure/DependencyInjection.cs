@@ -4,6 +4,7 @@ using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Domain.Repositories;
 using Ghuri.Infrastructure.Images;
 using Ghuri.Infrastructure.Jobs;
+using Ghuri.Infrastructure.Payments;
 using Ghuri.Infrastructure.Messaging;
 using Ghuri.Infrastructure.Persistence;
 using Ghuri.Infrastructure.Persistence.Interceptors;
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Ghuri.Infrastructure;
 
@@ -45,8 +47,41 @@ public static class DependencyInjection
         services.AddEmail(configuration);
         services.AddFileStorage();
         services.AddBackgroundJobs();
+        services.AddPaymentGateway();
 
         return services;
+    }
+
+    private static void AddPaymentGateway(this IServiceCollection services)
+    {
+        services.AddOptions<SslCommerzOptions>()
+            .BindConfiguration(SslCommerzOptions.SectionName)
+            .Validate(o => !string.IsNullOrWhiteSpace(o.StoreId) && !string.IsNullOrWhiteSpace(o.StorePassword),
+                "PaymentGateway:SslCommerz:StoreId and StorePassword are required (sandbox: appsettings.Development.json; " +
+                "a server: environment variables PaymentGateway__SslCommerz__StoreId / __StorePassword).")
+            .Validate(o => Uri.TryCreate(o.CallbackBaseUrl, UriKind.Absolute, out _),
+                "PaymentGateway:SslCommerz:CallbackBaseUrl must be the site's full address, e.g. http://localhost:5173")
+            .Validate(o => string.IsNullOrWhiteSpace(o.IpnUrl) || Uri.TryCreate(o.IpnUrl, UriKind.Absolute, out _),
+                "PaymentGateway:SslCommerz:IpnUrl must be empty or a full address.")
+            .Validate(o => o.TimeoutSeconds is >= 5 and <= 120,
+                "PaymentGateway:SslCommerz:TimeoutSeconds must be between 5 and 120.")
+            .ValidateOnStart();
+
+        // ONE long-lived HttpClient for the gateway - Microsoft's guidance when
+        // not using IHttpClientFactory: reusing it avoids running out of
+        // sockets, and PooledConnectionLifetime renews connections so a DNS
+        // change at SSLCommerz is picked up. (IHttpClientFactory would need
+        // another package, and logs every request address by default - and
+        // the Day 10 validation call has the store password in its address.)
+        services.AddSingleton<IPaymentGateway>(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<SslCommerzOptions>>();
+            var http = new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+            {
+                Timeout = TimeSpan.FromSeconds(settings.Value.TimeoutSeconds)
+            };
+            return new SslCommerzGateway(http, settings, sp.GetRequiredService<ILogger<SslCommerzGateway>>());
+        });
     }
 
     private static void AddBackgroundJobs(this IServiceCollection services)
