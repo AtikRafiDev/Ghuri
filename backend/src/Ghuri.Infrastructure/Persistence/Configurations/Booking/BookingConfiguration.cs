@@ -27,12 +27,39 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<BookingEnt
         // of HasIndex works for both kinds by property NAME.
         builder.HasIndex(new[] { nameof(BookingEntity.CustomerId), "CreatedAtUtc" });
 
-        builder.Property(b => b.DepartureId).IsRequired();
+        builder.Property(b => b.BookingType).HasConversion<byte>().IsRequired();
+
+        // Optional since bookings can be flexible stays (no departure) or
+        // custom trips (no package either) - CK_Bookings_Shape below says
+        // exactly which one each type needs.
         builder.HasOne<Departure>().WithMany().HasForeignKey(b => b.DepartureId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(b => b.DepartureId);
 
-        builder.Property(b => b.PackageId).IsRequired(); // denormalized for reports, per the blueprint - no FK-driven cascading behaviour needed beyond referential integrity
+        // Denormalized for reports, per the blueprint - no FK-driven cascading behaviour needed beyond referential integrity.
         builder.HasOne<TourPackage>().WithMany().HasForeignKey(b => b.PackageId).OnDelete(DeleteBehavior.Restrict);
+
+        // A plain column for now: booking.CustomTrips (and so the foreign
+        // key) arrives with the custom-trips feature on Day 13.
+        builder.Property(b => b.CustomTripId);
+        builder.HasIndex(b => b.CustomTripId);
+
+        // Which links each type must have - the same rule BookingStay
+        // enforces in C#. The numbers are BookingType's stored values
+        // (1 fixed, 2 flexible, 3 custom trip), so this also rejects any
+        // other type. A flexible stay is at least one night.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_Bookings_Shape",
+            "([BookingType] = 1 AND [DepartureId] IS NOT NULL AND [PackageId] IS NOT NULL AND [CustomTripId] IS NULL)" +
+            " OR ([BookingType] = 2 AND [DepartureId] IS NULL AND [PackageId] IS NOT NULL AND [CustomTripId] IS NULL AND [Nights] >= 1)" +
+            " OR ([BookingType] = 3 AND [DepartureId] IS NULL AND [PackageId] IS NULL AND [CustomTripId] IS NOT NULL)"));
+
+        // The trip's dates, stored for every type (see Booking's remarks).
+        // Indexed for "upcoming trips" (admin dashboard, reminders).
+        builder.Property(b => b.StartDate).HasColumnType("date").IsRequired();
+        builder.HasIndex(b => b.StartDate);
+        builder.Property(b => b.EndDate).HasColumnType("date").IsRequired();
+        builder.ToTable(t => t.HasCheckConstraint("CK_Bookings_Dates", "[EndDate] >= [StartDate]"));
+        builder.Property(b => b.Nights).IsRequired();
 
         builder.Property(b => b.Adults).IsRequired();
         builder.ToTable(t => t.HasCheckConstraint("CK_Bookings_Adults", "[Adults] >= 1"));

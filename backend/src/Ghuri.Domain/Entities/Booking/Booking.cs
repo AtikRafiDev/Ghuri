@@ -5,17 +5,28 @@ using Ghuri.Domain.ValueObjects;
 namespace Ghuri.Domain.Entities.Booking;
 
 /// <summary>
-/// A customer's reservation on a departure (blueprint: booking.Bookings
-/// [A]). The aggregate root for its own travellers and add-ons.
+/// A customer's reservation (blueprint: booking.Bookings [A]) - a seat on
+/// a fixed departure, a flexible stay, or (Day 15) an accepted custom-trip
+/// quote. The aggregate root for its own travellers and add-ons.
 /// </summary>
 /// <remarks>
-/// Create here accepts prices already computed by the caller
-/// (AdultPriceSnapshot, SubTotal, etc.) rather than calculating them
-/// itself - the actual pricing rules (PriceCalculator, coupon discounts,
-/// seat reservation) are Day 8 feature work, built alongside the real
-/// CreateBookingCommand. The state machine methods (Confirm, Cancel,
-/// MarkPaid - see the blueprint's section 6.3 diagram) are also Day 8/10
-/// work, not schema work.
+/// <para>
+/// BookingType decides which link must be set: FixedDeparture → DepartureId
+/// + PackageId · FlexibleStay → PackageId only · CustomTrip → CustomTripId
+/// only. All of it arrives as one BookingStay, which can only be built in a
+/// valid shape; the database's CK_Bookings_Shape checks the same rule.
+/// </para>
+/// <para>
+/// StartDate / EndDate / Nights are stored for EVERY type - copied from the
+/// departure for a fixed trip - so "upcoming trips", the voucher and the
+/// cancellation policy ("days before the start") work the same for all
+/// three without joining anywhere.
+/// </para>
+/// <para>
+/// Create accepts prices already computed by the caller (PriceCalculator).
+/// The friendly factories (CreateForDeparture / CreateFlexible) and the
+/// state machine (Expire, Cancel, Confirm) are Day 8 Part 2.
+/// </para>
 /// </remarks>
 public sealed class Booking : AggregateRoot, IAuditable
 {
@@ -23,10 +34,26 @@ public sealed class Booking : AggregateRoot, IAuditable
     public string BookingNo { get; private set; } = string.Empty;
 
     public Guid CustomerId { get; private set; }
-    public Guid DepartureId { get; private set; }
 
-    /// <summary>Denormalized from the departure, purely so reports don't need to join through Departures.</summary>
-    public Guid PackageId { get; private set; }
+    public BookingType BookingType { get; private set; }
+
+    /// <summary>Only for a FixedDeparture booking.</summary>
+    public Guid? DepartureId { get; private set; }
+
+    /// <summary>Fixed and flexible bookings (for a fixed one, denormalized from the departure so reports don't need to join through Departures). Null for a custom trip, which has no package.</summary>
+    public Guid? PackageId { get; private set; }
+
+    /// <summary>Only for a CustomTrip booking. No foreign key yet: booking.CustomTrips arrives on Day 13.</summary>
+    public Guid? CustomTripId { get; private set; }
+
+    /// <summary>The first day of the trip (a flexible stay's check-in day).</summary>
+    public DateOnly StartDate { get; private set; }
+
+    /// <summary>The last day of a fixed trip, or a flexible stay's check-out day (StartDate + Nights).</summary>
+    public DateOnly EndDate { get; private set; }
+
+    /// <summary>Nights away - 0 is possible for a fixed day trip; a flexible stay always has at least 1.</summary>
+    public byte Nights { get; private set; }
 
     public byte Adults { get; private set; }
     public byte Children { get; private set; }
@@ -79,7 +106,7 @@ public sealed class Booking : AggregateRoot, IAuditable
     }
 
     public static Booking Create(
-        string bookingNo, Guid customerId, Guid departureId, Guid packageId,
+        string bookingNo, Guid customerId, BookingStay stay,
         byte adults, byte children, byte infants,
         decimal adultPriceSnapshot, decimal childPriceSnapshot, decimal infantPriceSnapshot,
         decimal subTotal, decimal addOnTotal, decimal discountAmount, string currency,
@@ -88,6 +115,7 @@ public sealed class Booking : AggregateRoot, IAuditable
         string? contactEmail = null, string? specialRequest = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bookingNo);
+        ArgumentNullException.ThrowIfNull(stay);
         ArgumentException.ThrowIfNullOrWhiteSpace(contactName);
         if (adults < 1)
             throw new ArgumentOutOfRangeException(nameof(adults), "A booking needs at least one adult.");
@@ -98,8 +126,13 @@ public sealed class Booking : AggregateRoot, IAuditable
         {
             BookingNo = bookingNo,
             CustomerId = customerId,
-            DepartureId = departureId,
-            PackageId = packageId,
+            BookingType = stay.Type,
+            DepartureId = stay.DepartureId,
+            PackageId = stay.PackageId,
+            CustomTripId = stay.CustomTripId,
+            StartDate = stay.StartDate,
+            EndDate = stay.EndDate,
+            Nights = stay.Nights,
             Adults = adults,
             Children = children,
             Infants = infants,
