@@ -123,6 +123,15 @@ public sealed class Booking : AggregateRoot, IAuditable
     /// </summary>
     public short SeatsHeld => BookingType == BookingType.FixedDeparture ? (short)(Adults + Children) : (short)0;
 
+    /// <summary>
+    /// Can a payment start now? Still PendingPayment AND inside the hold. A
+    /// hold that has just run out counts as over even before the expiry job
+    /// has marked it Expired - a customer must never start paying for seats
+    /// that are about to be given away.
+    /// </summary>
+    public bool IsAwaitingPayment(DateTime nowUtc) =>
+        Status == BookingStatus.PendingPayment && HoldExpiresAtUtc is { } deadline && nowUtc < deadline;
+
     private Booking()
     {
     }

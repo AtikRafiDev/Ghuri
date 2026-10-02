@@ -1,5 +1,7 @@
 using Ghuri.Domain.Common;
 using Ghuri.Domain.Enums;
+using Ghuri.Domain.Exceptions;
+using BookingEntity = Ghuri.Domain.Entities.Booking.Booking;
 
 namespace Ghuri.Domain.Entities.Payment;
 
@@ -9,9 +11,17 @@ namespace Ghuri.Domain.Entities.Payment;
 /// repository (IPaymentRepository).
 /// </summary>
 /// <remarks>
-/// The state machine (Initiate -> Pending -> Succeeded | Failed |
-/// Cancelled, with "a late fail never downgrades a success") is Day 9/10
-/// work, built alongside the real SSLCommerz integration it protects.
+/// <para>
+/// State machine: Initiated → Pending (the gateway gave us a payment page)
+/// → Succeeded (Day 10, after the gateway's validation API confirms it).
+/// Initiated or Pending → Failed / Cancelled.
+/// </para>
+/// <para>
+/// "A late fail never downgrades a success": gateways send messages out of
+/// order and more than once, so a fail or cancel arriving for a payment that
+/// already succeeded is ignored - the money was taken. The reverse is
+/// allowed (Day 10): a real, validated success after a "fail" still counts.
+/// </para>
 /// </remarks>
 public sealed class Payment : AggregateRoot, IAuditable
 {
@@ -38,6 +48,21 @@ public sealed class Payment : AggregateRoot, IAuditable
     {
     }
 
+    /// <summary>
+    /// A new online payment for a booking. The amount and currency come FROM
+    /// the booking - the browser never says how much to pay. Refused unless
+    /// the booking is still waiting for payment inside its 20-minute hold.
+    /// </summary>
+    /// <exception cref="DomainException">The booking isn't waiting for payment, or its hold is over.</exception>
+    public static Payment StartFor(BookingEntity booking, string paymentNo, PaymentProvider provider, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(booking);
+        if (!booking.IsAwaitingPayment(nowUtc))
+            throw new DomainException("booking_not_payable", "This booking can't be paid any more.");
+
+        return Initiate(paymentNo, booking.Id, provider, booking.TotalAmount - booking.PaidAmount, booking.Currency, nowUtc);
+    }
+
     public static Payment Initiate(string paymentNo, Guid bookingId, PaymentProvider provider, decimal amount, string currency, DateTime nowUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(paymentNo);
@@ -54,5 +79,39 @@ public sealed class Payment : AggregateRoot, IAuditable
             Status = PaymentStatus.Initiated,
             InitiatedAtUtc = nowUtc
         };
+    }
+
+    /// <summary>The gateway created a payment page for us; <paramref name="sessionId"/> is its id for this attempt (SSLCommerz: sessionkey).</summary>
+    public void MarkSessionCreated(string sessionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        if (sessionId.Length > 100) // ProviderSessionId column
+            throw new ArgumentOutOfRangeException(nameof(sessionId), "At most 100 characters.");
+        if (Status != PaymentStatus.Initiated)
+            throw new DomainException("payment_not_initiated", "A payment page can only be created for a new payment.");
+
+        ProviderSessionId = sessionId;
+        Status = PaymentStatus.Pending;
+    }
+
+    /// <summary>The gateway refused the session, or the payment failed. Ignored once the payment succeeded (see remarks).</summary>
+    public void MarkFailed(string reason) => End(PaymentStatus.Failed, reason);
+
+    /// <summary>The customer cancelled on the gateway's page. Ignored once the payment succeeded (see remarks).</summary>
+    public void MarkCancelled(string reason) => End(PaymentStatus.Cancelled, reason);
+
+    private void End(PaymentStatus to, string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        // Only a payment still in progress can end this way. Succeeded is
+        // never downgraded, and repeating a fail/cancel changes nothing -
+        // gateways resend messages, and a resend must not be an error.
+        if (Status is not (PaymentStatus.Initiated or PaymentStatus.Pending))
+            return;
+
+        Status = to;
+        reason = reason.Trim();
+        FailureReason = reason.Length <= 300 ? reason : reason[..300]; // FailureReason column; gateway text can be long
     }
 }
