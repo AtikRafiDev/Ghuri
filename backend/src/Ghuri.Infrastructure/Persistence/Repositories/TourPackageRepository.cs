@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
 using Ghuri.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,9 @@ internal sealed class TourPackageRepository(AppDbContext db) : ITourPackageRepos
             .Include(p => p.ItineraryDays)
             .Include(p => p.Categories)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+    public Task<TourPackage?> GetPublishedBySlugAsync(Slug slug, CancellationToken cancellationToken) =>
+        db.TourPackages.FirstOrDefaultAsync(p => p.Slug == slug && p.Status == PackageStatus.Published, cancellationToken);
 
     public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>
         db.TourPackages.AnyAsync(p => p.Slug == slug && p.Id != exceptId, cancellationToken);

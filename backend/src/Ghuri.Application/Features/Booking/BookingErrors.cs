@@ -41,4 +41,21 @@ public static class BookingErrors
 
     public static Error StartDateTooSoon(DateOnly earliest) =>
         Error.Failure("start_date_too_soon", $"The earliest start date is {earliest:d MMM yyyy}.");
+
+    // Creating a booking (Day 8)
+
+    /// <summary>
+    /// The seats were free when we looked, but someone else's booking took
+    /// them a moment before ours (the atomic reservation said no). Same code
+    /// as NotEnoughSeats, so the checkout handles both the same way.
+    /// </summary>
+    public static readonly Error SeatsJustTaken =
+        Error.Conflict("not_enough_seats", "Someone has just booked the last seats on this date. Please choose another date or fewer travellers.");
+
+    /// <summary>The same Idempotency-Key came back with a DIFFERENT request (or from another user) - a client bug, not a retry.</summary>
+    public static readonly Error IdempotencyKeyReused =
+        Error.Conflict("idempotency_key_reused", "This Idempotency-Key was already used for a different request. Send a new key.");
+
+    public static readonly Error BookingNotFound =
+        Error.NotFound("booking_not_found", "This booking doesn't exist.");
 }

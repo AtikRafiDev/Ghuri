@@ -1,8 +1,13 @@
+using Ghuri.Application.Abstractions.Messaging;
+using Ghuri.Application.Abstractions.Ports;
+using Ghuri.Application.Common;
 using Ghuri.Domain.Entities.Catalog;
+using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.ValueObjects;
 using Ghuri.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -112,11 +117,37 @@ public sealed class SqlServerFixture : IAsyncLifetime
     }
 
     /// <summary>Sends a query through the app's real pipeline (validation, logging) - no HTTP needed.</summary>
-    public async Task<Ghuri.Application.Common.Result<TResponse>> SendAsync<TResponse>(
-        Ghuri.Application.Abstractions.Messaging.IQuery<TResponse> query)
+    public Task<Result<TResponse>> SendAsync<TResponse>(IQuery<TResponse> query, Guid? asUser = null) =>
+        SendAsUserAsync(asUser, sender => sender.Send(query).AsTask());
+
+    /// <summary>
+    /// Sends a command through the real pipeline - validation, logging AND the
+    /// transaction (commit on success, roll back on failure) - as if this user
+    /// were logged in.
+    /// </summary>
+    public Task<Result<TResponse>> SendCommandAsync<TResponse>(ICommand<TResponse> command, Guid? asUser) =>
+        SendAsUserAsync(asUser, sender => sender.Send(command).AsTask());
+
+    private async Task<Result<TResponse>> SendAsUserAsync<TResponse>(Guid? userId, Func<Mediator.ISender, Task<Result<TResponse>>> send)
     {
         await using var scope = Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<Mediator.ISender>().Send(query);
+        var testUser = scope.ServiceProvider.GetRequiredService<TestCurrentUser>();
+        testUser.Active = true;
+        testUser.UserId = userId;
+        return await send(scope.ServiceProvider.GetRequiredService<Mediator.ISender>());
+    }
+
+    /// <summary>A new customer account (no password). Returns its id.</summary>
+    public async Task<Guid> NewCustomerAsync() => (await NewCustomerUserAsync()).Id;
+
+    /// <summary>A new customer account - the whole User, e.g. to make a real access token for HTTP tests.</summary>
+    public async Task<User> NewCustomerUserAsync()
+    {
+        // A random, valid, unique mobile number: 017 + 8 digits.
+        var phone = PhoneNumber.Create("017" + Random.Shared.Next(0, 100_000_000).ToString("D8"));
+        var customer = User.Create("Test Customer", phone, email: null, passwordHash: null);
+        await SaveAsync(customer);
+        return customer;
     }
 
     /// <summary>ReservedSeats as stored in the database right now (a fresh, untracked read).</summary>
@@ -152,6 +183,33 @@ public sealed class SqlServerFixture : IAsyncLifetime
         {
             base.ConfigureWebHost(builder);
             builder.UseSetting("ConnectionStrings:DefaultConnection", connectionString);
+
+            // "Who is logged in" without HTTP or tokens: SendAsync /
+            // SendCommandAsync set it for their own scope. Every other scope -
+            // a real HTTP request with a real token - keeps the Api's own
+            // HttpCurrentUser (internal to the Api, so it's reached through
+            // its registration's type rather than by name).
+            builder.ConfigureTestServices(services =>
+            {
+                var httpCurrentUser = services.Last(d => d.ServiceType == typeof(ICurrentUser)).ImplementationType!;
+                services.AddScoped(httpCurrentUser);
+                services.AddScoped<TestCurrentUser>();
+                services.AddScoped<ICurrentUser>(sp =>
+                {
+                    var testUser = sp.GetRequiredService<TestCurrentUser>();
+                    return testUser.Active ? testUser : (ICurrentUser)sp.GetRequiredService(httpCurrentUser);
+                });
+            });
         }
+    }
+
+    /// <summary>The logged-in user for one scope - set by SendAsUserAsync. UserId null = nobody (like an anonymous visitor).</summary>
+    private sealed class TestCurrentUser : ICurrentUser
+    {
+        /// <summary>True only in scopes made by SendAsUserAsync; elsewhere the real HttpCurrentUser answers.</summary>
+        public bool Active { get; set; }
+        public Guid? UserId { get; set; }
+        public IReadOnlyList<Ghuri.Domain.Enums.SystemRole> Roles => [];
+        public bool IsInRole(Ghuri.Domain.Enums.SystemRole role) => false;
     }
 }

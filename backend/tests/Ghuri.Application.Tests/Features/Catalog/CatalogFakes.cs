@@ -62,6 +62,9 @@ internal sealed class FakeTourPackageRepository : ITourPackageRepository
     public Task<TourPackage?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(Packages.Find(p => p.Id == id));
 
+    public Task<TourPackage?> GetPublishedBySlugAsync(Slug slug, CancellationToken cancellationToken) =>
+        Task.FromResult(Packages.Find(p => p.Slug.Equals(slug) && p.Status == PackageStatus.Published));
+
     public Task<bool> SlugExistsAsync(Slug slug, Guid? exceptId, CancellationToken cancellationToken) =>
         Task.FromResult(Packages.Exists(p => p.Slug.Equals(slug) && p.Id != exceptId));
 

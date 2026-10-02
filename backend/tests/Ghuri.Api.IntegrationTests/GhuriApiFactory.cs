@@ -21,5 +21,10 @@ public class GhuriApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Jwt:SigningKey", "integration-tests-only-signing-key-not-a-secret");
+
+        // The booking expiry job would otherwise start with every test app
+        // and run on its own timer. Tests call BookingExpiryJob.RunOnceAsync
+        // themselves, at the exact moment they want.
+        builder.UseSetting("Jobs:BookingExpiry:Enabled", "false");
     }
 }

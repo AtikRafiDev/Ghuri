@@ -12,4 +12,10 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="SkiaSharp" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- BookingExpiryJob is "internal" like the rest of Infrastructure. The
+         integration tests call its RunOnceAsync directly (instead of waiting
+         a minute for the timer), so ONLY that test project may see inside. -->
+    <InternalsVisibleTo Include="Ghuri.Api.IntegrationTests" />
+  </ItemGroup>
 </Project>

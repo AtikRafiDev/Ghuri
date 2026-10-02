@@ -3,6 +3,7 @@ using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Domain.Repositories;
 using Ghuri.Infrastructure.Images;
+using Ghuri.Infrastructure.Jobs;
 using Ghuri.Infrastructure.Messaging;
 using Ghuri.Infrastructure.Persistence;
 using Ghuri.Infrastructure.Persistence.Interceptors;
@@ -43,8 +44,26 @@ public static class DependencyInjection
         services.AddSecurity();
         services.AddEmail(configuration);
         services.AddFileStorage();
+        services.AddBackgroundJobs();
 
         return services;
+    }
+
+    private static void AddBackgroundJobs(this IServiceCollection services)
+    {
+        services.AddOptions<BookingExpiryOptions>()
+            .BindConfiguration(BookingExpiryOptions.SectionName)
+            .Validate(o => o.IntervalSeconds is >= 5 and <= 3600,
+                "Jobs:BookingExpiry:IntervalSeconds must be between 5 and 3600.")
+            .Validate(o => o.BatchSize is >= 1 and <= 1000,
+                "Jobs:BookingExpiry:BatchSize must be between 1 and 1000.")
+            .ValidateOnStart();
+
+        // One instance, registered twice: as itself (so the integration tests
+        // can call RunOnceAsync directly) and as the hosted service the app
+        // starts and stops. "dotnet run -- seed" never starts hosted services.
+        services.AddSingleton<BookingExpiryJob>();
+        services.AddHostedService(sp => sp.GetRequiredService<BookingExpiryJob>());
     }
 
     private static void AddFileStorage(this IServiceCollection services)
@@ -117,6 +136,11 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<ITourPackageRepository, TourPackageRepository>();
         services.AddScoped<IDepartureRepository, DepartureRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
+
+        // "Same request twice = same answer" for POSTs like CreateBooking. Scoped:
+        // it must use the request's one AppDbContext, so it joins the transaction.
+        services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();
 
         // Only ever resolved by the seed methods below ("dotnet run -- seed" / "-- seed-demo").
         services.AddScoped<DatabaseSeeder>();
