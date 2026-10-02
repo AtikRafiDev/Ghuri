@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Outlet } from 'react-router'
 import { staffRoles } from '@/features/auth/auth.types'
 import { RequireAuth } from '@/features/auth/components/RequireAuth'
 import { RequireRole } from '@/features/auth/components/RequireRole'
@@ -17,6 +17,22 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     children: [
       { index: true, lazy: async () => ({ Component: (await import('@/features/home/pages/HomePage')).HomePage }) },
+      {
+        path: 'packages/:slug',
+        lazy: async () => ({ Component: (await import('@/features/catalog/pages/PackageDetailsPage')).PackageDetailsPage }),
+      },
+      {
+        // Login needed: a visitor goes to /login and comes back here with the trip still in the URL.
+        path: 'checkout',
+        element: (
+          <RequireAuth>
+            <Outlet />
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, lazy: async () => ({ Component: (await import('@/features/booking/pages/CheckoutPage')).CheckoutPage }) },
+        ],
+      },
       { path: 'login', lazy: async () => ({ Component: (await import('@/features/auth/pages/LoginPage')).LoginPage }) },
       { path: 'register', lazy: async () => ({ Component: (await import('@/features/auth/pages/RegisterPage')).RegisterPage }) },
       {

@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { http } from '@/shared/api/http'
 import type { Paged } from '@/shared/api/paged'
 
@@ -178,7 +178,7 @@ export const catalogKeys = {
   packages: (params: PackageSearchParams) => [...catalogKeys.all, 'packages', params] as const,
   package: (slug: string) => [...catalogKeys.all, 'package', slug] as const,
   departures: (slug: string) => [...catalogKeys.package(slug), 'departures'] as const,
-  quote: (slug: string, params: QuoteParams) => [...catalogKeys.package(slug), 'quote', params] as const,
+  quote: (slug: string, params: QuoteParams | null) => [...catalogKeys.package(slug), 'quote', params] as const,
   destinations: (featuredOnly: boolean) => [...catalogKeys.all, 'destinations', { featuredOnly }] as const,
   categories: () => [...catalogKeys.all, 'categories'] as const,
 }
@@ -195,11 +195,14 @@ export const packageDetailsQuery = (slug: string) =>
 export const departuresQuery = (slug: string) =>
   queryOptions({ queryKey: catalogKeys.departures(slug), queryFn: () => catalogApi.departures(slug) })
 
-/** keepPreviousData: while a new price loads, the old one stays on screen instead of flashing empty. */
-export const quoteQuery = (slug: string, params: QuoteParams) =>
+/**
+ * params null = nothing picked yet: skipToken makes the query wait instead of sending a half-filled request.
+ * keepPreviousData: while a new price loads, the old one stays on screen instead of flashing empty.
+ */
+export const quoteQuery = (slug: string, params: QuoteParams | null) =>
   queryOptions({
     queryKey: catalogKeys.quote(slug, params),
-    queryFn: () => catalogApi.quote(slug, params),
+    queryFn: params ? () => catalogApi.quote(slug, params) : skipToken,
     staleTime: 60_000,
     placeholderData: keepPreviousData,
   })
