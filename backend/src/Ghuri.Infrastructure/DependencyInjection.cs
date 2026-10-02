@@ -172,6 +172,7 @@ public static class DependencyInjection
         services.AddScoped<ITourPackageRepository, TourPackageRepository>();
         services.AddScoped<IDepartureRepository, DepartureRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         // "Same request twice = same answer" for POSTs like CreateBooking. Scoped:
         // it must use the request's one AppDbContext, so it joins the transaction.

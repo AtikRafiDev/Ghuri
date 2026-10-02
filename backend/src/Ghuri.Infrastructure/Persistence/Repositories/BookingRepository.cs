@@ -22,5 +22,8 @@ internal sealed class BookingRepository(AppDbContext db) : IBookingRepository
     public Task<Booking?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Bookings.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
+    public Task<Booking?> GetByBookingNoAsync(string bookingNo, CancellationToken cancellationToken) =>
+        db.Bookings.FirstOrDefaultAsync(b => b.BookingNo == bookingNo, cancellationToken);
+
     public void Add(Booking booking) => db.Bookings.Add(booking);
 }

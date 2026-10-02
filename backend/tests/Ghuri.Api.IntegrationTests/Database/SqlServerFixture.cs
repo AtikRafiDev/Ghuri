@@ -7,6 +7,7 @@ using Ghuri.Domain.Enums;
 using Ghuri.Domain.ValueObjects;
 using Ghuri.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,14 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     /// <summary>An HTTP client for the Api running on the test database.</summary>
     public HttpClient CreateClient() => _factory?.CreateClient() ?? throw new InvalidOperationException("Not started.");
+
+    /// <summary>The same, but redirects are NOT followed - to check a 303 and its Location.</summary>
+    public HttpClient CreateClientWithoutRedirects() =>
+        _factory?.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false })
+        ?? throw new InvalidOperationException("Not started.");
+
+    /// <summary>The stand-in for SSLCommerz the test Api uses (never the real gateway).</summary>
+    public FakePaymentGateway PaymentGateway => Services.GetRequiredService<FakePaymentGateway>();
 
     public async ValueTask InitializeAsync()
     {
@@ -199,6 +208,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
                     var testUser = sp.GetRequiredService<TestCurrentUser>();
                     return testUser.Active ? testUser : (ICurrentUser)sp.GetRequiredService(httpCurrentUser);
                 });
+
+                // Never call the real SSLCommerz from a test.
+                services.AddSingleton<FakePaymentGateway>();
+                services.AddSingleton<IPaymentGateway>(sp => sp.GetRequiredService<FakePaymentGateway>());
             });
         }
     }

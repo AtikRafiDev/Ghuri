@@ -159,7 +159,8 @@ public class CreateBookingTests(SqlServerFixture sql) : IClassFixture<SqlServerF
             departureId,
             travellers = new[] { new { type = 1, fullName = "Rahim Uddin", isLead = true } },
             contactName = "Rahim Uddin",
-            contactPhone = "01712345678"
+            contactPhone = "01712345678",
+            contactEmail = "rahim@example.com"
         };
 
         var noHeader = await client.PostAsJsonAsync("/api/v1/bookings", body, TestContext.Current.CancellationToken);

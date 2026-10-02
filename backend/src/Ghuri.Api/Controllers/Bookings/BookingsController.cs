@@ -1,6 +1,7 @@
 using Ghuri.Api.ErrorHandling;
 using Ghuri.Application.Features.Booking.Commands.CreateBooking;
 using Ghuri.Application.Features.Booking.Queries.GetMyBooking;
+using Ghuri.Application.Features.Payments.Commands.InitiatePayment;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,15 @@ public sealed class BookingsController(ISender sender) : ControllerBase
             ? Created($"/api/v1/bookings/{result.Value.BookingNo}", result.Value)
             : ResultExtensions.ToProblem(result.Error);
     }
+
+    /// <summary>
+    /// Pay for one of your own bookings: creates a payment and returns the
+    /// gateway page to send the browser to - { paymentNo, paymentPageUrl }.
+    /// 409 booking_hold_ended once the 20 minutes are over.
+    /// </summary>
+    [HttpPost("{bookingNo}/payments")]
+    public async Task<IActionResult> Pay(string bookingNo, CancellationToken cancellationToken) =>
+        (await sender.Send(new InitiatePaymentCommand(bookingNo), cancellationToken)).ToActionResult();
 
     /// <summary>One of your own bookings by its number, e.g. /api/v1/bookings/TB100001. Someone else's is 404.</summary>
     [HttpGet("{bookingNo}")]

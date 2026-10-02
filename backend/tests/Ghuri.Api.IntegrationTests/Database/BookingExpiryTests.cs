@@ -29,15 +29,6 @@ public class BookingExpiryTests(SqlServerFixture sql) : IClassFixture<SqlServerF
         return result.Value;
     }
 
-    /// <summary>Stands in for the 20 minutes passing without payment.</summary>
-    private async Task EndTheHoldAsync(string bookingNo)
-    {
-        await using var scope = sql.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Bookings
-            .Where(b => b.BookingNo == bookingNo)
-            .ExecuteUpdateAsync(set => set.SetProperty(b => b.HoldExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
-    }
-
     /// <summary>The booking's status, its hold, and its newest history row - straight from the database.</summary>
     private async Task<(BookingStatus Status, DateTime? Hold, BookingStatus LastTo, Guid? LastBy)> StateAsync(string bookingNo)
     {
@@ -57,7 +48,7 @@ public class BookingExpiryTests(SqlServerFixture sql) : IClassFixture<SqlServerF
         var (slug, departureId) = await FixedPackageAsync(sql, seats: 10);
         var booking = await BookAsync(Book(slug, departureId));
         Assert.Equal(3, await sql.ReservedSeatsAsync(departureId));
-        await EndTheHoldAsync(booking.BookingNo);
+        await EndTheHoldAsync(sql, booking.BookingNo);
 
         await Job.RunOnceAsync(TestContext.Current.CancellationToken);
 
@@ -74,7 +65,7 @@ public class BookingExpiryTests(SqlServerFixture sql) : IClassFixture<SqlServerF
         var (slug, departureId) = await FixedPackageAsync(sql, seats: 10);
         var expired = await BookAsync(Book(slug, departureId));
         await BookAsync(Book(slug, departureId)); // a second, still-valid booking: 3 more seats
-        await EndTheHoldAsync(expired.BookingNo);
+        await EndTheHoldAsync(sql, expired.BookingNo);
 
         await Job.RunOnceAsync(TestContext.Current.CancellationToken);
         await Job.RunOnceAsync(TestContext.Current.CancellationToken);
@@ -99,7 +90,7 @@ public class BookingExpiryTests(SqlServerFixture sql) : IClassFixture<SqlServerF
     {
         var slug = await FlexiblePackageAsync(sql);
         var booking = await BookAsync(Book(slug, startDate: Today.AddDays(10), nights: 3));
-        await EndTheHoldAsync(booking.BookingNo);
+        await EndTheHoldAsync(sql, booking.BookingNo);
 
         await Job.RunOnceAsync(TestContext.Current.CancellationToken);
 

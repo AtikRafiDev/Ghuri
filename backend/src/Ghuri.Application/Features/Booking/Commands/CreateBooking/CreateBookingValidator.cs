@@ -50,9 +50,11 @@ internal sealed class CreateBookingValidator : AbstractValidator<CreateBookingCo
         RuleFor(x => x.ContactName).NotEmpty().WithMessage("Enter the contact person's name.").MaximumLength(150);
         RuleFor(x => x.ContactPhone)
             .Must(PhoneNumber.IsValid).WithMessage("Enter a valid mobile number, e.g. 01712345678.");
+        // Required: the payment gateway needs it (SSLCommerz sends its receipt
+        // there), and the voucher and invoice are emailed to it (Day 11).
         RuleFor(x => x.ContactEmail)
-            .EmailAddress().MaximumLength(256)
-            .When(x => !string.IsNullOrWhiteSpace(x.ContactEmail));
+            .NotEmpty().WithMessage("Enter an email address - your payment receipt and voucher are sent there.")
+            .EmailAddress().MaximumLength(256);
         RuleFor(x => x.SpecialRequest).MaximumLength(1000);
     }
 }

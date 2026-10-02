@@ -54,6 +54,15 @@ internal static class BookingTestData
             IdempotencyKey = key ?? Guid.NewGuid().ToString()
         };
 
+    /// <summary>Stands in for the 20 minutes passing without payment: moves the hold deadline into the past.</summary>
+    public static async Task EndTheHoldAsync(SqlServerFixture sql, string bookingNo)
+    {
+        await using var scope = sql.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Bookings
+            .Where(b => b.BookingNo == bookingNo)
+            .ExecuteUpdateAsync(set => set.SetProperty(b => b.HoldExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+    }
+
     /// <summary>How many bookings this package has, straight from the database.</summary>
     public static async Task<int> BookingCountAsync(SqlServerFixture sql, string slug)
     {

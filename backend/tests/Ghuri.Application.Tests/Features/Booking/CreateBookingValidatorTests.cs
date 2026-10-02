@@ -67,6 +67,9 @@ public class CreateBookingValidatorTests
     [Fact]
     public void AnInvalidEmail_FailsOnContactEmail() => Assert.Equal(["ContactEmail"], FailedFields(Command(email: "not-an-email")));
 
-    [Fact]
-    public void NoEmail_IsFine() => Assert.Empty(FailedFields(Command(email: null)));
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void NoEmail_FailsOnContactEmail(string? email) =>
+        Assert.Equal(["ContactEmail"], FailedFields(Command(email: email))); // the gateway and the voucher need it
 }
