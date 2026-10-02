@@ -82,7 +82,11 @@ public static class PriceCalculator
         return new PriceBreakdown(lines, package.Currency);
     }
 
-    /// <summary>One person's price for a flexible stay of this many nights (already checked above).</summary>
-    private static decimal PerPersonForNights(TourPackage package, int nights) =>
+    /// <summary>
+    /// One person's price for a flexible stay of this many nights. Assumes
+    /// ForFlexibleStay already checked the package and the nights. Internal:
+    /// Booking also needs it, for its price snapshot (the per-person rate).
+    /// </summary>
+    internal static decimal PerPersonForNights(TourPackage package, int nights) =>
         package.BasePrice!.Value + (nights - package.MinNights!.Value) * package.ExtraNightPrice!.Value;
 }

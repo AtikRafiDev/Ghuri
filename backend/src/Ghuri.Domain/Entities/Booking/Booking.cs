@@ -1,5 +1,8 @@
 using Ghuri.Domain.Common;
+using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Enums;
+using Ghuri.Domain.Exceptions;
+using Ghuri.Domain.Services;
 using Ghuri.Domain.ValueObjects;
 
 namespace Ghuri.Domain.Entities.Booking;
@@ -23,9 +26,18 @@ namespace Ghuri.Domain.Entities.Booking;
 /// three without joining anywhere.
 /// </para>
 /// <para>
-/// Create accepts prices already computed by the caller (PriceCalculator).
-/// The friendly factories (CreateForDeparture / CreateFlexible) and the
-/// state machine (Expire, Cancel, Confirm) are Day 8 Part 2.
+/// A booking is born through CreateForDeparture or CreateFlexible. Both work
+/// the price out THEMSELVES with PriceCalculator - the same code as the
+/// quote - and re-check that the trip can be booked, so no caller can save
+/// a wrong price or an unbookable date. Seats are NOT reserved here: that's
+/// the repository's atomic UPDATE (TryReserveSeatsAsync), done by the
+/// handler in the same transaction.
+/// </para>
+/// <para>
+/// State machine (blueprint 6.3): PendingPayment → Confirmed (paid, Day 10)
+/// · PendingPayment → Expired (payment window over) · PendingPayment or
+/// Confirmed → Cancelled. Every change adds a BookingStatusHistory row.
+/// Completed and PartiallyPaid come later (after the trip / Phase 2).
 /// </para>
 /// </remarks>
 public sealed class Booking : AggregateRoot, IAuditable
@@ -101,26 +113,88 @@ public sealed class Booking : AggregateRoot, IAuditable
     /// <summary>Every status transition this booking has gone through - written to on every state change, read back for audit/support screens.</summary>
     public IReadOnlyList<BookingStatusHistory> History => _history.AsReadOnly();
 
+    /// <summary>How long a new booking holds its seats while the customer pays (17-day plan: "20-minute payment window").</summary>
+    public static readonly TimeSpan PaymentWindow = TimeSpan.FromMinutes(20);
+
+    /// <summary>
+    /// Seats this booking took on its departure - adults + children (infants
+    /// sit on a lap); 0 for a flexible stay or custom trip. Whoever expires or
+    /// cancels the booking gives these back (IDepartureRepository.ReleaseSeatsAsync).
+    /// </summary>
+    public short SeatsHeld => BookingType == BookingType.FixedDeparture ? (short)(Adults + Children) : (short)0;
+
     private Booking()
     {
     }
 
-    public static Booking Create(
-        string bookingNo, Guid customerId, BookingStay stay,
-        byte adults, byte children, byte infants,
-        decimal adultPriceSnapshot, decimal childPriceSnapshot, decimal infantPriceSnapshot,
-        decimal subTotal, decimal addOnTotal, decimal discountAmount, string currency,
-        PaymentPlan paymentPlan, string contactName, PhoneNumber contactPhone,
-        BookingSource source, DateTime nowUtc, DateTime holdExpiresAtUtc,
-        string? contactEmail = null, string? specialRequest = null)
+    /// <summary>
+    /// A booking on a fixed departure, priced from the departure's own
+    /// prices. The handler must reserve the seats (TryReserveSeatsAsync) in
+    /// the same transaction - this only checks there are enough right now.
+    /// </summary>
+    /// <exception cref="DomainException">The package isn't for sale, or the date can't take this many people.</exception>
+    public static Booking CreateForDeparture(
+        string bookingNo, Guid customerId, TourPackage package, Departure departure,
+        IReadOnlyList<TravellerDetails> travellers, BookingContact contact, string? specialRequest,
+        BookingSource source, DateOnly today, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(departure);
+        EnsureForSale(package);
+        var counts = CountTravellers(travellers);
+
+        // The handler checked this already, to answer with a friendly
+        // message; checking again here means no caller can skip it.
+        if (departure.CheckBookable(today, counts.Seats) != DepartureBookability.Bookable)
+            throw new DomainException("departure_not_bookable", "This date can't take this booking.");
+
+        var price = PriceCalculator.ForDeparture(package, departure, counts, singleRooms: 0);
+        var stay = BookingStay.ForDeparture(departure.Id, package.Id, departure.StartDate, departure.EndDate, package.DurationNights);
+
+        return Create(bookingNo, customerId, stay, counts,
+            departure.AdultPrice, departure.ChildPrice, departure.InfantPrice, price,
+            travellers, contact, specialRequest, source, nowUtc);
+    }
+
+    /// <summary>A flexible stay: the customer's own check-in day and nights, priced per person per stay.</summary>
+    /// <exception cref="DomainException">The package isn't for sale, or the nights / start date aren't allowed.</exception>
+    public static Booking CreateFlexible(
+        string bookingNo, Guid customerId, TourPackage package, DateOnly checkIn, byte nights,
+        IReadOnlyList<TravellerDetails> travellers, BookingContact contact, string? specialRequest,
+        BookingSource source, DateOnly today, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        EnsureForSale(package);
+        var counts = CountTravellers(travellers);
+
+        if (package.CheckFlexibleStay(today, checkIn, nights) != FlexibleStayBookability.Bookable)
+            throw new DomainException("stay_not_bookable", "These dates can't be booked for this package.");
+
+        var price = PriceCalculator.ForFlexibleStay(package, nights, counts);
+        // Children pay the adult rate, infants are free - the same rules as PriceCalculator.
+        var perPerson = PriceCalculator.PerPersonForNights(package, nights);
+
+        return Create(bookingNo, customerId, BookingStay.Flexible(package.Id, checkIn, nights), counts,
+            perPerson, perPerson, 0, price,
+            travellers, contact, specialRequest, source, nowUtc);
+    }
+
+    private static Booking Create(
+        string bookingNo, Guid customerId, BookingStay stay, Travellers counts,
+        decimal adultPrice, decimal childPrice, decimal infantPrice, PriceBreakdown price,
+        IReadOnlyList<TravellerDetails> travellers, BookingContact contact, string? specialRequest,
+        BookingSource source, DateTime nowUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bookingNo);
-        ArgumentNullException.ThrowIfNull(stay);
-        ArgumentException.ThrowIfNullOrWhiteSpace(contactName);
-        if (adults < 1)
-            throw new ArgumentOutOfRangeException(nameof(adults), "A booking needs at least one adult.");
+        ArgumentNullException.ThrowIfNull(contact);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contact.Name);
+        ArgumentNullException.ThrowIfNull(contact.Phone);
 
-        var totalAmount = subTotal + addOnTotal - discountAmount;
+        // The per-person snapshot must explain the total exactly. A price line
+        // it has no column for (a single-room supplement - not offered on a
+        // booking yet) would make the invoice disagree with what is charged.
+        if (price.Total != counts.Adults * adultPrice + counts.Children * childPrice + counts.Infants * infantPrice)
+            throw new InvalidOperationException("The price has a line the booking can't store.");
 
         var booking = new Booking
         {
@@ -133,40 +207,126 @@ public sealed class Booking : AggregateRoot, IAuditable
             StartDate = stay.StartDate,
             EndDate = stay.EndDate,
             Nights = stay.Nights,
-            Adults = adults,
-            Children = children,
-            Infants = infants,
-            AdultPriceSnapshot = adultPriceSnapshot,
-            ChildPriceSnapshot = childPriceSnapshot,
-            InfantPriceSnapshot = infantPriceSnapshot,
-            SubTotal = subTotal,
-            AddOnTotal = addOnTotal,
-            DiscountAmount = discountAmount,
-            TotalAmount = totalAmount,
+            Adults = (byte)counts.Adults,
+            Children = (byte)counts.Children,
+            Infants = (byte)counts.Infants,
+            AdultPriceSnapshot = adultPrice,
+            ChildPriceSnapshot = childPrice,
+            InfantPriceSnapshot = infantPrice,
+            SubTotal = price.Total,
+            AddOnTotal = 0,
+            DiscountAmount = 0,
+            TotalAmount = price.Total,
             PaidAmount = 0,
-            Currency = currency,
-            PaymentPlan = paymentPlan,
-            ContactName = contactName,
-            ContactPhone = contactPhone,
-            ContactEmail = contactEmail,
-            SpecialRequest = specialRequest,
+            Currency = price.Currency,
+            PaymentPlan = PaymentPlan.Full, // partial/advance payment is Phase 2
+            ContactName = contact.Name.Trim(),
+            ContactPhone = contact.Phone,
+            ContactEmail = string.IsNullOrWhiteSpace(contact.Email) ? null : contact.Email.Trim(),
+            SpecialRequest = string.IsNullOrWhiteSpace(specialRequest) ? null : specialRequest.Trim(),
             Source = source,
             Status = BookingStatus.PendingPayment,
-            HoldExpiresAtUtc = holdExpiresAtUtc
+            HoldExpiresAtUtc = nowUtc + PaymentWindow
         };
 
         booking._history.Add(BookingStatusHistory.Record(booking.Id, null, BookingStatus.PendingPayment, nowUtc));
+
+        foreach (var t in travellers)
+        {
+            booking._travellers.Add(BookingTraveller.Create(
+                booking.Id, t.Type, t.FullName.Trim(), t.IsLead, t.Gender, t.DateOfBirth,
+                string.IsNullOrWhiteSpace(t.Nationality) ? null : t.Nationality.Trim().ToUpperInvariant(),
+                passportNo: null,
+                string.IsNullOrWhiteSpace(t.Phone) ? null : t.Phone.Trim()));
+        }
+
         return booking;
     }
 
-    public BookingTraveller AddTraveller(
-        TravellerType travellerType, string fullName, bool isLead,
-        Gender? gender = null, DateOnly? dateOfBirth = null, string? nationality = null,
-        byte[]? passportNo = null, string? phone = null)
+    // ---------- State machine ----------
+
+    /// <summary>
+    /// The payment window ended without payment (the expiry job). The handler
+    /// then releases SeatsHeld. Refused while the window is still open.
+    /// </summary>
+    public void Expire(DateTime nowUtc)
     {
-        var traveller = BookingTraveller.Create(Id, travellerType, fullName, isLead, gender, dateOfBirth, nationality, passportNo, phone);
-        _travellers.Add(traveller);
-        return traveller;
+        if (Status != BookingStatus.PendingPayment)
+            throw new DomainException("booking_not_pending", "Only a booking waiting for payment can expire.");
+        if (nowUtc < HoldExpiresAtUtc)
+            throw new DomainException("booking_hold_open", "The payment window is still open.");
+
+        ChangeStatus(BookingStatus.Expired, nowUtc, changedBy: null, "Payment window ended.");
+    }
+
+    /// <summary>
+    /// Paid in full - called by the payment confirmation (Day 10). Allowed
+    /// even a moment after the deadline as long as the expiry job hasn't run
+    /// yet: the seats are still held, so nothing is lost.
+    /// </summary>
+    public void Confirm(DateTime nowUtc, Guid? confirmedBy = null)
+    {
+        if (Status != BookingStatus.PendingPayment)
+            throw new DomainException("booking_not_pending", "Only a booking waiting for payment can be confirmed.");
+
+        ChangeStatus(BookingStatus.Confirmed, nowUtc, confirmedBy, note: null);
+    }
+
+    /// <summary>
+    /// Cancelled by the customer or the agency, with a reason. Refunds are
+    /// separate (Day 11-12). The handler releases SeatsHeld.
+    /// </summary>
+    public void Cancel(DateTime nowUtc, string reason, Guid? cancelledBy)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        reason = reason.Trim();
+        if (reason.Length > 500) // CancelReason and the history Note are both 500 characters
+            throw new ArgumentOutOfRangeException(nameof(reason), "At most 500 characters.");
+        if (Status is not (BookingStatus.PendingPayment or BookingStatus.Confirmed))
+            throw new DomainException("booking_not_cancellable", "This booking can no longer be cancelled.");
+
+        CancelledAtUtc = nowUtc;
+        CancelReason = reason;
+        ChangeStatus(BookingStatus.Cancelled, nowUtc, cancelledBy, reason);
+    }
+
+    private void ChangeStatus(BookingStatus to, DateTime nowUtc, Guid? changedBy, string? note)
+    {
+        _history.Add(BookingStatusHistory.Record(Id, Status, to, nowUtc, changedBy, note));
+        Status = to;
+        HoldExpiresAtUtc = null; // a hold only means something while PendingPayment
+    }
+
+    // ---------- Rules shared by both factories ----------
+
+    private static void EnsureForSale(TourPackage package)
+    {
+        if (package.Status != PackageStatus.Published)
+            throw new DomainException("package_not_for_sale", "This package is not for sale.");
+    }
+
+    /// <summary>
+    /// The counts come FROM the list of people, so "2 adults booked, 3 names
+    /// sent" can't happen. Exactly one lead traveller, and an adult.
+    /// Travellers.Create enforces the rest (at least one adult, an adult per
+    /// infant, at most 20 people).
+    /// </summary>
+    private static Travellers CountTravellers(IReadOnlyList<TravellerDetails> travellers)
+    {
+        ArgumentNullException.ThrowIfNull(travellers);
+        if (travellers.Any(t => !Enum.IsDefined(t.Type)))
+            throw new ArgumentException("Unknown traveller type.", nameof(travellers));
+
+        var leads = travellers.Where(t => t.IsLead).ToList();
+        if (leads.Count != 1)
+            throw new ArgumentException("Exactly one traveller must be the lead.", nameof(travellers));
+        if (leads[0].Type != TravellerType.Adult)
+            throw new ArgumentException("The lead traveller must be an adult.", nameof(travellers));
+
+        return ValueObjects.Travellers.Create(
+            travellers.Count(t => t.Type == TravellerType.Adult),
+            travellers.Count(t => t.Type == TravellerType.Child),
+            travellers.Count(t => t.Type == TravellerType.Infant));
     }
 
     public BookingAddOn AddAddOn(Guid addOnId, string nameSnapshot, decimal unitPrice, short quantity)
