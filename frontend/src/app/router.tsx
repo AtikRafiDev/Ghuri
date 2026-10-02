@@ -34,8 +34,19 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
+          // Step 1: traveller details → books the trip (seats held 20 minutes).
           { index: true, lazy: async () => ({ Component: (await import('@/features/booking/pages/CheckoutPage')).CheckoutPage }) },
+          {
+            // Step 2: countdown + "Pay" → SSLCommerz. A refresh reloads the booking from the API.
+            path: ':bookingNo',
+            lazy: async () => ({ Component: (await import('@/features/booking/pages/BookingPaymentPage')).BookingPaymentPage }),
+          },
         ],
+      },
+      {
+        // Back from SSLCommerz's page (the API's return address redirects here). No login needed to see it.
+        path: 'payment/result',
+        lazy: async () => ({ Component: (await import('@/features/booking/pages/PaymentResultPage')).PaymentResultPage }),
       },
       { path: 'login', lazy: async () => ({ Component: (await import('@/features/auth/pages/LoginPage')).LoginPage }) },
       { path: 'register', lazy: async () => ({ Component: (await import('@/features/auth/pages/RegisterPage')).RegisterPage }) },

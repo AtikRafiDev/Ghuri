@@ -43,6 +43,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
         TrustServerCertificate = true,
     }.ConnectionString;
 
+    /// <summary>This fixture's own folder for saved files, deleted with the database.</summary>
+    private readonly string _uploadsPath = Path.Combine(Path.GetTempPath(), "ghuri-test-uploads", Guid.NewGuid().ToString("N"));
+
     private TestDatabaseApiFactory? _factory;
     private Guid _destinationId;
 
@@ -61,7 +64,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        _factory = new TestDatabaseApiFactory(_connectionString);
+        _factory = new TestDatabaseApiFactory(_connectionString, _uploadsPath);
 
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -183,15 +186,22 @@ public sealed class SqlServerFixture : IAsyncLifetime
         }
 
         await _factory.DisposeAsync();
+
+        if (Directory.Exists(_uploadsPath))
+            Directory.Delete(_uploadsPath, recursive: true);
     }
 
     /// <summary>The usual test Api, with the connection string swapped for the test database's.</summary>
-    private sealed class TestDatabaseApiFactory(string connectionString) : GhuriApiFactory
+    private sealed class TestDatabaseApiFactory(string connectionString, string uploadsPath) : GhuriApiFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
             builder.UseSetting("ConnectionStrings:DefaultConnection", connectionString);
+
+            // Files a test saves (e.g. the demo seeder's photos) go to a temp
+            // folder - never into the developer's real uploads folder.
+            builder.UseSetting("Storage:RootPath", uploadsPath);
 
             // "Who is logged in" without HTTP or tokens: SendAsync /
             // SendCommandAsync set it for their own scope. Every other scope -

@@ -181,6 +181,7 @@ public static class DependencyInjection
         // Only ever resolved by the seed methods below ("dotnet run -- seed" / "-- seed-demo").
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DemoDataSeeder>();
+        services.AddScoped<DemoPackageSeeder>();
 
         // "Can we actually reach SQL Server?" - tagged "ready" so it only
         // runs on /health/ready, not on the lightweight /health/live

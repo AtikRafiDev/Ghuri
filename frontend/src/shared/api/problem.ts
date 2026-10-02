@@ -51,11 +51,21 @@ export function toAppError(error: unknown): AppError {
 
 // The API names fields the C# way ("Password", "NewPassword") or as a JSON
 // path ("$.password"); our forms use camelCase ("password", "newPassword").
+// A list item keeps its position, in React Hook Form's path style, so the
+// message lands under the right row:
+//   "Password" / "$.password"                          → "password"
+//   "Travellers[1].FullName" / "$.travellers[1].fullName" → "travellers.1.fullName"
 function toFieldErrors(errors: ProblemDetails['errors']): Record<string, string> {
   const result: Record<string, string> = {}
   for (const [key, messages] of Object.entries(errors ?? {})) {
-    const name = key.split('.').pop() ?? key
-    const field = name.charAt(0).toLowerCase() + name.slice(1)
+    const field =
+      key
+        .replace(/^\$\.?/, '') // JSON-path prefix
+        .replace(/\[(\d+)\]/g, '.$1') // [1] → .1
+        .split('.')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toLowerCase() + part.slice(1))
+        .join('.') || key
     if (messages[0]) result[field] = messages[0]
   }
   return result

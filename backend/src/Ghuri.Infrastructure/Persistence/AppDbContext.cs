@@ -99,6 +99,25 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// <summary>Same idea again, for support.CustomTourRequests.RequestNo (CR1001).</summary>
     public const string CustomTourRequestNoSequenceName = "CustomTourRequestNoSequence";
 
+    /// <summary>
+    /// Every DateTime in this database is UTC (the columns end in "Utc"), but
+    /// SQL Server's datetime2 doesn't store that - EF would read them back as
+    /// "Unspecified". JSON then sends "10:20:00" without a Z, and a browser
+    /// reads that as LOCAL time: a payment countdown 6 hours off in Dhaka.
+    /// Marking them UTC on the way out fixes every column at once. Nothing
+    /// changes in the database (no migration): the stored values are the same.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+    }
+
+    /// <summary>Writes the value as it is; reads it back marked as UTC.</summary>
+    private sealed class UtcDateTimeConverter() : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+        value => value,
+        value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

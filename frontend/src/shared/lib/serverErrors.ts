@@ -26,7 +26,8 @@ export function applyServerErrors<T extends FieldValues>(
 
   let shownOnAField = false
   for (const [field, message] of Object.entries(appError.fieldErrors)) {
-    if (fieldNames.includes(field)) {
+    // "travellers.1.fullName" belongs to the form's "travellers" list.
+    if (fieldNames.includes(field.split('.')[0])) {
       form.setError(field as Path<T>, { type: 'server', message })
       shownOnAField = true
     }

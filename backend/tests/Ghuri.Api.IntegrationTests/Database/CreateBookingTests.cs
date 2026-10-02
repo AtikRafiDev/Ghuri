@@ -175,6 +175,11 @@ public class CreateBookingTests(SqlServerFixture sql) : IClassFixture<SqlServerF
 
         var mine = await client.GetAsync(created.Headers.Location, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
+
+        // Read back from the database, the deadline must still say it's UTC ("…Z"):
+        // without the Z a browser reads it as local time - a countdown 6 hours off in Dhaka.
+        using var json = System.Text.Json.JsonDocument.Parse(await mine.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.EndsWith("Z", json.RootElement.GetProperty("holdExpiresAtUtc").GetString());
         Assert.Equal(1, await sql.ReservedSeatsAsync(departureId));
     }
 

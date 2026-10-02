@@ -7,17 +7,19 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 
 /// <summary>
 /// DEVELOPMENT ONLY: fills the catalogue with realistic sample categories and
-/// destinations - national (Bangladesh) and international - so the admin
-/// tables and public pages have something to show while being built.
+/// destinations - national (Bangladesh) and international - plus four
+/// published, bookable packages (DemoPackageSeeder), so the admin tables,
+/// public pages and checkout have something to work with.
 /// </summary>
 /// <remarks>
 /// Run with "dotnet run --project src/Ghuri.Api -- seed-demo"; Program.cs
 /// refuses it outside Development, so sample data can never reach a real
 /// server. Safe to run again: a row whose slug already exists is skipped,
 /// so it never duplicates and never overwrites an admin's edits.
-/// No images - upload real photos through the admin screen.
+/// Destinations get no photos (upload real ones in the admin); the demo
+/// packages get generated postcards, since publishing needs a cover.
 /// </remarks>
-internal sealed class DemoDataSeeder(AppDbContext db, ILogger<DemoDataSeeder> logger)
+internal sealed class DemoDataSeeder(AppDbContext db, DemoPackageSeeder packageSeeder, ILogger<DemoDataSeeder> logger)
 {
     private sealed record DemoCategory(string Name, string Icon);
 
@@ -114,9 +116,12 @@ internal sealed class DemoDataSeeder(AppDbContext db, ILogger<DemoDataSeeder> lo
         var addedDestinations = await AddDestinationsAsync(countries, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
+        // After the save above: packages need the destinations and categories to exist.
+        var addedPackages = await packageSeeder.SeedAsync(cancellationToken);
+
         logger.LogInformation(
-            "Demo data: added {Categories} categories and {Destinations} destinations (existing slugs were skipped).",
-            addedCategories, addedDestinations);
+            "Demo data: added {Categories} categories, {Destinations} destinations and {Packages} published packages (existing slugs were skipped).",
+            addedCategories, addedDestinations, addedPackages);
     }
 
     private async Task<int> AddCategoriesAsync(CancellationToken cancellationToken)
