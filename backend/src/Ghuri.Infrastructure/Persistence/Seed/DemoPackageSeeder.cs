@@ -1,8 +1,5 @@
-using System.Security.Cryptography;
-using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
 using Ghuri.Domain.Entities.Catalog;
-using Ghuri.Domain.Entities.Ops;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
 using Ghuri.Domain.ValueObjects;
@@ -34,7 +31,7 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 internal sealed class DemoPackageSeeder(
     AppDbContext db,
     ITourPackageRepository packages,
-    IFileStorage storage,
+    DemoPhotoWriter photos,
     TimeProvider clock,
     ILogger<DemoPackageSeeder> logger)
 {
@@ -201,26 +198,10 @@ internal sealed class DemoPackageSeeder(
         return added;
     }
 
-    /// <summary>Three postcards per package (the first is the cover), saved like uploaded photos: file on disk + FileObject row.</summary>
-    private async Task<List<Guid>> DrawPhotosAsync(DemoPackage demo, DateTime nowUtc, CancellationToken cancellationToken)
-    {
-        string[] subtitles = [demo.Destination, $"{demo.Destination} - day trip", $"{demo.Destination} - evening"];
-        var fileIds = new List<Guid>();
-
-        for (var variant = 0; variant < subtitles.Length; variant++)
-        {
-            var bytes = DemoPostcard.Draw(demo.Title, subtitles[variant], demo.SkyTop, demo.SkyBottom, variant);
-            var storageKey = $"images/demo/{Guid.CreateVersion7()}.webp";
-            using (var content = new MemoryStream(bytes, writable: false))
-                await storage.SaveAsync(storageKey, content, cancellationToken);
-
-            var file = FileObject.Create(
-                storageKey, $"{Slug.Create(demo.Title).Value}-{variant + 1}.webp", "image/webp", bytes.Length,
-                Convert.ToHexStringLower(SHA256.HashData(bytes)), isPublic: true, nowUtc);
-            db.FileObjects.Add(file);
-            fileIds.Add(file.Id);
-        }
-
-        return fileIds;
-    }
+    /// <summary>Three postcards per package (the first is the cover).</summary>
+    private Task<List<Guid>> DrawPhotosAsync(DemoPackage demo, DateTime nowUtc, CancellationToken cancellationToken) =>
+        photos.SaveAsync(
+            demo.Title,
+            [(demo.Title, demo.Destination), (demo.Title, $"{demo.Destination} - day trip"), (demo.Title, $"{demo.Destination} - evening")],
+            demo.SkyTop, demo.SkyBottom, nowUtc, cancellationToken);
 }

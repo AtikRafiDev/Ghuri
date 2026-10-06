@@ -4,8 +4,9 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 
 /// <summary>
 /// DEVELOPMENT ONLY: draws a simple postcard (sky gradient, sun, hills, a
-/// title) as a WebP image, so demo packages have photos without downloading
-/// anything - the same SkiaSharp library the upload pipeline uses.
+/// title) as a WebP image, so demo destinations and packages have photos
+/// without downloading anything - the same SkiaSharp library the upload
+/// pipeline uses.
 /// </summary>
 internal static class DemoPostcard
 {
@@ -16,7 +17,7 @@ internal static class DemoPostcard
     /// <param name="subtitle">Smaller text under it, e.g. the destination.</param>
     /// <param name="skyTop">Hex colour at the top of the sky, e.g. "#0EA5E9".</param>
     /// <param name="skyBottom">Hex colour at the horizon.</param>
-    /// <param name="variant">0 = cover (sun high, big title); 1, 2 = other angles of the same scene.</param>
+    /// <param name="variant">0 = cover (sun high, big title); 1, 2, 3 = other angles of the same scene (the sun sinks lower each time).</param>
     public static byte[] Draw(string title, string subtitle, string skyTop, string skyBottom, int variant)
     {
         using var surface = SKSurface.Create(new SKImageInfo(Width, Height, SKColorType.Rgba8888, SKAlphaType.Premul));
