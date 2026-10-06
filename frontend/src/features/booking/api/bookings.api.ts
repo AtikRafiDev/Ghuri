@@ -1,4 +1,4 @@
-import { isAxiosError } from 'axios'
+import { downloadBlob } from '@/shared/api/download'
 import { queryOptions } from '@tanstack/react-query'
 import { http } from '@/shared/api/http'
 
@@ -145,22 +145,8 @@ export const bookingsApi = {
    * The invoice or e-voucher PDF. Fetched through the API client (not a
    * plain link) because it needs the login token; the caller saves the Blob.
    */
-  async document(bookingNo: string, kind: 'invoice' | 'voucher'): Promise<Blob> {
-    try {
-      const { data } = await http.get<Blob>(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/${kind}`, { responseType: 'blob' })
-      return data
-    } catch (error) {
-      // With responseType 'blob' an error's JSON arrives as a Blob too - turn
-      // it back into JSON so toAppError can show the API's own message.
-      if (isAxiosError(error) && error.response?.data instanceof Blob) {
-        try {
-          error.response.data = JSON.parse(await error.response.data.text())
-        } catch {
-          // not JSON - the generic message will do
-        }
-      }
-      throw error
-    }
+  document(bookingNo: string, kind: 'invoice' | 'voucher'): Promise<Blob> {
+    return downloadBlob(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/${kind}`)
   },
 
   async mine(bookingNo: string): Promise<MyBooking> {

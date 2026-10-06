@@ -185,6 +185,30 @@ public class PaymentTests
         Assert.Equal((30, 100, (decimal?)null), (payment.Method!.Length, payment.ProviderTransactionId!.Length, payment.GatewayFee));
     }
 
+    // ---------- Refunded (Day 12) ----------
+
+    [Theory]
+    [InlineData(16_000, PaymentStatus.Refunded)]
+    [InlineData(8_000, PaymentStatus.PartiallyRefunded)]
+    public void MarkRefunded_AllOrPartOfIt(decimal totalRefunded, PaymentStatus expected)
+    {
+        var payment = NewPayment(); // ৳16,000
+        payment.MarkSucceeded("BKASH-BKash", "BANK1", null, Now);
+
+        payment.MarkRefunded(totalRefunded);
+
+        Assert.Equal(expected, payment.Status);
+    }
+
+    [Fact]
+    public void APaymentThatNeverSucceeded_CantBeRefunded()
+    {
+        var payment = NewPayment();
+        payment.MarkFailed("Declined");
+
+        Assert.Equal("payment_not_refundable", Assert.Throws<DomainException>(() => payment.MarkRefunded(100)).Code);
+    }
+
     [Fact]
     public void AVeryLongGatewayReason_IsCutTo300Characters()
     {

@@ -56,6 +56,7 @@ internal sealed class HandleGatewayCallbackHandler(
     IPaymentRepository payments,
     IBookingRepository bookings,
     IDepartureRepository departures,
+    IRefundRepository refunds,
     IPaymentGateway gateway,
     TimeProvider clock,
     ILogger<HandleGatewayCallbackHandler> logger) : ICommandHandler<HandleGatewayCallbackCommand>
@@ -136,7 +137,7 @@ internal sealed class HandleGatewayCallbackHandler(
         // Another attempt already paid it (the customer paid on two payment
         // pages). This money stays on its own Payment and goes back.
         if (booking.PaidAmount + payment.Amount > booking.TotalAmount)
-            return RefundDue(payment, booking.BookingNo, $"paid, but the booking was already paid ({booking.Status})");
+            return await RefundDueAsync(payment, booking.Id, booking.BookingNo, $"paid, but the booking was already paid ({booking.Status})", cancellationToken);
 
         booking.RecordPayment(payment.Amount);
 
@@ -158,11 +159,11 @@ internal sealed class HandleGatewayCallbackHandler(
                 return "confirmed after expiry" + risk;
             }
 
-            return RefundDue(payment, booking.BookingNo, "paid after the booking expired, and its seats are gone");
+            return await RefundDueAsync(payment, booking.Id, booking.BookingNo, "paid after the booking expired, and its seats are gone", cancellationToken);
         }
 
         // Cancelled while the customer was paying: the money must go back.
-        return RefundDue(payment, booking.BookingNo, $"paid, but the booking is {booking.Status}");
+        return await RefundDueAsync(payment, booking.Id, booking.BookingNo, $"paid, but the booking is {booking.Status}", cancellationToken);
     }
 
     private string Rejected(PaymentEntity payment, string outcome)
@@ -172,12 +173,22 @@ internal sealed class HandleGatewayCallbackHandler(
         return outcome;
     }
 
-    private string RefundDue(PaymentEntity payment, string bookingNo, string why)
+    /// <summary>
+    /// Money we must give back (Day 12): a Refund for the whole payment,
+    /// requested by the system (RequestedBy null), so it lands in the admin
+    /// "Refunds to process" list - nobody has to spot a log line.
+    /// </summary>
+    private async Task<string> RefundDueAsync(PaymentEntity payment, Guid bookingId, string bookingNo, string why, CancellationToken cancellationToken)
     {
+        var refundNo = await refunds.NextRefundNoAsync(cancellationToken);
+        refunds.Add(Refund.Request(
+            refundNo, bookingId, payment.Id, payment.Amount, refundPercent: 100,
+            $"Payment {payment.PaymentNo} was {why}.", requestedBy: null));
+
         logger.LogWarning(
-            "REFUND DUE: payment {PaymentNo} ({Amount} {Currency}) for booking {BookingNo} was {Why}.",
-            payment.PaymentNo, Money(payment.Amount), payment.Currency, bookingNo, why);
-        return $"refund due: {why}";
+            "REFUND DUE: payment {PaymentNo} ({Amount} {Currency}) for booking {BookingNo} was {Why} - refund {RefundNo} requested.",
+            payment.PaymentNo, Money(payment.Amount), payment.Currency, bookingNo, why, refundNo);
+        return $"refund due: {why} ({refundNo})";
     }
 
     private static string? Field(HandleGatewayCallbackCommand command, string name) =>

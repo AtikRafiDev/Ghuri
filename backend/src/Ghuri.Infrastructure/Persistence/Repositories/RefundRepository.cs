@@ -17,5 +17,14 @@ internal sealed class RefundRepository(AppDbContext db) : IRefundRepository
         return $"RF{values.Single()}";
     }
 
+    // UPDLOCK: see BookingRepository.GetByIdForUpdateAsync.
+    public async Task<Refund?> GetByRefundNoForUpdateAsync(string refundNo, CancellationToken cancellationToken)
+    {
+        var rows = await db.Refunds
+            .FromSqlInterpolated($"SELECT * FROM [payment].[Refunds] WITH (UPDLOCK, ROWLOCK) WHERE [RefundNo] = {refundNo}")
+            .ToListAsync(cancellationToken);
+        return rows.SingleOrDefault();
+    }
+
     public void Add(Refund refund) => db.Refunds.Add(refund);
 }

@@ -295,7 +295,13 @@ public class PaymentConfirmationTests : IClassFixture<SqlServerFixture>
         Assert.Equal(PaymentStatus.Succeeded, secondState.Payment.Status);
         // The booking counts its price once; the extra ৳34,000 stays on the second Payment, to refund.
         Assert.Equal((BookingStatus.Confirmed, 34_000m, 1), (secondState.Booking.Status, secondState.Booking.PaidAmount, secondState.Confirmations));
-        Assert.Equal("refund due: paid, but the booking was already paid (Confirmed)", Assert.Single(secondState.Events).ProcessingResult);
+        Assert.StartsWith("refund due: paid, but the booking was already paid (Confirmed) (RF", Assert.Single(secondState.Events).ProcessingResult);
+
+        // Day 12: the system asked for the refund itself - it's in the staff's list, for the whole 2nd payment.
+        await using var scope = _sql.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var refund = await db.Refunds.AsNoTracking().SingleAsync(r => r.PaymentId == secondState.Payment.Id);
+        Assert.Equal((paying.Amount, 100m, RefundStatus.Requested, (Guid?)null), (refund.Amount, refund.RefundPercent, refund.Status, refund.RequestedBy));
     }
 
     // ---------- The result page's question ----------

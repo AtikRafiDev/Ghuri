@@ -31,7 +31,7 @@ public enum BookingDocumentKind
 public sealed record GetMyBookingDocumentQuery(string BookingNo, BookingDocumentKind Kind) : IQuery<BookingDocumentFile>;
 
 /// <summary>A ready-made PDF: "Invoice-TB100001.pdf" or "Voucher-TB100001.pdf".</summary>
-public sealed record BookingDocumentFile(string FileName, byte[] Content)
+public sealed partial record BookingDocumentFile(string FileName, byte[] Content)
 {
     public const string ContentType = "application/pdf";
 }
@@ -55,7 +55,16 @@ internal sealed class GetMyBookingDocumentHandler(
         if (data is null)
             return BookingErrors.BookingNotFound;
 
-        if (query.Kind == BookingDocumentKind.Voucher)
+        return BookingDocumentFile.Create(data, query.Kind, renderer);
+    }
+}
+
+/// <summary>The one place that decides which document exists when - shared by the customer's and the staff's download.</summary>
+public sealed partial record BookingDocumentFile
+{
+    internal static Result<BookingDocumentFile> Create(BookingDocumentData data, BookingDocumentKind kind, IBookingDocumentRenderer renderer)
+    {
+        if (kind == BookingDocumentKind.Voucher)
         {
             if (data.Status is not (BookingStatus.Confirmed or BookingStatus.Completed))
                 return BookingErrors.DocumentNotAvailable("The e-voucher is available once the booking is confirmed.");

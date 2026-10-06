@@ -31,6 +31,12 @@ internal sealed class PaymentRepository(AppDbContext db) : IPaymentRepository
         return rows.SingleOrDefault();
     }
 
+    public Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        db.Payments.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+    public Task<string?> PaymentNoWithReferenceAsync(string reference, CancellationToken cancellationToken) =>
+        db.Payments.Where(p => p.ProviderTransactionId == reference).Select(p => p.PaymentNo).FirstOrDefaultAsync(cancellationToken);
+
     public void Add(Payment payment) => db.Payments.Add(payment);
 
     public Task<bool> EventExistsAsync(PaymentProvider provider, string providerEventId, CancellationToken cancellationToken) =>

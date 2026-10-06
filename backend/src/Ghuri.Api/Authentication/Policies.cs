@@ -15,6 +15,15 @@ public static class Policies
     /// <summary>Customer-only endpoints: bookings, wishlist, reviews (blueprint: /api/v1/me/...).</summary>
     public const string Customer = nameof(Customer);
 
+    /// <summary>
+    /// Actions that move money: record a manual payment, mark a refund as sent
+    /// or reject it (decided 2026-10-06: SuperAdmin, Manager, Accounts - never Sales).
+    /// </summary>
+    public const string ManageMoney = nameof(ManageMoney);
+
+    /// <summary>Cancel a booking for the agency (SuperAdmin, Manager, Sales - the people who talk to customers).</summary>
+    public const string CancelBookings = nameof(CancelBookings);
+
     public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services)
     {
         // Role names come from SystemRole, the same enum the token's role
@@ -23,7 +32,11 @@ public static class Policies
             .AddPolicy(AdminArea, policy => policy.RequireRole(
                 nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager),
                 nameof(SystemRole.Sales), nameof(SystemRole.Accounts)))
-            .AddPolicy(Customer, policy => policy.RequireRole(nameof(SystemRole.Customer)));
+            .AddPolicy(Customer, policy => policy.RequireRole(nameof(SystemRole.Customer)))
+            .AddPolicy(ManageMoney, policy => policy.RequireRole(
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Accounts)))
+            .AddPolicy(CancelBookings, policy => policy.RequireRole(
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)));
 
         return services;
     }

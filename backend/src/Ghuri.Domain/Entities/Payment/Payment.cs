@@ -117,6 +117,22 @@ public sealed class Payment : AggregateRoot, IAuditable
         FailureReason = null; // a validated success wins over an earlier "fail" message
     }
 
+    /// <summary>
+    /// Money of this payment went back to the customer (a Refund was completed).
+    /// <paramref name="totalRefunded"/> = everything refunded from this payment so far:
+    /// all of it → Refunded, part of it → PartiallyRefunded.
+    /// </summary>
+    /// <exception cref="DomainException">The payment never succeeded - there was nothing to give back.</exception>
+    public void MarkRefunded(decimal totalRefunded)
+    {
+        if (Status is not (PaymentStatus.Succeeded or PaymentStatus.PartiallyRefunded))
+            throw new DomainException("payment_not_refundable", "Only a payment that succeeded can be refunded.");
+        if (totalRefunded <= 0)
+            throw new ArgumentOutOfRangeException(nameof(totalRefunded), "Must be greater than zero.");
+
+        Status = totalRefunded >= Amount ? PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded;
+    }
+
     private static string? Cut(string? text, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(text))

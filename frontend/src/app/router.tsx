@@ -128,6 +128,22 @@ export const router = createBrowserRouter([
           Component: (await import('@/features/admin/categories/pages/AdminCategoriesPage')).AdminCategoriesPage,
         }),
       },
+      {
+        path: 'bookings',
+        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingsPage')).AdminBookingsPage }),
+      },
+      {
+        path: 'bookings/:bookingNo',
+        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingPage')).AdminBookingPage }),
+      },
+      {
+        path: 'payments',
+        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminPaymentsPage')).AdminPaymentsPage }),
+      },
+      {
+        path: 'refunds',
+        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminRefundsPage')).AdminRefundsPage }),
+      },
       { path: 'system', lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) },
     ],
   },

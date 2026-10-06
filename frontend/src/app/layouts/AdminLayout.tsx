@@ -1,11 +1,14 @@
 import {
   ActivityIcon,
+  CalendarCheckIcon,
+  CreditCardIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   MapPinIcon,
   PackageIcon,
   TagsIcon,
+  Undo2Icon,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -31,9 +34,17 @@ import { useAuth } from '@/features/auth/useAuth'
 
 type MenuItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 
-// The admin menu, in groups. Later days add Bookings, Payments... here.
+// The admin menu, in groups.
 const adminMenu: { label: string; items: MenuItem[] }[] = [
   { label: 'Overview', items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboardIcon, end: true }] },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/admin/bookings', label: 'Bookings', icon: CalendarCheckIcon },
+      { to: '/admin/payments', label: 'Payments', icon: CreditCardIcon },
+      { to: '/admin/refunds', label: 'Refunds', icon: Undo2Icon },
+    ],
+  },
   {
     label: 'Catalogue',
     items: [

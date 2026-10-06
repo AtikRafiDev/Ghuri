@@ -39,7 +39,8 @@ internal sealed class RefundConfiguration : IEntityTypeConfiguration<Refund>
         // Two separate FKs to the SAME table (iam.Users) - each needs its
         // own explicit relationship, otherwise EF Core can't tell which
         // column is which.
-        builder.Property(r => r.RequestedBy).IsRequired();
+        // Optional: null = requested by the system (a late or double payment - Day 12).
+        builder.Property(r => r.RequestedBy);
         builder.HasOne<User>().WithMany().HasForeignKey(r => r.RequestedBy).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(r => r.ApprovedBy);

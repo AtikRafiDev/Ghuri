@@ -10,6 +10,11 @@ public interface IPaymentRepository
 
     Task<Payment?> GetByPaymentNoAsync(string paymentNo, CancellationToken cancellationToken);
 
+    Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>Is this reference (a bank / bKash transaction id) already on another payment? Stops one receipt being recorded twice.</summary>
+    Task<string?> PaymentNoWithReferenceAsync(string reference, CancellationToken cancellationToken);
+
     /// <summary>
     /// Like GetByPaymentNoAsync, but LOCKS the row until the transaction ends.
     /// Two messages about the same payment (the IPN and the browser coming back

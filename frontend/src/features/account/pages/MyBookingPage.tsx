@@ -13,7 +13,7 @@ import { formatDate } from '@/shared/lib/dates'
 import { formatTaka } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
 import { BookingDocuments } from '../components/BookingDocuments'
-import { BookingStatusBadge } from '../components/BookingStatusBadge'
+import { BookingStatusBadge } from '@/features/booking/components/BookingStatusBadge'
 import { CancelBookingDialog } from '../components/CancelBookingDialog'
 
 const refundLabels: Record<RefundStatus, string> = {

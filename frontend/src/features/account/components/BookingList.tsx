@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import type { MyBookingSummary } from '@/features/booking/api/bookings.api'
 import { formatDate } from '@/shared/lib/dates'
 import { formatTaka } from '@/shared/lib/format'
-import { BookingStatusBadge } from './BookingStatusBadge'
+import { BookingStatusBadge } from '@/features/booking/components/BookingStatusBadge'
 
 /** The customer's bookings as a list of links to each booking's page. */
 export function BookingList({ bookings }: { bookings: MyBookingSummary[] }) {

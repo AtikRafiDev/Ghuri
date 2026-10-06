@@ -17,3 +17,11 @@ public static class AgencyTime
     public static DateOnly Today(this TimeProvider clock) =>
         DateOnly.FromDateTime(clock.GetUtcNow().ToOffset(UtcOffset).DateTime);
 }
+
+/// <summary>A Bangladesh calendar day as UTC times - for "today's bookings" or a date filter on UTC columns.</summary>
+public static class AgencyDay
+{
+    /// <summary>Midnight in Dhaka, in UTC: 7 Oct 00:00 (UTC+6) = 6 Oct 18:00 UTC.</summary>
+    public static DateTime StartUtc(DateOnly day) =>
+        DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue) - AgencyTime.UtcOffset, DateTimeKind.Utc);
+}

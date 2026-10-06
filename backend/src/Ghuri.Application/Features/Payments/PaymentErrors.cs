@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ghuri.Application.Common;
 
 namespace Ghuri.Application.Features.Payments;
@@ -36,4 +37,28 @@ public static class PaymentErrors
 
     public static readonly Error PaymentNotFound =
         Error.NotFound("payment_not_found", "This payment doesn't exist.");
+
+    // Manual payments (Day 12)
+
+    public static readonly Error BookingNotPayable =
+        Error.Conflict("booking_not_payable", "This booking can't take a payment - it's already paid, or cancelled.");
+
+    /// <summary>Partial payments are Phase 2: the amount must settle the booking exactly.</summary>
+    public static Error ManualAmountMustBe(decimal due, string currency) =>
+        Error.Failure("manual_amount_mismatch", $"The amount must be exactly what's due: {currency} {due.ToString("#,0.00", CultureInfo.InvariantCulture)}.");
+
+    /// <summary>The same bank / bKash transaction recorded twice - almost always a double entry.</summary>
+    public static Error ReferenceAlreadyUsed(string paymentNo) =>
+        Error.Conflict("payment_reference_used", $"This transaction id is already recorded on payment {paymentNo}.");
+
+    // Refunds (Day 12)
+
+    public static readonly Error RefundNotFound =
+        Error.NotFound("refund_not_found", "This refund doesn't exist.");
+
+    public static readonly Error RefundNotOpen =
+        Error.Conflict("refund_not_open", "This refund has already been completed or rejected.");
+
+    public static readonly Error SeatsNoLongerAvailable =
+        Error.Conflict("seats_no_longer_available", "This booking expired and its seats have been taken - it can't be revived. Make a new booking instead.");
 }

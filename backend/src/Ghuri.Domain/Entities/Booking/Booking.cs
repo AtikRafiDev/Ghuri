@@ -318,13 +318,13 @@ public sealed class Booking : AggregateRoot, IAuditable
     /// don't call this: the booking stays Expired and the money is refunded.
     /// </summary>
     /// <exception cref="DomainException">Not expired, or not paid in full.</exception>
-    public void ConfirmAfterExpiry(DateTime nowUtc)
+    public void ConfirmAfterExpiry(DateTime nowUtc, Guid? confirmedBy = null)
     {
         if (Status != BookingStatus.Expired)
             throw new DomainException("booking_not_expired", "Only an expired booking can be revived by a late payment.");
         EnsurePaidInFull();
 
-        ChangeStatus(BookingStatus.Confirmed, nowUtc, changedBy: null, "Paid after the payment window ended.");
+        ChangeStatus(BookingStatus.Confirmed, nowUtc, confirmedBy, "Paid after the payment window ended.");
         RaiseDomainEvent(new BookingConfirmed(Id));
     }
 
