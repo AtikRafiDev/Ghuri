@@ -6,6 +6,7 @@ using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.ValueObjects;
 using Ghuri.Infrastructure.Persistence;
+using Ghuri.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -238,6 +239,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
                 // Emails are kept in a list for the test to read, never sent.
                 services.AddSingleton<FakeEmailSender>();
                 services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
+
+                // The demo seeders never download from Wikimedia in a test.
+                services.AddSingleton<FakeDemoPhotoSource>();
+                services.AddSingleton<IDemoPhotoSource>(sp => sp.GetRequiredService<FakeDemoPhotoSource>());
             });
         }
     }

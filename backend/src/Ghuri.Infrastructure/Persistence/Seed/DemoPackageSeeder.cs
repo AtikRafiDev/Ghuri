@@ -10,7 +10,7 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 
 /// <summary>
 /// DEVELOPMENT ONLY: four PUBLISHED, ready-to-book packages - two with fixed
-/// departures, two flexible stays - each with three generated photos, an
+/// departures, two flexible stays - each with three real photos, an
 /// itinerary, inclusions and categories. Lets the checkout and payment be
 /// tried without first building packages by hand in the admin.
 /// </summary>
@@ -22,7 +22,8 @@ namespace Ghuri.Infrastructure.Persistence.Seed;
 /// checked exactly as in the admin.
 /// </para>
 /// <para>
-/// Safe to run again: a package whose slug exists is skipped. Departure dates
+/// Safe to run again: a package whose slug exists is skipped (apart from
+/// swapping drawn postcards for real photos - see DemoPhotoWriter). Departure dates
 /// are counted from today (10, 24, 38 days ahead...), so they are in the
 /// future when seeded - once they pass, add new dates in the admin, or delete
 /// the package there and seed again.
@@ -51,6 +52,7 @@ internal sealed class DemoPackageSeeder(
         string[] Exclusions,
         DemoDay[] Days,
         DemoDeparture[] Departures,
+        string[] Photos,
         string SkyTop,
         string SkyBottom,
         bool IsFeatured = false);
@@ -81,6 +83,7 @@ internal sealed class DemoPackageSeeder(
                 new(24, 13_000, 9_800, 1_000, 3_000, 20),
                 new(38, 12_500, 9_500, 1_000, 3_000, 4), // nearly full: shows "4 seats left"
             ],
+            Photos: ["Sea Beach View.jpg", "Himchari Waterfall (01).jpg", "Inani Beach in the day (21 February 2014).jpg"],
             SkyTop: "#0EA5E9", SkyBottom: "#FDE68A", IsFeatured: true),
         new(
             Destination: "Sajek Valley",
@@ -104,6 +107,7 @@ internal sealed class DemoPackageSeeder(
                 new(14, 8_900, 7_000, 0, null, 25),
                 new(28, 9_200, 7_200, 0, null, 25),
             ],
+            Photos: ["Sunrise at Sajek Valley.jpg", "Mountain and clouds at Sajek Valley 20171220.jpg", "Views from Sajek. (40700496984).jpg"],
             SkyTop: "#6366F1", SkyBottom: "#A7F3D0"),
 
         // ---------- Flexible stays ----------
@@ -125,6 +129,7 @@ internal sealed class DemoPackageSeeder(
                 new("Island at your pace", "Cycle round the island, or simply stay on the beach. Extra nights continue the same way.", "B", "Beach resort"),
             ],
             Departures: [],
+            Photos: ["Coral Sea Beach at Chera Dwip, Saint Martin's Island (39633896435).jpg", "Saint Martin's Island.JPG", "Sunset at Saint Martin.jpg"],
             SkyTop: "#06B6D4", SkyBottom: "#FBCFE8", IsFeatured: true),
         new(
             Destination: "Sylhet",
@@ -143,24 +148,36 @@ internal sealed class DemoPackageSeeder(
                 new("Ratargul and Jaflong", "Boat through the Ratargul swamp forest, then Jaflong's stone-filled river below the Khasi hills.", "B", "Tea-garden resort"),
             ],
             Departures: [],
+            Photos: ["Tea garden at sylhet 2022.jpg", "Ratargul-02.jpg", "Sada Pathor, Bholaganj, Companyganj, Sylhet.jpg"],
             SkyTop: "#16A34A", SkyBottom: "#FEF3C7"),
     ];
 
-    /// <summary>Adds every demo package that isn't there yet. Needs the demo destinations and categories first.</summary>
+    /// <summary>
+    /// Adds every demo package that isn't there yet, and gives real photos to
+    /// one that is there with only drawn postcards. Needs the demo
+    /// destinations and categories first. Returns how many packages were added.
+    /// </summary>
     public async Task<int> SeedAsync(CancellationToken cancellationToken)
     {
         var destinations = await db.Destinations.ToDictionaryAsync(d => d.Slug, d => d.Id, cancellationToken);
         var categories = await db.Categories.ToDictionaryAsync(c => c.Slug, c => c.Id, cancellationToken);
-        var existing = (await db.TourPackages.Select(p => p.Slug).ToListAsync(cancellationToken)).ToHashSet();
+        // Days included too: changing a published package's photos re-checks that it is still complete (itinerary and all).
+        var existing = await db.TourPackages.Include(p => p.Images).Include(p => p.ItineraryDays)
+            .ToDictionaryAsync(p => p.Slug, cancellationToken);
         var nowUtc = clock.GetUtcNow().UtcDateTime;
         var today = clock.Today();
         var added = 0;
+        var upgraded = 0;
 
         foreach (var demo in Packages)
         {
             var slug = Slug.Create(demo.Title);
-            if (existing.Contains(slug))
+            if (existing.TryGetValue(slug, out var seeded))
+            {
+                if (await UpgradePhotosAsync(seeded, demo, nowUtc, cancellationToken))
+                    upgraded++;
                 continue;
+            }
             if (!destinations.TryGetValue(Slug.Create(demo.Destination), out var destinationId))
             {
                 logger.LogWarning("Demo package {Title} skipped: destination {Destination} not found.", demo.Title, demo.Destination);
@@ -177,7 +194,7 @@ internal sealed class DemoPackageSeeder(
             package.SetCategories(demo.Categories
                 .Select(name => categories.GetValueOrDefault(Slug.Create(name)))
                 .Where(id => id != Guid.Empty));
-            package.SetImages(await DrawPhotosAsync(demo, nowUtc, cancellationToken));
+            package.SetImages(await GetPhotosAsync(demo, allowPostcards: true, nowUtc, cancellationToken));
             package.SetItinerary(demo.Days.Select(d => new ItineraryDayDetails(d.Title, d.Description, d.Meals, d.Accommodation)).ToList());
 
             var departures = demo.Departures
@@ -195,13 +212,36 @@ internal sealed class DemoPackageSeeder(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        if (upgraded > 0)
+            logger.LogInformation("Demo packages: replaced drawn postcards with real photos on {Count} packages.", upgraded);
         return added;
     }
 
-    /// <summary>Three postcards per package (the first is the cover).</summary>
-    private Task<List<Guid>> DrawPhotosAsync(DemoPackage demo, DateTime nowUtc, CancellationToken cancellationToken) =>
-        photos.SaveAsync(
-            demo.Title,
-            [(demo.Title, demo.Destination), (demo.Title, $"{demo.Destination} - day trip"), (demo.Title, $"{demo.Destination} - evening")],
-            demo.SkyTop, demo.SkyBottom, nowUtc, cancellationToken);
+    /// <summary>
+    /// A package seeded with drawn postcards (offline, or before real photos
+    /// existed) gets real ones. One with any real photo - e.g. uploaded in
+    /// the admin - is left alone.
+    /// </summary>
+    private async Task<bool> UpgradePhotosAsync(TourPackage package, DemoPackage demo, DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        var current = package.Images.Select(i => i.FileId).ToList();
+        if (!await photos.AllPostcardsAsync(current, cancellationToken))
+            return false;
+
+        var fileIds = await GetPhotosAsync(demo, allowPostcards: false, nowUtc, cancellationToken);
+        if (fileIds.Count == 0)
+            return false; // still offline - keep the postcards it has
+
+        package.SetImages(fileIds);
+        await photos.ForgetAsync(current, cancellationToken);
+        return true;
+    }
+
+    /// <summary>Three photos per package (the first is the cover).</summary>
+    private Task<List<Guid>> GetPhotosAsync(DemoPackage demo, bool allowPostcards, DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        string[] subtitles = [demo.Destination, $"{demo.Destination} - day trip", $"{demo.Destination} - evening"];
+        var shots = demo.Photos.Select((file, i) => new DemoPhotoWriter.Shot(file, demo.Title, subtitles[i % subtitles.Length])).ToList();
+        return photos.SaveAsync(demo.Title, shots, demo.SkyTop, demo.SkyBottom, allowPostcards, nowUtc, cancellationToken);
+    }
 }

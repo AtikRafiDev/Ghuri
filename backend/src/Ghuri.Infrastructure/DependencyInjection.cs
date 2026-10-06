@@ -220,6 +220,7 @@ public static class DependencyInjection
         services.AddScoped<DemoDataSeeder>();
         services.AddScoped<DemoPackageSeeder>();
         services.AddScoped<DemoPhotoWriter>();
+        services.AddScoped<IDemoPhotoSource, WikimediaPhotoSource>();
 
         // "Can we actually reach SQL Server?" - tagged "ready" so it only
         // runs on /health/ready, not on the lightweight /health/live
