@@ -26,6 +26,9 @@ public sealed class AuthOptions
     /// <summary>How long a password-reset link works.</summary>
     public int PasswordResetLinkMinutes { get; init; }
 
+    /// <summary>How long the "set your password" link in a new staff account's welcome email works.</summary>
+    public int StaffInviteLinkHours { get; init; }
+
     /// <summary>Most reset emails one address can trigger per hour - stops someone flooding a stranger's inbox.</summary>
     public int MaxResetEmailsPerHour { get; init; }
 

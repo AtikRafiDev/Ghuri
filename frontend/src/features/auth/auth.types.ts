@@ -4,6 +4,9 @@ export type Role = 'SuperAdmin' | 'Manager' | 'Sales' | 'Accounts' | 'Customer'
 /** Everyone allowed into the admin panel - the same list as the API's "AdminArea" policy. */
 export const staffRoles: readonly Role[] = ['SuperAdmin', 'Manager', 'Sales', 'Accounts']
 
+/** Who may open Admin → Staff and create staff accounts - the same as the API's "ManageStaff" policy. */
+export const staffManagerRoles: readonly Role[] = ['SuperAdmin']
+
 /** GET /api/v1/auth/me (backend: MeDto). */
 export type Me = {
   id: string

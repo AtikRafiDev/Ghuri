@@ -199,6 +199,81 @@ public sealed class User : AggregateRoot, IAuditable
     public bool HasRole(SystemRole role) => _roles.Exists(r => r.RoleId == (byte)role);
 
     /// <summary>
+    /// The roles the Super Admin can give from the admin panel's Staff page.
+    /// SuperAdmin itself is never handed out there - it comes only from the
+    /// seed command - and Customer is what people get by signing up themselves.
+    /// </summary>
+    public static readonly IReadOnlyList<SystemRole> AssignableStaffRoles = [SystemRole.Manager, SystemRole.Sales, SystemRole.Accounts];
+
+    /// <summary>Has any admin-panel role (SuperAdmin, Manager, Sales or Accounts).</summary>
+    public bool IsStaff => HasRole(SystemRole.SuperAdmin) || AssignableStaffRoles.Any(HasRole);
+
+    /// <summary>
+    /// A staff account made by the Super Admin (Staff page). No password:
+    /// the person sets their own from the emailed link, so the admin never
+    /// knows it. Staff log in and reset passwords by email, so it's required.
+    /// </summary>
+    public static User CreateStaff(string fullName, PhoneNumber phoneNumber, string email, SystemRole role, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        EnsureAssignableStaffRole(role);
+
+        var user = Create(fullName.Trim(), phoneNumber, email, passwordHash: null);
+        user.AssignRole(role, nowUtc);
+        return user;
+    }
+
+    /// <summary>
+    /// Makes this staff member Manager, Sales or Accounts - replacing the one
+    /// they had. The Super Admin's own account can't be changed this way.
+    /// </summary>
+    /// <remarks>Takes effect at their next login or token refresh (at most 15 minutes, the access token's life).</remarks>
+    public void ChangeStaffRole(SystemRole role, DateTime nowUtc)
+    {
+        EnsureAssignableStaffRole(role);
+        EnsureEditableStaff();
+
+        // EF Core deletes a UserRole row removed from this list (required relationship).
+        _roles.RemoveAll(r => r.RoleId != (byte)role && AssignableStaffRoles.Contains((SystemRole)r.RoleId));
+        AssignRole(role, nowUtc);
+    }
+
+    /// <summary>
+    /// Stops this staff member logging in. Login and token refresh already
+    /// refuse a non-Active account; the handler also ends their sessions.
+    /// Nothing is deleted - their name stays on the bookings and refunds they handled.
+    /// </summary>
+    public void Disable()
+    {
+        EnsureEditableStaff();
+        Status = UserStatus.Disabled;
+    }
+
+    /// <summary>Lets a disabled staff member log in again.</summary>
+    public void Enable()
+    {
+        EnsureEditableStaff();
+        Status = UserStatus.Active;
+    }
+
+    private static void EnsureAssignableStaffRole(SystemRole role)
+    {
+        if (!AssignableStaffRoles.Contains(role))
+            throw new DomainException("role_not_assignable", "Staff can only be made Manager, Sales or Accounts.");
+    }
+
+    // The safety net under the handlers' own checks: only staff accounts are
+    // managed here, and never the Super Admin - nobody may lock the owner out.
+    private void EnsureEditableStaff()
+    {
+        if (HasRole(SystemRole.SuperAdmin))
+            throw new DomainException("super_admin_protected", "The Super Admin account can't be changed here.");
+        if (!IsStaff)
+            throw new DomainException("not_staff", "This account is not a staff account.");
+    }
+
+    /// <summary>
     /// THE one rule for comparing emails: " Rahim@Mail.com" and
     /// "rahim@mail.com" are the same address. Used when saving
     /// NormalizedEmail AND when searching by it - two different rules

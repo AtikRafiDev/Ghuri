@@ -54,6 +54,43 @@ POST {{auth}}/logout
 Cookie: {{login.response.headers.Set-Cookie}}
 
 ###############################################################################
+# STAFF ACCOUNTS - Super Admin only (log in as Super Admin with step 3 above first)
+# role: 2 = Manager, 3 = Sales, 4 = Accounts. No password is sent - the new
+# staff member gets an email (smtp4dev: http://localhost:5000) with a link to set it.
+###############################################################################
+
+### Add a staff member (201 + id). Send twice to see 409 phone_taken.
+# @name newStaff
+POST {{host}}/api/v1/admin/staff
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fullName": "Karim Sales", "phone": "01811000000", "email": "karim@ghuri.local", "role": 3 }
+
+### Every staff account (customers are not listed).
+GET {{host}}/api/v1/admin/staff
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Make them Accounts instead.
+PUT {{host}}/api/v1/admin/staff/{{newStaff.response.body.$.id}}/role
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "role": 4 }
+
+### Email them a new "set your password" link.
+POST {{host}}/api/v1/admin/staff/{{newStaff.response.body.$.id}}/password-link
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Disable (logged out everywhere, login refused) ...
+POST {{host}}/api/v1/admin/staff/{{newStaff.response.body.$.id}}/disable
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### ... and enable again.
+POST {{host}}/api/v1/admin/staff/{{newStaff.response.body.$.id}}/enable
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+###############################################################################
 # FILE UPLOAD (staff only - log in as Super Admin with step 3 above first)
 ###############################################################################
 

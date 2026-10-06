@@ -149,4 +149,72 @@ public class UserTests
     [InlineData("a@example.com", "b@example.com", false)]
     public void EmailEquals_IgnoresCaseAndSpaces(string? a, string? b, bool expected) =>
         Assert.Equal(expected, User.EmailEquals(a, b));
+
+    // ---------- Staff accounts (Admin -> Staff) ----------
+
+    private static User NewStaff(SystemRole role = SystemRole.Sales) =>
+        User.CreateStaff("Karim Sales", PhoneNumber.Create("01811000000"), "karim@example.com", role, Now);
+
+    [Fact]
+    public void CreateStaff_HasOnlyThatRole_AndNoPassword()
+    {
+        var staff = NewStaff(SystemRole.Accounts);
+
+        Assert.Equal([(byte)SystemRole.Accounts], staff.Roles.Select(r => r.RoleId));
+        Assert.Null(staff.PasswordHash);
+        Assert.True(staff.IsStaff);
+    }
+
+    [Theory]
+    [InlineData(SystemRole.SuperAdmin)]
+    [InlineData(SystemRole.Customer)]
+    public void CreateStaff_RefusesRolesTheAdminCantGive(SystemRole role)
+    {
+        var error = Assert.Throws<DomainException>(() => NewStaff(role));
+
+        Assert.Equal("role_not_assignable", error.Code);
+    }
+
+    [Fact]
+    public void ChangeStaffRole_ReplacesTheOldRole_AndKeepsOthers()
+    {
+        var staff = NewStaff(SystemRole.Sales);
+        staff.AssignRole(SystemRole.Customer, Now); // e.g. they also book trips for themselves
+
+        staff.ChangeStaffRole(SystemRole.Manager, Now);
+
+        Assert.Equal([(byte)SystemRole.Manager, (byte)SystemRole.Customer], staff.Roles.Select(r => r.RoleId).Order());
+    }
+
+    [Fact]
+    public void DisableAndEnable_SwitchTheStatus()
+    {
+        var staff = NewStaff();
+
+        staff.Disable();
+        Assert.Equal(UserStatus.Disabled, staff.Status);
+
+        staff.Enable();
+        Assert.Equal(UserStatus.Active, staff.Status);
+    }
+
+    [Fact]
+    public void TheSuperAdmin_CantBeDisabledOrChanged()
+    {
+        var owner = NewUser();
+        owner.AssignRole(SystemRole.SuperAdmin, Now);
+
+        Assert.Equal("super_admin_protected", Assert.Throws<DomainException>(owner.Disable).Code);
+        Assert.Equal("super_admin_protected", Assert.Throws<DomainException>(() => owner.ChangeStaffRole(SystemRole.Sales, Now)).Code);
+    }
+
+    [Fact]
+    public void ACustomer_IsNotManagedAsStaff()
+    {
+        var customer = NewUser();
+        customer.AssignRole(SystemRole.Customer, Now);
+
+        Assert.False(customer.IsStaff);
+        Assert.Equal("not_staff", Assert.Throws<DomainException>(customer.Disable).Code);
+    }
 }

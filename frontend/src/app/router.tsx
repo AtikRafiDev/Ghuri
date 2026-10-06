@@ -1,5 +1,5 @@
 import { createBrowserRouter, Outlet } from 'react-router'
-import { staffRoles } from '@/features/auth/auth.types'
+import { staffManagerRoles, staffRoles } from '@/features/auth/auth.types'
 import { RequireAuth } from '@/features/auth/components/RequireAuth'
 import { RequireRole } from '@/features/auth/components/RequireRole'
 import { AccountLayout } from './layouts/AccountLayout'
@@ -180,6 +180,16 @@ export const router = createBrowserRouter([
         // The staff alert email links here (backend: SendCustomTripSubmittedEmails).
         path: 'custom-trips/:tripNo',
         lazy: async () => ({ Component: (await import('@/features/admin/customTrips/pages/AdminCustomTripPage')).AdminCustomTripPage }),
+      },
+      {
+        // Super Admin only - the same as the API's ManageStaff policy. Other staff are sent home.
+        path: 'staff',
+        element: (
+          <RequireRole roles={staffManagerRoles}>
+            <Outlet />
+          </RequireRole>
+        ),
+        children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/admin/staff/pages/AdminStaffPage')).AdminStaffPage }) }],
       },
       { path: 'system', lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) },
     ],

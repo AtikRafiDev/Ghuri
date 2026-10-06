@@ -110,6 +110,9 @@ dotnet run --project src/Ghuri.Api -- seed
   it's left as it is.
 - The 5 roles (SuperAdmin, Manager, Sales, Accounts, Customer) are not
   created here - they come with the migrations in `database update` above.
+- Staff accounts (Manager, Sales, Accounts) are made by the Super Admin in
+  the admin panel: **Admin → Staff → Add staff member**. The new person is
+  emailed a link to set their own password. Customers sign up themselves.
 - Other environments: set `Seed__SuperAdmin__FullName`,
   `Seed__SuperAdmin__Email` and `Seed__SuperAdmin__Phone` as environment
   variables, run `database update`, then run `seed` once.

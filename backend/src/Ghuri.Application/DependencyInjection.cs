@@ -100,13 +100,14 @@ public static class DependencyInjection
             .Validate(o => o.MaxFailedLogins is >= 1 and <= byte.MaxValue,
                 "Auth:MaxFailedLogins must be between 1 and 255.")
             .Validate(o => o.LockoutMinutes > 0 && o.RefreshTokenDays > 0
-                           && o.PasswordResetLinkMinutes > 0 && o.MaxResetEmailsPerHour > 0,
-                "Auth: LockoutMinutes, RefreshTokenDays, PasswordResetLinkMinutes and MaxResetEmailsPerHour must all be greater than 0.")
+                           && o.PasswordResetLinkMinutes > 0 && o.StaffInviteLinkHours > 0 && o.MaxResetEmailsPerHour > 0,
+                "Auth: LockoutMinutes, RefreshTokenDays, PasswordResetLinkMinutes, StaffInviteLinkHours and MaxResetEmailsPerHour must all be greater than 0.")
             .Validate(o => Uri.TryCreate(o.PasswordResetUrl, UriKind.Absolute, out _),
                 "Auth:PasswordResetUrl must be a full address, e.g. http://localhost:5173/reset-password")
             .ValidateOnStart();
 
         // Scoped: it uses repositories, which share the request's DbContext.
         services.AddScoped<SessionIssuer>();
+        services.AddScoped<PasswordLinkSender>();
     }
 }

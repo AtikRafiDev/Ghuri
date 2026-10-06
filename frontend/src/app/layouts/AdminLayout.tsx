@@ -10,6 +10,7 @@ import {
   RouteIcon,
   TagsIcon,
   Undo2Icon,
+  UsersIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -31,9 +32,11 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { staffManagerRoles, type Role } from '@/features/auth/auth.types'
 import { useAuth } from '@/features/auth/useAuth'
 
-type MenuItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
+/** roles: only these may see the entry (the page itself checks too). Absent = every staff member. */
+type MenuItem = { to: string; label: string; icon: LucideIcon; end?: boolean; roles?: readonly Role[] }
 
 // The admin menu, in groups.
 const adminMenu: { label: string; items: MenuItem[] }[] = [
@@ -55,7 +58,13 @@ const adminMenu: { label: string; items: MenuItem[] }[] = [
       { to: '/admin/categories', label: 'Categories', icon: TagsIcon },
     ],
   },
-  { label: 'System', items: [{ to: '/admin/system', label: 'System health', icon: ActivityIcon }] },
+  {
+    label: 'System',
+    items: [
+      { to: '/admin/staff', label: 'Staff', icon: UsersIcon, roles: staffManagerRoles },
+      { to: '/admin/system', label: 'System health', icon: ActivityIcon },
+    ],
+  },
 ]
 
 /**
@@ -65,6 +74,7 @@ const adminMenu: { label: string; items: MenuItem[] }[] = [
  */
 export function AdminLayout() {
   const { pathname } = useLocation()
+  const { hasAnyRole } = useAuth()
   const current = adminMenu
     .flatMap((group) => group.items)
     .find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))
@@ -93,9 +103,11 @@ export function AdminLayout() {
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {group.items.map((item) => (
-                    <AdminMenuLink key={item.to} item={item} />
-                  ))}
+                  {group.items
+                    .filter((item) => !item.roles || hasAnyRole(item.roles))
+                    .map((item) => (
+                      <AdminMenuLink key={item.to} item={item} />
+                    ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

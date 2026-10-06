@@ -27,6 +27,12 @@ public static class Policies
     /// <summary>Quote or reject a custom trip (Day 13) - the same customer-facing people as CancelBookings.</summary>
     public const string QuoteTrips = nameof(QuoteTrips);
 
+    /// <summary>
+    /// Create staff accounts, change their role, disable them (Admin → Staff).
+    /// Super Admin only: whoever can hand out roles can give themselves any power.
+    /// </summary>
+    public const string ManageStaff = nameof(ManageStaff);
+
     public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services)
     {
         // Role names come from SystemRole, the same enum the token's role
@@ -41,7 +47,8 @@ public static class Policies
             .AddPolicy(CancelBookings, policy => policy.RequireRole(
                 nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)))
             .AddPolicy(QuoteTrips, policy => policy.RequireRole(
-                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)));
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)))
+            .AddPolicy(ManageStaff, policy => policy.RequireRole(nameof(SystemRole.SuperAdmin)));
 
         return services;
     }

@@ -143,11 +143,14 @@ internal sealed class IdentityTestContext
         LockoutMinutes = 15,
         RefreshTokenDays = 30,
         PasswordResetLinkMinutes = 30,
+        StaffInviteLinkHours = 72,
         MaxResetEmailsPerHour = 5,
         PasswordResetUrl = "http://localhost:5173/reset-password",
     });
 
     public SessionIssuer Sessions => new(Tokens, RefreshTokens, new FakeClientInfo(), Settings);
+
+    public PasswordLinkSender PasswordLinks => new(Otps, Tokens, Emails, Settings);
 
     public User AddCustomer(string phone = "01711000000", string email = "rahim@example.com")
     {

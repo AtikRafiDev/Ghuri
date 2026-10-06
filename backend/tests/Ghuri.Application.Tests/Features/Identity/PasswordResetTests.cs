@@ -11,7 +11,7 @@ public class PasswordResetTests
     private readonly IdentityTestContext _context = new();
 
     private async Task<Result> ForgotAsync(string email) =>
-        await new ForgotPasswordHandler(_context.Users, _context.Otps, _context.Tokens, _context.Emails, _context.Settings, _context.Clock)
+        await new ForgotPasswordHandler(_context.Users, _context.Otps, _context.PasswordLinks, _context.Settings, _context.Clock)
             .Handle(new ForgotPasswordCommand(email), TestContext.Current.CancellationToken);
 
     private async Task<Result> ResetAsync(string email, string token) =>

@@ -1,6 +1,4 @@
-using System.Net;
 using Ghuri.Application.Abstractions.Messaging;
-using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
@@ -21,8 +19,7 @@ namespace Ghuri.Application.Features.Identity.Commands.ForgotPassword;
 internal sealed class ForgotPasswordHandler(
     IUserRepository users,
     IOtpRepository otps,
-    ITokenService tokens,
-    IEmailSender emails,
+    PasswordLinkSender links,
     IOptions<AuthOptions> options,
     TimeProvider clock) : ICommandHandler<ForgotPasswordCommand>
 {
@@ -43,29 +40,9 @@ internal sealed class ForgotPasswordHandler(
         if (sentLastHour >= settings.MaxResetEmailsPerHour)
             return Result.Success();
 
-        // The token's HASH goes to the database; the token itself only
-        // into the email. Requesting a new link makes older ones useless,
-        // because ResetPassword only ever checks the newest.
-        var token = tokens.CreateOpaqueToken();
-        otps.Add(OtpCode.Create(
-            destination, OtpPurpose.ResetPassword, token.Hash, nowUtc,
-            nowUtc.AddMinutes(settings.PasswordResetLinkMinutes)));
-
-        var link = $"{settings.PasswordResetUrl}?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token.Value)}";
-        await emails.SendAsync(
-            new EmailMessage(user.Email, "Reset your Ghuri password",
-                ResetEmailBody(user.FullName, link, settings.PasswordResetLinkMinutes)),
-            cancellationToken);
+        // One-time link, newest wins - see PasswordLinkSender.
+        await links.SendResetLinkAsync(user, nowUtc, cancellationToken);
 
         return Result.Success();
     }
-
-    // HtmlEncode: the name is typed by the user - encoding stops a name
-    // like "<script>..." from becoming live HTML inside the email.
-    private static string ResetEmailBody(string fullName, string link, int validMinutes) =>
-        $"""
-        <p>Hi {WebUtility.HtmlEncode(fullName)},</p>
-        <p><a href="{WebUtility.HtmlEncode(link)}">Set a new password</a> - this link works once, for {validMinutes} minutes.</p>
-        <p>If you didn't ask for this, ignore this email. Your password stays the same.</p>
-        """;
 }
