@@ -14,5 +14,13 @@ public interface IBookingRepository
     /// <summary>A booking by its number (TB100001), tracked - without travellers or add-ons.</summary>
     Task<Booking?> GetByBookingNoAsync(string bookingNo, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Like GetByIdAsync, but LOCKS the row until the transaction ends: anyone
+    /// else changing this booking waits for us. Used by the payment
+    /// confirmation, so the expiry job can't expire a booking halfway through
+    /// confirming it.
+    /// </summary>
+    Task<Booking?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken);
+
     void Add(Booking booking);
 }

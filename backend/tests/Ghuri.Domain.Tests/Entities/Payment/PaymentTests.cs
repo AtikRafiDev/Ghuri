@@ -9,7 +9,7 @@ using PaymentEntity = Ghuri.Domain.Entities.Payment.Payment;
 namespace Ghuri.Domain.Tests.Entities.Payment;
 
 /// <summary>
-/// Payment's start and its state machine (17-day plan, Day 9). Money: the
+/// Payment's start and its state machine (17-day plan, Days 9-10). Money: the
 /// amount must always be the booking's, and a success must never be undone
 /// by a late or repeated failure message.
 /// </summary>
@@ -126,6 +126,63 @@ public class PaymentTests
         payment.MarkCancelled("A cancel arriving late");
 
         Assert.Equal((PaymentStatus.Failed, "First message"), (payment.Status, payment.FailureReason));
+    }
+
+    // ---------- Success (Day 10) ----------
+
+    [Fact]
+    public void MarkSucceeded_KeepsHowAndWhenItWasPaid()
+    {
+        var payment = NewPayment();
+        payment.MarkSessionCreated("abc");
+
+        payment.MarkSucceeded("BKASH-BKash", "2410021530ABC", 240m, Now.AddMinutes(8));
+
+        Assert.Equal(PaymentStatus.Succeeded, payment.Status);
+        Assert.Equal(("BKASH-BKash", "2410021530ABC", (decimal?)240m, (DateTime?)Now.AddMinutes(8)),
+            (payment.Method, payment.ProviderTransactionId, payment.GatewayFee, payment.PaidAtUtc));
+    }
+
+    [Fact]
+    public void AValidatedSuccess_AfterAFailMessage_StillCounts()
+    {
+        var payment = NewPayment();
+        payment.MarkFailed("Customer closed the page"); // messages arrive out of order
+
+        payment.MarkSucceeded("VISA-Dutch Bangla", "BANK1", null, Now.AddMinutes(9));
+
+        Assert.Equal((PaymentStatus.Succeeded, (string?)null), (payment.Status, payment.FailureReason));
+    }
+
+    [Fact]
+    public void MarkSucceeded_Twice_IsRefused_SoMoneyIsNeverCountedTwice()
+    {
+        var payment = NewPayment();
+        payment.MarkSucceeded("BKASH-BKash", "BANK1", null, Now);
+
+        Assert.Equal("payment_already_settled",
+            Assert.Throws<DomainException>(() => payment.MarkSucceeded("BKASH-BKash", "BANK1", null, Now)).Code);
+    }
+
+    [Fact]
+    public void AFailMessage_AfterSuccess_ChangesNothing()
+    {
+        var payment = NewPayment();
+        payment.MarkSucceeded("BKASH-BKash", "BANK1", null, Now);
+
+        payment.MarkFailed("A late fail");
+
+        Assert.Equal(PaymentStatus.Succeeded, payment.Status);
+    }
+
+    [Fact]
+    public void MarkSucceeded_CutsLongGatewayTexts_ToTheirColumns()
+    {
+        var payment = NewPayment();
+
+        payment.MarkSucceeded(new string('m', 50), new string('t', 150), -5m, Now);
+
+        Assert.Equal((30, 100, (decimal?)null), (payment.Method!.Length, payment.ProviderTransactionId!.Length, payment.GatewayFee));
     }
 
     [Fact]

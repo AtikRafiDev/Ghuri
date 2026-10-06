@@ -94,6 +94,37 @@ public sealed class Payment : AggregateRoot, IAuditable
         Status = PaymentStatus.Pending;
     }
 
+    /// <summary>
+    /// The gateway's validation API confirmed the money arrived (Day 10). Only
+    /// call this with a VALIDATED answer, never because of what a browser or
+    /// an IPN posted. Allowed after a "fail" or "cancel" too (see remarks).
+    /// </summary>
+    /// <param name="method">How the customer paid, e.g. "BKASH-BKash" (SSLCommerz card_type). Cut to 30 characters.</param>
+    /// <param name="providerTransactionId">The gateway's own id for the money transfer (SSLCommerz bank_tran_id).</param>
+    /// <param name="gatewayFee">What the gateway keeps: amount minus what reaches the store.</param>
+    /// <param name="paidAtUtc">When we learned it was paid (now).</param>
+    /// <exception cref="DomainException">Already succeeded or refunded. The caller checks first, so a repeat is never counted twice.</exception>
+    public void MarkSucceeded(string? method, string? providerTransactionId, decimal? gatewayFee, DateTime paidAtUtc)
+    {
+        if (Status is not (PaymentStatus.Initiated or PaymentStatus.Pending or PaymentStatus.Failed or PaymentStatus.Cancelled))
+            throw new DomainException("payment_already_settled", "This payment has already succeeded or been refunded.");
+
+        Status = PaymentStatus.Succeeded;
+        Method = Cut(method, 30);
+        ProviderTransactionId = Cut(providerTransactionId, 100);
+        GatewayFee = gatewayFee is >= 0 ? gatewayFee : null;
+        PaidAtUtc = paidAtUtc;
+        FailureReason = null; // a validated success wins over an earlier "fail" message
+    }
+
+    private static string? Cut(string? text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        text = text.Trim();
+        return text.Length <= maxLength ? text : text[..maxLength];
+    }
+
     /// <summary>The gateway refused the session, or the payment failed. Ignored once the payment succeeded (see remarks).</summary>
     public void MarkFailed(string reason) => End(PaymentStatus.Failed, reason);
 

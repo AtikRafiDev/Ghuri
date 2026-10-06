@@ -22,6 +22,15 @@ internal sealed class PaymentRepository(AppDbContext db) : IPaymentRepository
     public Task<Payment?> GetByPaymentNoAsync(string paymentNo, CancellationToken cancellationToken) =>
         db.Payments.FirstOrDefaultAsync(p => p.PaymentNo == paymentNo, cancellationToken);
 
+    // UPDLOCK: see BookingRepository.GetByIdForUpdateAsync.
+    public async Task<Payment?> GetByPaymentNoForUpdateAsync(string paymentNo, CancellationToken cancellationToken)
+    {
+        var rows = await db.Payments
+            .FromSqlInterpolated($"SELECT * FROM [payment].[Payments] WITH (UPDLOCK, ROWLOCK) WHERE [PaymentNo] = {paymentNo}")
+            .ToListAsync(cancellationToken);
+        return rows.SingleOrDefault();
+    }
+
     public void Add(Payment payment) => db.Payments.Add(payment);
 
     public Task<bool> EventExistsAsync(PaymentProvider provider, string providerEventId, CancellationToken cancellationToken) =>

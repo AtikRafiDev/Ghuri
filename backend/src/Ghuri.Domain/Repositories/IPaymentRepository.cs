@@ -10,6 +10,14 @@ public interface IPaymentRepository
 
     Task<Payment?> GetByPaymentNoAsync(string paymentNo, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Like GetByPaymentNoAsync, but LOCKS the row until the transaction ends.
+    /// Two messages about the same payment (the IPN and the browser coming back
+    /// at the same moment) are then handled one after the other: the second
+    /// sees what the first did.
+    /// </summary>
+    Task<Payment?> GetByPaymentNoForUpdateAsync(string paymentNo, CancellationToken cancellationToken);
+
     void Add(Payment payment);
 
     /// <summary>Has this exact gateway message been saved before? (Provider + its id are unique.)</summary>

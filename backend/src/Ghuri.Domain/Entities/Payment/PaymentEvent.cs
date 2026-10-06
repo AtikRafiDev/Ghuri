@@ -41,4 +41,14 @@ public sealed class PaymentEvent
             ReceivedAtUtc = nowUtc
         };
     }
+
+    /// <summary>What we did with this message, e.g. "confirmed" or "rejected: amount 100.00 BDT, expected 34000.00 BDT". Cut to 300 characters.</summary>
+    public void MarkProcessed(string result, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(result);
+        result = result.Trim();
+
+        ProcessingResult = result.Length <= 300 ? result : result[..300]; // ProcessingResult column
+        ProcessedAtUtc = nowUtc;
+    }
 }

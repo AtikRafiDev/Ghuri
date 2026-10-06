@@ -146,6 +146,75 @@ public class SslCommerzGatewayTests
     }
 
     /// <summary>Records the request instead of sending it, and answers with what the test chose.</summary>
+    // ---------- Validation API (Day 10) ----------
+
+    private const string ValidJson =
+        """{"status":"VALID","tran_id":"PAY100001","val_id":"2410021530abc","amount":"34000.00","store_amount":"33490.00","currency":"BDT","bank_tran_id":"2410021530XYZ","card_type":"BKASH-BKash","currency_type":"BDT","currency_amount":"34000.00","risk_level":"0","risk_title":"Safe"}""";
+
+    [Fact]
+    public async Task Validation_AsksSslCommerzsValidator_ForThatValId()
+    {
+        var (gateway, handler, _) = Create(Json(ValidJson));
+
+        await gateway.ValidatePaymentAsync("2410021530abc", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpMethod.Get, handler.Method);
+        Assert.StartsWith("https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=2410021530abc&store_id=ghuritest123&", handler.Url);
+        Assert.EndsWith("&v=1&format=json", handler.Url);
+    }
+
+    [Fact]
+    public async Task Validation_Valid_ReadsTheTransactionAmountAndHowItWasPaid()
+    {
+        var (gateway, _, logger) = Create(Json(ValidJson));
+
+        var result = await gateway.ValidatePaymentAsync("2410021530abc", TestContext.Current.CancellationToken);
+
+        Assert.Equal(PaymentValidationOutcome.Valid, result.Outcome);
+        Assert.Equal(("PAY100001", (decimal?)34_000m, "BDT"), (result.TransactionId, result.Amount, result.Currency));
+        Assert.Equal(("BKASH-BKash", "2410021530XYZ", (decimal?)510m, false),
+            (result.Method, result.ProviderTransactionId, result.GatewayFee, result.IsHighRisk));
+        Assert.DoesNotContain(logger.Lines, line => line.Contains(StorePassword));
+    }
+
+    [Fact]
+    public async Task Validation_AlreadyValidated_NumbersNotText_AndHighRisk_AreAllUnderstood()
+    {
+        var (gateway, _, _) = Create(Json(
+            """{"status":"VALIDATED","tran_id":"PAY100001","amount":34000.00,"store_amount":33490,"currency":"BDT","risk_level":"1","risk_title":"Risky"}"""));
+
+        var result = await gateway.ValidatePaymentAsync("v", TestContext.Current.CancellationToken);
+
+        Assert.Equal((PaymentValidationOutcome.Valid, (decimal?)34_000m, true), (result.Outcome, result.Amount, result.IsHighRisk));
+    }
+
+    [Fact]
+    public async Task Validation_InvalidTransaction_IsInvalid()
+    {
+        var (gateway, _, _) = Create(Json("""{"status":"INVALID_TRANSACTION"}"""));
+
+        var result = await gateway.ValidatePaymentAsync("fake", TestContext.Current.CancellationToken);
+
+        Assert.Equal(PaymentValidationOutcome.Invalid, result.Outcome);
+        Assert.Contains("INVALID_TRANSACTION", result.FailureReason);
+    }
+
+    [Fact]
+    public async Task Validation_NoAnswer_IsUnreachable_AndThePasswordIsNeverLogged()
+    {
+        var (gateway, _, logger) = Create(throws: new HttpRequestException("Connection refused"));
+
+        var result = await gateway.ValidatePaymentAsync("v", TestContext.Current.CancellationToken);
+
+        Assert.Equal(PaymentValidationOutcome.Unreachable, result.Outcome);
+        Assert.DoesNotContain(logger.Lines, line => line.Contains(StorePassword));
+    }
+
+    [Fact]
+    public async Task Validation_AServerError_IsUnreachable_SoItIsAskedAgainLater() =>
+        Assert.Equal(PaymentValidationOutcome.Unreachable,
+            (await Create(Json("oops", HttpStatusCode.BadGateway)).Gateway.ValidatePaymentAsync("v", TestContext.Current.CancellationToken)).Outcome);
+
     private sealed class FakeHandler(HttpResponseMessage answer, Exception? throws) : HttpMessageHandler
     {
         public HttpMethod? Method { get; private set; }
@@ -156,9 +225,12 @@ public class SslCommerzGatewayTests
         {
             Method = request.Method;
             Url = request.RequestUri?.ToString();
-            var body = await request.Content!.ReadAsStringAsync(cancellationToken);
-            Form = body.Split('&').Select(pair => pair.Split('=', 2))
-                .ToDictionary(kv => Uri.UnescapeDataString(kv[0]), kv => Uri.UnescapeDataString(kv[1].Replace('+', ' ')));
+            if (request.Content is not null) // a GET (the validation API) has no body
+            {
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
+                Form = body.Split('&').Select(pair => pair.Split('=', 2))
+                    .ToDictionary(kv => Uri.UnescapeDataString(kv[0]), kv => Uri.UnescapeDataString(kv[1].Replace('+', ' ')));
+            }
 
             if (throws is not null)
                 throw throws;

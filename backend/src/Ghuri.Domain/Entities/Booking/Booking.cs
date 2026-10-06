@@ -35,9 +35,14 @@ namespace Ghuri.Domain.Entities.Booking;
 /// </para>
 /// <para>
 /// State machine (blueprint 6.3): PendingPayment → Confirmed (paid, Day 10)
-/// · PendingPayment → Expired (payment window over) · PendingPayment or
+/// · PendingPayment → Expired (payment window over) · Expired → Confirmed
+/// (paid late, and the seats could be taken again) · PendingPayment or
 /// Confirmed → Cancelled. Every change adds a BookingStatusHistory row.
 /// Completed and PartiallyPaid come later (after the trip / Phase 2).
+/// </para>
+/// <para>
+/// Confirmed means PAID: both ways in refuse unless PaidAmount covers
+/// TotalAmount, so record the money first (RecordPayment), then confirm.
 /// </para>
 /// </remarks>
 public sealed class Booking : AggregateRoot, IAuditable
@@ -268,17 +273,63 @@ public sealed class Booking : AggregateRoot, IAuditable
         ChangeStatus(BookingStatus.Expired, nowUtc, changedBy: null, "Payment window ended.");
     }
 
+    /// <summary>True once the money received covers the price.</summary>
+    public bool IsPaidInFull => PaidAmount >= TotalAmount;
+
+    /// <summary>
+    /// Money arrived for this booking (a payment the gateway confirmed). Kept
+    /// whatever the status: money received is a fact. A payment for an
+    /// expired or cancelled booking is exactly the money staff must refund,
+    /// and it has to show here. Never more than the price (the database's
+    /// CK_Bookings_PaidAmount says the same): money beyond it - a second
+    /// payment for a paid booking - stays on its Payment only, as a refund.
+    /// </summary>
+    /// <exception cref="DomainException">The booking would be paid more than its price.</exception>
+    public void RecordPayment(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be greater than zero.");
+        if (PaidAmount + amount > TotalAmount)
+            throw new DomainException("booking_overpaid", "This payment is more than what is left to pay.");
+
+        PaidAmount += amount;
+    }
+
     /// <summary>
     /// Paid in full - called by the payment confirmation (Day 10). Allowed
     /// even a moment after the deadline as long as the expiry job hasn't run
     /// yet: the seats are still held, so nothing is lost.
     /// </summary>
+    /// <exception cref="DomainException">Not waiting for payment, or not paid in full.</exception>
     public void Confirm(DateTime nowUtc, Guid? confirmedBy = null)
     {
         if (Status != BookingStatus.PendingPayment)
             throw new DomainException("booking_not_pending", "Only a booking waiting for payment can be confirmed.");
+        EnsurePaidInFull();
 
         ChangeStatus(BookingStatus.Confirmed, nowUtc, confirmedBy, note: null);
+    }
+
+    /// <summary>
+    /// The customer paid AFTER the hold ended and the booking expired (the
+    /// gateway's page stays open longer than our 20 minutes). The caller must
+    /// first take the seats again (TryReserveSeatsAsync). If they're gone,
+    /// don't call this: the booking stays Expired and the money is refunded.
+    /// </summary>
+    /// <exception cref="DomainException">Not expired, or not paid in full.</exception>
+    public void ConfirmAfterExpiry(DateTime nowUtc)
+    {
+        if (Status != BookingStatus.Expired)
+            throw new DomainException("booking_not_expired", "Only an expired booking can be revived by a late payment.");
+        EnsurePaidInFull();
+
+        ChangeStatus(BookingStatus.Confirmed, nowUtc, changedBy: null, "Paid after the payment window ended.");
+    }
+
+    private void EnsurePaidInFull()
+    {
+        if (!IsPaidInFull)
+            throw new DomainException("booking_not_paid", "The booking isn't paid in full yet.");
     }
 
     /// <summary>

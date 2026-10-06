@@ -20,14 +20,16 @@ internal sealed class SslCommerzOptions
 
     /// <summary>
     /// Where the customer's BROWSER comes back to after paying: our site's
-    /// address. Locally http://localhost:5173 - Vite forwards /api to the API.
+    /// address. Locally http://localhost:5173 - Vite forwards /api to the API -
+    /// or the tunnel's https address (README "Public address", set in user-secrets).
     /// The paths (/api/v1/payments/sslcommerz/success…) are added by the gateway.
     /// </summary>
     public string CallbackBaseUrl { get; init; } = string.Empty;
 
     /// <summary>
     /// Where SSLCommerz's SERVER notifies ours (IPN). Must be reachable from
-    /// the internet, so it stays empty locally - and is then not sent at all.
+    /// the internet: locally only through the tunnel (README "Public address").
+    /// Empty = not sent at all.
     /// </summary>
     public string? IpnUrl { get; init; }
 

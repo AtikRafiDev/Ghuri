@@ -65,6 +65,23 @@ export type MyBooking = {
 /** POST /api/v1/bookings/{bookingNo}/payments: where to send the browser. */
 export type StartPaymentResponse = { paymentNo: string; paymentPageUrl: string }
 
+/** 1 initiated · 2 pending · 3 succeeded · 4 failed · 5 cancelled · 6 refunded · 7 partly refunded (backend: PaymentStatus). */
+export type PaymentStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7
+
+/**
+ * GET /api/v1/payments/{paymentNo} (backend: PaymentResultDto). status 2 =
+ * still waiting for SSLCommerz's confirmation. bookingStatus says what the
+ * money did: 2 confirmed, or still 6 expired / 5 cancelled if it came too late.
+ */
+export type PaymentResult = {
+  paymentNo: string
+  status: PaymentStatus
+  amount: number
+  currency: string
+  bookingNo: string
+  bookingStatus: BookingStatus
+}
+
 export const bookingsApi = {
   /**
    * The Idempotency-Key makes a double-click or a retry safe: the same key
@@ -86,11 +103,17 @@ export const bookingsApi = {
     const { data } = await http.post<StartPaymentResponse>(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/payments`)
     return data
   },
+
+  async paymentResult(paymentNo: string): Promise<PaymentResult> {
+    const { data } = await http.get<PaymentResult>(`/api/v1/payments/${encodeURIComponent(paymentNo)}`)
+    return data
+  },
 }
 
 export const bookingKeys = {
   all: ['bookings'] as const,
   mine: (bookingNo: string) => [...bookingKeys.all, bookingNo] as const,
+  payment: (paymentNo: string) => [...bookingKeys.all, 'payment', paymentNo] as const,
 }
 
 /** Always fresh: a booking's status changes (paid, expired) while the page is open. */

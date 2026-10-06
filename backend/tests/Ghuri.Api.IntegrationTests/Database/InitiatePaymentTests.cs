@@ -141,7 +141,10 @@ public class InitiatePaymentTests : IClassFixture<SqlServerFixture>
         Assert.Equal(PaymentEventType.SuccessReturn, only.EventType);
         Assert.Contains("2410021530abcdef", only.PayloadJson);
 
-        // Day 9 only records it: the payment is NOT confirmed by an unchecked form (that's Day 10, via SSLCommerz's validation API).
+        // The posted "VALID" counts for nothing: the (fake) validation API
+        // refuses this val_id, so the payment is NOT confirmed.
+        // PaymentConfirmationTests covers what a validated payment does.
         Assert.Equal(PaymentStatus.Pending, (await PaymentsForAsync(bookingNo)).Single().Status);
+        Assert.StartsWith("rejected:", only.ProcessingResult);
     }
 }

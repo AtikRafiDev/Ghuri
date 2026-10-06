@@ -140,6 +140,16 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public Task<Result<TResponse>> SendCommandAsync<TResponse>(ICommand<TResponse> command, Guid? asUser) =>
         SendAsUserAsync(asUser, sender => sender.Send(command).AsTask());
 
+    /// <summary>The same, for a command that returns no value (e.g. a gateway callback - nobody is logged in for those).</summary>
+    public async Task<Result> SendCommandAsync(ICommand command, Guid? asUser = null)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var testUser = scope.ServiceProvider.GetRequiredService<TestCurrentUser>();
+        testUser.Active = true;
+        testUser.UserId = asUser;
+        return await scope.ServiceProvider.GetRequiredService<Mediator.ISender>().Send(command);
+    }
+
     private async Task<Result<TResponse>> SendAsUserAsync<TResponse>(Guid? userId, Func<Mediator.ISender, Task<Result<TResponse>>> send)
     {
         await using var scope = Services.CreateAsyncScope();

@@ -212,6 +212,64 @@ console** - copy the link from there into the browser.
 
 ---
 
+## 7. Public address for SSLCommerz (tunnel)
+
+`localhost` exists only on your PC, so SSLCommerz's server can't reach it.
+Its **IPN** ("this payment is done" message, server to server) would never
+arrive. A **Cloudflare quick tunnel** gives your running app a temporary
+public `https://….trycloudflare.com` address that forwards to Vite on this
+PC. Vite already forwards `/api` to the API, so **one tunnel covers the
+website, the API and SSLCommerz's messages**. You don't need a Cloudflare
+account or a domain. It's a development tool only: there's no uptime
+guarantee, and the address changes every time you start it.
+
+```
+SSLCommerz / any phone ──https──► xxxx.trycloudflare.com ──► cloudflared (this PC)
+                                                              └─► Vite :5173 ──/api──► API :5176
+```
+
+### One-time: install cloudflared
+
+```
+winget install --id Cloudflare.cloudflared
+```
+
+Close and reopen the terminal, then check: `cloudflared --version`.
+
+### Every time
+
+1. Start the API (section 5) and the frontend (section 6) as usual.
+2. In a **third** terminal:
+   ```
+   cloudflared tunnel --url http://localhost:5173
+   ```
+   After a few seconds it prints a box with
+   `https://<random-words>.trycloudflare.com`. That's your public address.
+   Leave this terminal open: closing it ends the tunnel.
+3. Tell the API that address (replace the example with yours):
+   ```
+   cd backend
+   dotnet user-secrets set "PaymentGateway:SslCommerz:CallbackBaseUrl" "https://random-words.trycloudflare.com" --project src/Ghuri.Api
+   dotnet user-secrets set "PaymentGateway:SslCommerz:IpnUrl" "https://random-words.trycloudflare.com/api/v1/payments/sslcommerz/ipn" --project src/Ghuri.Api
+   ```
+4. **Restart the API** (Ctrl+C, then `dotnet run` again). Settings are read at start.
+5. Open the **tunnel address** in the browser, not localhost. Log in there:
+   the login cookie belongs to the address you logged in on.
+
+- The address works from any device, so you can test bKash/Nagad on your phone.
+- **New tunnel = new address:** repeat steps 3–4. A stale address sends
+  customers back to a dead page after paying.
+- **Back to plain localhost:**
+  ```
+  dotnet user-secrets remove "PaymentGateway:SslCommerz:CallbackBaseUrl" --project src/Ghuri.Api
+  dotnet user-secrets remove "PaymentGateway:SslCommerz:IpnUrl" --project src/Ghuri.Api
+  ```
+- Through the tunnel, the API sees every visitor as Vite (127.0.0.1), so
+  login rate limits are shared by everyone using it. That's fine for one
+  developer; Nginx passes the real visitor IP in production.
+
+---
+
 ## Everyday commands (reference)
 
 ### Git

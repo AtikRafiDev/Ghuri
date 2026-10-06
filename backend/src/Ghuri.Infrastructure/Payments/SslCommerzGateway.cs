@@ -10,7 +10,7 @@ namespace Ghuri.Infrastructure.Payments;
 
 /// <summary>
 /// SSLCommerz (bKash, Nagad, cards…) behind IPaymentGateway - 17-day plan,
-/// Day 9: "SslCommerzGateway (sandbox session)". API v4:
+/// Day 9: "SslCommerzGateway (sandbox session)", Day 10: the validation API. API v4:
 /// https://developer.sslcommerz.com/doc/v4/
 /// </summary>
 /// <remarks>
@@ -99,6 +99,89 @@ internal sealed class SslCommerzGateway(HttpClient http, IOptions<SslCommerzOpti
             return PaymentSessionResult.Failure("The payment service could not be reached. Please try again in a moment.");
         }
     }
+
+    /// <summary>
+    /// Day 10: "is this payment real?" - GET /validator/api/validationserverAPI.php
+    /// with the val_id from SSLCommerz's message. Answers status VALID (or
+    /// VALIDATED = already asked before, still a real payment) with the
+    /// transaction's details, or INVALID_TRANSACTION.
+    /// </summary>
+    /// <remarks>
+    /// The store password travels in the query string, so the URL is never
+    /// logged here (.NET's own HttpClient logging hides query strings).
+    /// Amounts arrive as text ("34000.00"), sometimes as numbers - both are read.
+    /// </remarks>
+    public async Task<PaymentValidationResult> ValidatePaymentAsync(string validationId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(validationId);
+        var settings = options.Value;
+        var url = settings.BaseUrl.TrimEnd('/') + "/validator/api/validationserverAPI.php"
+                  + "?val_id=" + Uri.EscapeDataString(validationId)
+                  + "&store_id=" + Uri.EscapeDataString(settings.StoreId)
+                  + "&store_passwd=" + Uri.EscapeDataString(settings.StorePassword)
+                  + "&v=1&format=json";
+
+        try
+        {
+            using var response = await http.GetAsync(new Uri(url), cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return Unreachable(validationId, $"SSLCommerz answered HTTP {(int)response.StatusCode}.");
+
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+            var answer = json.RootElement;
+            var status = Text(answer, "status");
+
+            if (status is not ("VALID" or "VALIDATED"))
+            {
+                logger.LogWarning("SSLCommerz says val_id {ValidationId} is not a valid payment: {Status}.", validationId, status);
+                return PaymentValidationResult.Invalid($"SSLCommerz says: {status ?? "no status"}.");
+            }
+
+            // currency_type / currency_amount = what WE asked for; currency /
+            // amount = what was settled in. The same for taka, but compare
+            // against what we asked for.
+            var currency = Text(answer, "currency_type") ?? Text(answer, "currency");
+            var amount = Number(answer, "currency_amount") ?? Number(answer, "amount");
+            var transactionId = Text(answer, "tran_id");
+            if (currency is null || amount is null || transactionId is null)
+                return PaymentValidationResult.Invalid("SSLCommerz's answer is missing the transaction, amount or currency.");
+
+            var fee = Number(answer, "amount") - Number(answer, "store_amount"); // null if either is missing
+            var isHighRisk = Text(answer, "risk_level") == "1";
+            if (isHighRisk)
+                logger.LogWarning("SSLCommerz marks payment {TransactionId} as high risk: {RiskTitle}.", transactionId, Text(answer, "risk_title"));
+
+            logger.LogInformation("SSLCommerz validated payment {TransactionId}.", transactionId);
+            return PaymentValidationResult.Valid(
+                transactionId, amount.Value, currency, Text(answer, "card_type"), Text(answer, "bank_tran_id"), fee, isHighRisk);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException
+                                          || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            logger.LogWarning(exception, "Could not validate SSLCommerz val_id {ValidationId}.", validationId);
+            return PaymentValidationResult.Unreachable("The payment service could not be reached.");
+        }
+    }
+
+    private PaymentValidationResult Unreachable(string validationId, string reason)
+    {
+        logger.LogWarning("Could not validate SSLCommerz val_id {ValidationId}: {Reason}", validationId, reason);
+        return PaymentValidationResult.Unreachable(reason);
+    }
+
+    /// <summary>A field as text, whether SSLCommerz sent it as a string or a number. Null if missing or empty.</summary>
+    private static string? Text(JsonElement answer, string name) =>
+        answer.ValueKind == JsonValueKind.Object && answer.TryGetProperty(name, out var value)
+            ? value.ValueKind switch
+            {
+                JsonValueKind.String => string.IsNullOrWhiteSpace(value.GetString()) ? null : value.GetString()!.Trim(),
+                JsonValueKind.Number => value.GetRawText(),
+                _ => null
+            }
+            : null;
+
+    private static decimal? Number(JsonElement answer, string name) =>
+        decimal.TryParse(Text(answer, name), NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : null;
 
     private PaymentSessionResult Refused(PaymentSessionRequest request, string reason)
     {

@@ -25,5 +25,16 @@ internal sealed class BookingRepository(AppDbContext db) : IBookingRepository
     public Task<Booking?> GetByBookingNoAsync(string bookingNo, CancellationToken cancellationToken) =>
         db.Bookings.FirstOrDefaultAsync(b => b.BookingNo == bookingNo, cancellationToken);
 
+    // UPDLOCK = "I'm about to change this row": others wanting to change it
+    // wait until our transaction ends (same idea as EfIdempotencyStore).
+    // FromSqlInterpolated turns {id} into a SQL parameter.
+    public async Task<Booking?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var rows = await db.Bookings
+            .FromSqlInterpolated($"SELECT * FROM [booking].[Bookings] WITH (UPDLOCK, ROWLOCK) WHERE [Id] = {id}")
+            .ToListAsync(cancellationToken);
+        return rows.SingleOrDefault();
+    }
+
     public void Add(Booking booking) => db.Bookings.Add(booking);
 }

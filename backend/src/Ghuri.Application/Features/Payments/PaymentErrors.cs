@@ -25,4 +25,15 @@ public static class PaymentErrors
     public static readonly Error PaymentStartFailed =
         Error.Failure("payment_start_failed", "We couldn't open the payment page right now. Please try again in a moment.")
             with { CommitChanges = true };
+
+    /// <summary>
+    /// The gateway's validation API didn't answer, so we can't tell yet
+    /// whether a payment is real. NOT committed: the message isn't saved as
+    /// handled, so the gateway's retry (or the other message) gets a fresh try.
+    /// </summary>
+    public static readonly Error GatewayUnreachable =
+        Error.Failure("payment_gateway_unreachable", "We couldn't check the payment with the payment service. It will be checked again shortly.");
+
+    public static readonly Error PaymentNotFound =
+        Error.NotFound("payment_not_found", "This payment doesn't exist.");
 }

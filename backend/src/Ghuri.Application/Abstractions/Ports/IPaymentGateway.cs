@@ -18,6 +18,14 @@ public interface IPaymentGateway
     /// with a reason, so the caller can record the attempt as Failed.
     /// </summary>
     Task<PaymentSessionResult> CreateSessionAsync(PaymentSessionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Asks the PROVIDER whether a payment really happened (SSLCommerz: the
+    /// validation API, given the val_id from its message). This is the only answer
+    /// we trust: the messages themselves can be posted by anyone. Never throws:
+    /// a network problem comes back as Unreachable.
+    /// </summary>
+    Task<PaymentValidationResult> ValidatePaymentAsync(string validationId, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -41,4 +49,38 @@ public sealed record PaymentSessionResult(bool Succeeded, string? PaymentPageUrl
     public static PaymentSessionResult Success(string paymentPageUrl, string sessionId) => new(true, paymentPageUrl, sessionId, null);
 
     public static PaymentSessionResult Failure(string reason) => new(false, null, null, reason);
+}
+
+/// <summary>Valid = the provider confirms the money arrived · Invalid = it says no · Unreachable = no answer (ask again later).</summary>
+public enum PaymentValidationOutcome
+{
+    Valid = 1,
+    Invalid = 2,
+    Unreachable = 3
+}
+
+/// <summary>
+/// The provider's answer about one payment. When Valid: which transaction it
+/// was (our PaymentNo), how much in which currency, and how it was paid. The
+/// caller still checks that the transaction and amount are the ones it expects.
+/// </summary>
+public sealed record PaymentValidationResult(
+    PaymentValidationOutcome Outcome,
+    string? TransactionId = null,
+    decimal? Amount = null,
+    string? Currency = null,
+    string? Method = null,
+    string? ProviderTransactionId = null,
+    decimal? GatewayFee = null,
+    bool IsHighRisk = false,
+    string? FailureReason = null)
+{
+    public static PaymentValidationResult Valid(
+        string transactionId, decimal amount, string currency,
+        string? method, string? providerTransactionId, decimal? gatewayFee, bool isHighRisk) =>
+        new(PaymentValidationOutcome.Valid, transactionId, amount, currency, method, providerTransactionId, gatewayFee, isHighRisk);
+
+    public static PaymentValidationResult Invalid(string reason) => new(PaymentValidationOutcome.Invalid, FailureReason: reason);
+
+    public static PaymentValidationResult Unreachable(string reason) => new(PaymentValidationOutcome.Unreachable, FailureReason: reason);
 }

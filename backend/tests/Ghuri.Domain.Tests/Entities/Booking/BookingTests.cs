@@ -191,10 +191,17 @@ public class BookingTests
         Assert.Equal(BookingStatus.PendingPayment, booking.Status);
     }
 
+    /// <summary>The whole price arrives - what a validated payment does before confirming.</summary>
+    private static BookingEntity Paid(BookingEntity booking)
+    {
+        booking.RecordPayment(booking.TotalAmount - booking.PaidAmount);
+        return booking;
+    }
+
     [Fact]
     public void Confirm_PendingBooking_IsConfirmed_AndTheHoldIsCleared()
     {
-        var booking = FixedBooking();
+        var booking = Paid(FixedBooking());
 
         booking.Confirm(Now.AddMinutes(5));
 
@@ -204,18 +211,81 @@ public class BookingTests
     }
 
     [Fact]
-    public void Confirm_AfterItExpired_IsRefused()
+    public void Confirm_BeforeItIsPaidInFull_IsRefused()
     {
         var booking = FixedBooking();
+        booking.RecordPayment(1_000); // part of the price only
+
+        Assert.Equal("booking_not_paid", Assert.Throws<DomainException>(() => booking.Confirm(Now.AddMinutes(5))).Code);
+        Assert.Equal(BookingStatus.PendingPayment, booking.Status);
+    }
+
+    [Fact]
+    public void Confirm_AfterItExpired_IsRefused()
+    {
+        var booking = Paid(FixedBooking());
         booking.Expire(Now.AddMinutes(25));
 
         Assert.Equal("booking_not_pending", Assert.Throws<DomainException>(() => booking.Confirm(Now.AddMinutes(26))).Code);
     }
 
     [Fact]
-    public void Expire_AConfirmedBooking_IsRefused()
+    public void RecordPayment_AddsUp_WhateverTheStatus()
     {
         var booking = FixedBooking();
+        booking.Expire(Now.AddMinutes(25)); // money can arrive after expiry - it must still show
+
+        booking.RecordPayment(30_000);
+        booking.RecordPayment(4_000);
+
+        Assert.Equal(34_000m, booking.PaidAmount);
+        Assert.True(booking.IsPaidInFull);
+    }
+
+    [Fact]
+    public void RecordPayment_MoreThanThePrice_IsRefused()
+    {
+        var booking = Paid(FixedBooking());
+
+        Assert.Equal("booking_overpaid", Assert.Throws<DomainException>(() => booking.RecordPayment(1)).Code);
+        Assert.Equal(34_000m, booking.PaidAmount);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void RecordPayment_OfNothing_IsRejected(decimal amount) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => FixedBooking().RecordPayment(amount));
+
+    [Fact]
+    public void ConfirmAfterExpiry_APaidExpiredBooking_IsConfirmed_WithANote()
+    {
+        var booking = FixedBooking();
+        booking.Expire(Now.AddMinutes(25));
+        Paid(booking);
+
+        booking.ConfirmAfterExpiry(Now.AddMinutes(30));
+
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        Assert.Equal((BookingStatus.Expired, BookingStatus.Confirmed, "Paid after the payment window ended."),
+            (booking.History[^1].FromStatus, booking.History[^1].ToStatus, booking.History[^1].Note));
+    }
+
+    [Fact]
+    public void ConfirmAfterExpiry_UnpaidOrNotExpired_IsRefused()
+    {
+        var unpaid = FixedBooking();
+        unpaid.Expire(Now.AddMinutes(25));
+        Assert.Equal("booking_not_paid", Assert.Throws<DomainException>(() => unpaid.ConfirmAfterExpiry(Now.AddMinutes(30))).Code);
+
+        var pending = Paid(FixedBooking());
+        Assert.Equal("booking_not_expired", Assert.Throws<DomainException>(() => pending.ConfirmAfterExpiry(Now.AddMinutes(5))).Code);
+    }
+
+    [Fact]
+    public void Expire_AConfirmedBooking_IsRefused()
+    {
+        var booking = Paid(FixedBooking());
         booking.Confirm(Now.AddMinutes(5));
 
         Assert.Equal("booking_not_pending", Assert.Throws<DomainException>(() => booking.Expire(Now.AddHours(1))).Code);
@@ -228,7 +298,7 @@ public class BookingTests
     {
         var booking = FixedBooking();
         if (confirmFirst)
-            booking.Confirm(Now.AddMinutes(5));
+            Paid(booking).Confirm(Now.AddMinutes(5));
         var staffId = Guid.NewGuid();
 
         booking.Cancel(Now.AddMinutes(10), "  Hotel not available  ", staffId);
