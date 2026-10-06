@@ -125,6 +125,43 @@ internal sealed class QuestPdfBookingDocumentRenderer(IOptions<AgencyOptions> op
 
         column.Item().Element(c => TripBlock(c, booking));
 
+        // A custom trip: every stop with its own dates (Day 15: "voucher shows all legs").
+        if (booking.Stops is { Count: > 0 } stops)
+        {
+            column.Item().Column(route =>
+            {
+                route.Spacing(4);
+                route.Item().Text("Your stops").FontSize(12).SemiBold();
+                route.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(c =>
+                    {
+                        c.ConstantColumn(24);
+                        c.RelativeColumn(3);
+                        c.RelativeColumn(3);
+                        c.RelativeColumn(1);
+                        c.RelativeColumn(2);
+                    });
+                    table.Header(header =>
+                    {
+                        header.Cell().Element(HeaderCell).Text("#");
+                        header.Cell().Element(HeaderCell).Text("Destination");
+                        header.Cell().Element(HeaderCell).Text("Dates");
+                        header.Cell().Element(HeaderCell).AlignRight().Text("Nights");
+                        header.Cell().Element(HeaderCell).PaddingLeft(16).Text("Then by");
+                    });
+                    foreach (var stop in stops)
+                    {
+                        table.Cell().Element(BodyCell).Text(stop.Sequence.ToString(CultureInfo.InvariantCulture));
+                        table.Cell().Element(BodyCell).Text(stop.Destination);
+                        table.Cell().Element(BodyCell).Text($"{Date(stop.CheckIn)} – {Date(stop.CheckOut)}");
+                        table.Cell().Element(BodyCell).AlignRight().Text(stop.Nights.ToString(CultureInfo.InvariantCulture));
+                        table.Cell().Element(BodyCell).PaddingLeft(16).Text(stop.TransferToNext ?? "-");
+                    }
+                });
+            });
+        }
+
         column.Item().Column(travellers =>
         {
             travellers.Spacing(4);

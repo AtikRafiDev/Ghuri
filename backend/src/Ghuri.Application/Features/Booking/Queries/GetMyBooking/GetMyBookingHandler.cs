@@ -22,7 +22,9 @@ internal sealed class GetMyBookingHandler(IReadDbContext db, ICurrentUser curren
                 where b.BookingNo == query.BookingNo && b.CustomerId == customerId
                 join p in db.TourPackages on b.PackageId equals p.Id into packages
                 from p in packages.DefaultIfEmpty()
-                select new { Booking = b, PackageTitle = p == null ? null : p.Title, PackageSlug = p == null ? null : p.Slug })
+                join ct in db.CustomTrips on b.CustomTripId equals (Guid?)ct.Id into customTrips
+                from ct in customTrips.DefaultIfEmpty()
+                select new { Booking = b, PackageTitle = p != null ? p.Title : ct != null ? "Custom trip " + ct.TripNo : null, PackageSlug = p == null ? null : p.Slug })
             .FirstOrDefaultAsync(cancellationToken);
         if (row is null)
             return BookingErrors.BookingNotFound;

@@ -95,12 +95,14 @@ internal sealed class GetBookingForAdminHandler(IReadDbContext db) : IQueryHandl
                 join c in db.Users on booking.CustomerId equals c.Id
                 join p in db.TourPackages on booking.PackageId equals p.Id into packages
                 from p in packages.DefaultIfEmpty()
+                join ct in db.CustomTrips on booking.CustomTripId equals (Guid?)ct.Id into customTrips
+                from ct in customTrips.DefaultIfEmpty()
                 select new
                 {
                     Booking = booking,
                     BookedAtUtc = EF.Property<DateTime>(booking, "CreatedAtUtc"),
                     Customer = new { c.Id, c.FullName, c.PhoneNumber, c.Email },
-                    PackageTitle = p == null ? null : p.Title,
+                    PackageTitle = p != null ? p.Title : ct != null ? "Custom trip " + ct.TripNo : null,
                     PackageSlug = p == null ? null : p.Slug
                 })
             .FirstOrDefaultAsync(cancellationToken);

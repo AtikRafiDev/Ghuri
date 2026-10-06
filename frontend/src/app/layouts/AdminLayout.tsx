@@ -7,6 +7,7 @@ import {
   LogOutIcon,
   MapPinIcon,
   PackageIcon,
+  RouteIcon,
   TagsIcon,
   Undo2Icon,
   type LucideIcon,
@@ -41,6 +42,7 @@ const adminMenu: { label: string; items: MenuItem[] }[] = [
     label: 'Operations',
     items: [
       { to: '/admin/bookings', label: 'Bookings', icon: CalendarCheckIcon },
+      { to: '/admin/custom-trips', label: 'Custom trips', icon: RouteIcon },
       { to: '/admin/payments', label: 'Payments', icon: CreditCardIcon },
       { to: '/admin/refunds', label: 'Refunds', icon: Undo2Icon },
     ],

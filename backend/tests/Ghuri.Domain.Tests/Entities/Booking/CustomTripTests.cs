@@ -154,6 +154,112 @@ public class CustomTripTests
         Assert.Equal((CustomTripStatus.Quoted, 2, (DateTime?)null), (trip.Status, trip.QuoteVersion, trip.ExpiredAtUtc));
     }
 
+    // ---------- Accept and pay (Day 15) ----------
+
+    private static CustomTrip Quoted()
+    {
+        var trip = Submit();
+        trip.Quote("Plan", Lines, 3, Staff, Now);
+        trip.ClearDomainEvents();
+        return trip;
+    }
+
+    private static TravellerDetails[] TwoAdults =>
+        [new(TravellerType.Adult, "Rahim Uddin", IsLead: true), new(TravellerType.Adult, "Karima Begum", IsLead: false)];
+
+    private static Domain.Entities.Booking.Booking BookingFor(CustomTrip trip, TravellerDetails[]? people = null) =>
+        Domain.Entities.Booking.Booking.CreateForCustomTrip(
+            "TB100001", trip.CustomerId, trip, people ?? TwoAdults,
+            new BookingContact("Rahim Uddin", PhoneNumber.Create("01712345678"), "rahim@example.com"), null, BookingSource.Web, Now);
+
+    [Fact]
+    public void Accept_ALiveQuote_ThenItsBooking_CostsExactlyTheQuote()
+    {
+        var trip = Quoted();
+
+        trip.Accept(Now.AddHours(1));
+        var booking = BookingFor(trip);
+
+        Assert.Equal((CustomTripStatus.Accepted, (DateTime?)Now.AddHours(1)), (trip.Status, trip.AcceptedAtUtc));
+        Assert.Equal((BookingType.CustomTrip, (Guid?)trip.Id, (Guid?)null, 62_000m, 62_000m),
+            (booking.BookingType, booking.CustomTripId, booking.PackageId, booking.SubTotal, booking.TotalAmount));
+        Assert.Equal((trip.StartDate, trip.EndDate, trip.TotalNights), (booking.StartDate, booking.EndDate, booking.Nights));
+        Assert.Equal((BookingStatus.PendingPayment, (DateTime?)Now.Add(Domain.Entities.Booking.Booking.PaymentWindow)), (booking.Status, booking.HoldExpiresAtUtc));
+    }
+
+    [Fact]
+    public void Accept_AQuotePastItsDeadline_IsRefused_EvenBeforeTheJobMarksIt()
+    {
+        var trip = Quoted(); // valid 3 days
+
+        Assert.Equal("quote_expired", Assert.Throws<DomainException>(() => trip.Accept(Now.AddDays(3))).Code);
+        Assert.Equal(CustomTripStatus.Quoted, trip.Status);
+    }
+
+    [Fact]
+    public void Accept_WithoutAQuote_IsRefused() =>
+        Assert.Equal("trip_not_acceptable", Assert.Throws<DomainException>(() => Submit().Accept(Now)).Code);
+
+    [Fact]
+    public void ABooking_NeedsTheAcceptedTrip_AndExactlyItsTravellers()
+    {
+        var notAccepted = Quoted();
+        Assert.Equal("trip_not_accepted", Assert.Throws<DomainException>(() => BookingFor(notAccepted)).Code);
+
+        var trip = Quoted();
+        trip.Accept(Now);
+        TravellerDetails[] three = [.. TwoAdults, new(TravellerType.Child, "Ayaan", IsLead: false)];
+        Assert.Equal("travellers_mismatch", Assert.Throws<DomainException>(() => BookingFor(trip, three)).Code); // quoted for 2 adults
+    }
+
+    [Fact]
+    public void AnUnpaidAcceptance_GoesBackToQuoted_OrToExpiredOnceTheOfferRanOut()
+    {
+        var stillValid = Quoted();
+        stillValid.Accept(Now);
+        stillValid.ReleaseAcceptance(Now.AddMinutes(25));
+        Assert.Equal((CustomTripStatus.Quoted, (DateTime?)null), (stillValid.Status, stillValid.AcceptedAtUtc));
+
+        var ranOut = Quoted();
+        ranOut.Accept(Now.AddDays(3).AddMinutes(-5)); // accepted 5 minutes before the deadline, never paid
+        ranOut.ReleaseAcceptance(Now.AddDays(3).AddMinutes(15));
+        Assert.Equal(CustomTripStatus.Expired, ranOut.Status);
+    }
+
+    [Fact]
+    public void MarkPaid_IsOnce_AndAcceptsALatePayment()
+    {
+        var trip = Quoted();
+        trip.Accept(Now);
+        trip.ReleaseAcceptance(Now.AddMinutes(25)); // the hold ran out...
+
+        Assert.True(trip.MarkPaid(Now.AddMinutes(30))); // ...but the money came after all
+        Assert.True(trip.MarkPaid(Now.AddMinutes(31))); // a repeat changes nothing
+        Assert.Equal((CustomTripStatus.Paid, (DateTime?)Now.AddMinutes(30)), (trip.Status, trip.PaidAtUtc));
+    }
+
+    [Fact]
+    public void MarkPaid_OnACancelledTrip_SaysNo_AndChangesNothing()
+    {
+        var trip = Quoted();
+        trip.Cancel(null, Now);
+
+        Assert.False(trip.MarkPaid(Now));
+        Assert.Equal(CustomTripStatus.Cancelled, trip.Status);
+    }
+
+    [Fact]
+    public void CancellingThePaidBooking_CancelsTheTrip()
+    {
+        var trip = Quoted();
+        trip.Accept(Now);
+        trip.MarkPaid(Now);
+
+        trip.CancelWithBooking("Booking TB100001 was cancelled: family emergency", Now.AddDays(1));
+
+        Assert.Equal((CustomTripStatus.Cancelled, "Booking TB100001 was cancelled: family emergency"), (trip.Status, trip.CancelReason));
+    }
+
     // ---------- Reject / cancel ----------
 
     [Fact]

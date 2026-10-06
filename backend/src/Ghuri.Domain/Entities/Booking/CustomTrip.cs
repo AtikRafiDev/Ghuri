@@ -227,6 +227,77 @@ public sealed class CustomTrip : AggregateRoot, IAuditable
         CancelReason = Clean(reason, 500);
     }
 
+    // ----- Accept and pay (Day 15) -----
+
+    /// <summary>
+    /// The customer takes the offer: Quoted → Accepted. A booking is made
+    /// from it right after (Booking.CreateForCustomTrip) and paid like any other.
+    /// </summary>
+    /// <exception cref="DomainException">No live quote, or it ran out (even if the hourly job hasn't marked it yet).</exception>
+    public void Accept(DateTime nowUtc)
+    {
+        if (IsQuoteOverdue(nowUtc) || Status == CustomTripStatus.Expired)
+            throw new DomainException("quote_expired", "This quote has run out. Please ask us for a new price.");
+        if (Status != CustomTripStatus.Quoted)
+            throw new DomainException("trip_not_acceptable", "There is no quote to accept on this trip.");
+
+        Status = CustomTripStatus.Accepted;
+        AcceptedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// The booking made on accepting was never paid (its 20 minutes ran out):
+    /// back to Quoted while the offer still stands, else Expired - the customer
+    /// can accept again, or ask for a new price. Does nothing unless Accepted.
+    /// </summary>
+    public void ReleaseAcceptance(DateTime nowUtc)
+    {
+        if (Status != CustomTripStatus.Accepted)
+            return;
+
+        AcceptedAtUtc = null;
+        if (QuoteExpiresAtUtc <= nowUtc)
+        {
+            Status = CustomTripStatus.Expired;
+            ExpiredAtUtc = nowUtc;
+        }
+        else
+        {
+            Status = CustomTripStatus.Quoted;
+        }
+    }
+
+    /// <summary>
+    /// Its booking was paid (the payment confirmation, through the outbox) - the
+    /// trip is on. Also from Quoted/Expired: money that arrives after the hold
+    /// was released still counts (Day 10's late payment). A repeat does nothing.
+    /// </summary>
+    /// <returns>False if the trip was already cancelled or rejected - the booking is paid anyway; staff must sort it out.</returns>
+    public bool MarkPaid(DateTime nowUtc)
+    {
+        if (Status == CustomTripStatus.Paid)
+            return true;
+        if (Status is CustomTripStatus.Cancelled or CustomTripStatus.Rejected)
+            return false;
+
+        Status = CustomTripStatus.Paid;
+        AcceptedAtUtc ??= nowUtc;
+        PaidAtUtc = nowUtc;
+        return true;
+    }
+
+    /// <summary>Its booking was cancelled (by the customer or the agency): the trip is off too.</summary>
+    public void CancelWithBooking(string reason, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (Status is CustomTripStatus.Cancelled or CustomTripStatus.Rejected)
+            return;
+
+        Status = CustomTripStatus.Cancelled;
+        CancelledAtUtc = nowUtc;
+        CancelReason = Clean(reason, 500);
+    }
+
     /// <summary>True once a sent quote is past its deadline - even before the expiry job has marked it.</summary>
     public bool IsQuoteOverdue(DateTime nowUtc) => Status == CustomTripStatus.Quoted && QuoteExpiresAtUtc <= nowUtc;
 

@@ -61,7 +61,9 @@ internal sealed class SearchBookingsHandler(IReadDbContext db) : IQueryHandler<S
             from b in db.Bookings
             join p in db.TourPackages on b.PackageId equals p.Id into packages
             from p in packages.DefaultIfEmpty()
-            select new { b, PackageTitle = p == null ? null : p.Title };
+            join ct in db.CustomTrips on b.CustomTripId equals (Guid?)ct.Id into customTrips
+            from ct in customTrips.DefaultIfEmpty()
+            select new { b, PackageTitle = p != null ? p.Title : ct != null ? "Custom trip " + ct.TripNo : null };
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {

@@ -164,9 +164,10 @@ public sealed class Booking : AggregateRoot, IAuditable
 
         var price = PriceCalculator.ForDeparture(package, departure, counts, singleRooms: 0);
         var stay = BookingStay.ForDeparture(departure.Id, package.Id, departure.StartDate, departure.EndDate, package.DurationNights);
+        EnsureSnapshotExplainsTotal(counts, departure.AdultPrice, departure.ChildPrice, departure.InfantPrice, price);
 
         return Create(bookingNo, customerId, stay, counts,
-            departure.AdultPrice, departure.ChildPrice, departure.InfantPrice, price,
+            departure.AdultPrice, departure.ChildPrice, departure.InfantPrice, price.Total, price.Currency,
             travellers, contact, specialRequest, source, nowUtc);
     }
 
@@ -187,15 +188,54 @@ public sealed class Booking : AggregateRoot, IAuditable
         var price = PriceCalculator.ForFlexibleStay(package, nights, counts);
         // Children pay the adult rate, infants are free - the same rules as PriceCalculator.
         var perPerson = PriceCalculator.PerPersonForNights(package, nights);
+        EnsureSnapshotExplainsTotal(counts, perPerson, perPerson, 0, price);
 
         return Create(bookingNo, customerId, BookingStay.Flexible(package.Id, checkIn, nights), counts,
-            perPerson, perPerson, 0, price,
+            perPerson, perPerson, 0, price.Total, price.Currency,
             travellers, contact, specialRequest, source, nowUtc);
+    }
+
+    /// <summary>
+    /// An accepted custom-trip quote (17-day plan, Day 15: "AcceptQuote … creates
+    /// Booking (BookingType CustomTrip, StartDate, total = quote)"). The trip must
+    /// already be Accepted; the people named must be exactly the trip's adults,
+    /// children and infants. No per-person prices - the quote is one total for
+    /// everyone (its lines are on the trip, and on the invoice).
+    /// </summary>
+    /// <exception cref="DomainException">The trip isn't accepted, or the travellers don't match it.</exception>
+    public static Booking CreateForCustomTrip(
+        string bookingNo, Guid customerId, CustomTrip trip, IReadOnlyList<TravellerDetails> travellers,
+        BookingContact contact, string? specialRequest, BookingSource source, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(trip);
+        if (trip.Status != CustomTripStatus.Accepted || trip.QuoteTotal is not { } total)
+            throw new DomainException("trip_not_accepted", "Only an accepted quote can become a booking.");
+        if (trip.CustomerId != customerId)
+            throw new DomainException("trip_not_yours", "This trip belongs to another customer.");
+
+        var counts = CountTravellers(travellers);
+        if ((counts.Adults, counts.Children, counts.Infants) != (trip.Adults, trip.Children, trip.Infants))
+            throw new DomainException("travellers_mismatch", "The travellers must be the ones the quote was made for.");
+
+        return Create(bookingNo, customerId, BookingStay.ForCustomTrip(trip.Id, trip.StartDate, trip.EndDate, trip.TotalNights), counts,
+            adultPrice: 0, childPrice: 0, infantPrice: 0, total, trip.Currency,
+            travellers, contact, specialRequest, source, nowUtc);
+    }
+
+    /// <summary>
+    /// For a package booking the per-person snapshot must explain the total
+    /// exactly. A price line it has no column for (a single-room supplement -
+    /// not offered on a booking yet) would make the invoice disagree with what is charged.
+    /// </summary>
+    private static void EnsureSnapshotExplainsTotal(Travellers counts, decimal adultPrice, decimal childPrice, decimal infantPrice, PriceBreakdown price)
+    {
+        if (price.Total != counts.Adults * adultPrice + counts.Children * childPrice + counts.Infants * infantPrice)
+            throw new InvalidOperationException("The price has a line the booking can't store.");
     }
 
     private static Booking Create(
         string bookingNo, Guid customerId, BookingStay stay, Travellers counts,
-        decimal adultPrice, decimal childPrice, decimal infantPrice, PriceBreakdown price,
+        decimal adultPrice, decimal childPrice, decimal infantPrice, decimal total, string currency,
         IReadOnlyList<TravellerDetails> travellers, BookingContact contact, string? specialRequest,
         BookingSource source, DateTime nowUtc)
     {
@@ -203,12 +243,8 @@ public sealed class Booking : AggregateRoot, IAuditable
         ArgumentNullException.ThrowIfNull(contact);
         ArgumentException.ThrowIfNullOrWhiteSpace(contact.Name);
         ArgumentNullException.ThrowIfNull(contact.Phone);
-
-        // The per-person snapshot must explain the total exactly. A price line
-        // it has no column for (a single-room supplement - not offered on a
-        // booking yet) would make the invoice disagree with what is charged.
-        if (price.Total != counts.Adults * adultPrice + counts.Children * childPrice + counts.Infants * infantPrice)
-            throw new InvalidOperationException("The price has a line the booking can't store.");
+        if (total <= 0)
+            throw new ArgumentOutOfRangeException(nameof(total), "A booking must cost something.");
 
         var booking = new Booking
         {
@@ -227,12 +263,12 @@ public sealed class Booking : AggregateRoot, IAuditable
             AdultPriceSnapshot = adultPrice,
             ChildPriceSnapshot = childPrice,
             InfantPriceSnapshot = infantPrice,
-            SubTotal = price.Total,
+            SubTotal = total,
             AddOnTotal = 0,
             DiscountAmount = 0,
-            TotalAmount = price.Total,
+            TotalAmount = total,
             PaidAmount = 0,
-            Currency = price.Currency,
+            Currency = currency,
             PaymentPlan = PaymentPlan.Full, // partial/advance payment is Phase 2
             ContactName = contact.Name.Trim(),
             ContactPhone = contact.Phone,

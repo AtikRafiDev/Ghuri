@@ -120,7 +120,17 @@ export type Trip = {
     cancelReason: string | null
   }
   canCancel: boolean
+  /** The booking made on accepting (Day 15): status 1 = waiting for payment, 2 = paid. Null before accepting. */
+  booking: { bookingNo: string; status: 1 | 2 | 3 | 4 | 5 | 6; holdExpiresAtUtc: string | null } | null
 }
+
+/** POST /api/v1/custom-trips/{tripNo}/accept (backend: AcceptCustomTripQuoteCommand). */
+export type AcceptQuoteRequest = {
+  travellers: { type: 1 | 2 | 3; fullName: string; isLead: boolean }[]
+  specialRequest: string | null
+}
+
+export type AcceptQuoteResponse = { bookingNo: string; totalAmount: number; currency: string; holdExpiresAtUtc: string }
 
 const base = '/api/v1/custom-trips'
 
@@ -137,6 +147,12 @@ export const tripsApi = {
 
   async get(tripNo: string): Promise<Trip> {
     const { data } = await http.get<Trip>(`${base}/${encodeURIComponent(tripNo)}`)
+    return data
+  },
+
+  /** Makes the booking; pay it on /checkout/{bookingNo} like any booking. A second call while it waits returns the same booking. */
+  async accept(tripNo: string, request: AcceptQuoteRequest): Promise<AcceptQuoteResponse> {
+    const { data } = await http.post<AcceptQuoteResponse>(`${base}/${encodeURIComponent(tripNo)}/accept`, request)
     return data
   },
 

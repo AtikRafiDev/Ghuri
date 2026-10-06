@@ -70,6 +70,7 @@ public static class DependencyInjection
 
         services.AddScoped<CustomTripReader>();
         services.AddScoped<CustomTripMessageFormat>();
+        services.AddScoped<CustomTripBookingSync>();
     }
 
     /// <summary>

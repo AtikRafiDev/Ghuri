@@ -25,6 +25,20 @@ public static class CustomTripErrors
     public static readonly Error NotCancellable =
         Error.Conflict("trip_not_cancellable", "This request can no longer be cancelled here. If you already accepted the quote, cancel the booking instead.");
 
+    // Accepting (Day 15)
+
+    public static readonly Error QuoteExpired =
+        Error.Conflict("quote_expired", "This quote has run out. Please ask us for a new price.");
+
+    public static readonly Error NotAcceptable =
+        Error.Conflict("trip_not_acceptable", "There is no quote to accept on this trip.");
+
+    /// <summary>The names sent must be exactly the people the quote was priced for.</summary>
+    public static Error TravellersMismatch(CustomTrip trip) =>
+        Error.Failure(
+            "travellers_mismatch",
+            $"This quote is for {trip.Adults} adult(s), {trip.Children} child(ren) and {trip.Infants} infant(s), with an adult as the lead - please enter exactly those travellers.");
+
     /// <summary>Kept next to the domain's limits so the messages and the rules never drift apart.</summary>
     public static readonly string LegsMessage = $"Add 1 to {CustomTrip.MaxLegs} destinations.";
 }

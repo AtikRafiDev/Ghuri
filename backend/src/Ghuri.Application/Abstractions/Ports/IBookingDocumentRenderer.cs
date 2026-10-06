@@ -35,7 +35,11 @@ public sealed record BookingDocumentData(
     decimal PaidAmount,
     string Currency,
     IReadOnlyList<DocumentPayment> Payments,
-    DateOnly IssuedOn);
+    DateOnly IssuedOn,
+    IReadOnlyList<DocumentStop>? Stops = null);
+
+/// <summary>One stop of a custom trip (Day 15: "voucher shows all legs"). Empty for a package booking.</summary>
+public sealed record DocumentStop(int Sequence, string Destination, DateOnly CheckIn, DateOnly CheckOut, int Nights, string? TransferToNext);
 
 public sealed record DocumentTraveller(string FullName, TravellerType Type, bool IsLead);
 

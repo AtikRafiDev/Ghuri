@@ -2,7 +2,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Ghuri.Application.Abstractions.Ports;
+using Ghuri.Application.Features.Booking.Commands.CancelMyBooking;
+using Ghuri.Application.Features.Booking.Queries.GetMyBooking;
+using Ghuri.Application.Features.Booking.Queries.GetMyBookingDocument;
+using Ghuri.Application.Features.CustomTrips;
+using Ghuri.Application.Features.CustomTrips.Commands.AcceptCustomTripQuote;
 using Ghuri.Application.Features.CustomTrips.Commands.CancelCustomTrip;
+using Ghuri.Application.Features.Payments.Commands.HandleGatewayCallback;
+using Ghuri.Application.Features.Payments.Commands.InitiatePayment;
 using Ghuri.Application.Features.CustomTrips.Commands.QuoteCustomTrip;
 using Ghuri.Application.Features.CustomTrips.Commands.RejectCustomTrip;
 using Ghuri.Application.Features.CustomTrips.Commands.SubmitCustomTrip;
@@ -32,6 +39,7 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
     {
         _sql = sql;
         _sql.Emails.Reset();
+        _sql.PaymentGateway.Reset();
     }
 
     private OutboxDispatcherJob Outbox => _sql.Services.GetRequiredService<OutboxDispatcherJob>();
@@ -297,5 +305,166 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
         }, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
+    }
+
+    // ---------- Day 15: accept, pay, voucher ----------
+
+    /// <summary>A trip for 2 adults + 1 child (see Request), quoted at ৳62,000.</summary>
+    private async Task<(User Customer, string TripNo)> QuotedAsync()
+    {
+        var (customer, tripNo) = await SubmittedAsync();
+        var quoted = await _sql.SendCommandAsync(Quote(tripNo), await _sql.NewCustomerAsync());
+        Assert.True(quoted.IsSuccess, quoted.Error.Message);
+        return (customer, tripNo);
+    }
+
+    private static AcceptCustomTripQuoteCommand Accept(string tripNo, params AcceptTraveller[] travellers) =>
+        new(tripNo,
+            travellers.Length > 0
+                ? travellers
+                : [new(TravellerType.Adult, "Karim Hasan", IsLead: true), new(TravellerType.Adult, "Nadia Hasan", IsLead: false), new(TravellerType.Child, "Rafi", IsLead: false)],
+            SpecialRequest: null);
+
+    private async Task<CustomTripDto> TripAsync(User customer, string tripNo) =>
+        (await _sql.SendAsync(new GetMyCustomTripQuery(tripNo), customer.Id)).Value;
+
+    /// <summary>Paid the way any booking is: InitiatePayment, then SSLCommerz's IPN (the fake validates it).</summary>
+    private async Task PayAsync(User customer, string bookingNo, decimal amount)
+    {
+        var paymentNo = (await _sql.SendCommandAsync(new InitiatePaymentCommand(bookingNo), customer.Id)).Value.PaymentNo;
+        _sql.PaymentGateway.ValidatesAs(paymentNo, amount);
+        var ipn = await _sql.SendCommandAsync(new HandleGatewayCallbackCommand(
+            PaymentEventType.Ipn, new Dictionary<string, string> { ["tran_id"] = paymentNo, ["val_id"] = "v-" + paymentNo }));
+        Assert.True(ipn.IsSuccess, ipn.Error.Message);
+    }
+
+    [Fact]
+    public async Task AcceptingTheQuote_MakesABookingForExactlyThePrice_AndAClickTwiceGivesTheSameOne()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+
+        var first = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
+        var again = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
+
+        Assert.True(first.IsSuccess, first.Error.Message);
+        Assert.Equal((62_000m, first.Value.BookingNo), (first.Value.TotalAmount, again.Value.BookingNo)); // one booking, not two
+        var trip = await TripAsync(customer, tripNo);
+        Assert.Equal((CustomTripStatus.Accepted, first.Value.BookingNo, BookingStatus.PendingPayment),
+            (trip.Status, trip.Booking!.BookingNo, trip.Booking.Status));
+
+        var booking = (await _sql.SendAsync(new GetMyBookingQuery(first.Value.BookingNo), customer.Id)).Value;
+        Assert.Equal((BookingType.CustomTrip, $"Custom trip {tripNo}", 3), (booking.BookingType, booking.PackageTitle, booking.Travellers.Count));
+        Assert.Equal((trip.StartDate, trip.EndDate), (booking.StartDate, booking.EndDate));
+    }
+
+    [Fact]
+    public async Task AQuotePastItsDeadline_CantBeAccepted()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+        await using (var scope = _sql.Services.CreateAsyncScope())
+        {
+            // Still "Quoted" - the hourly job hasn't run - but past the deadline.
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().CustomTrips
+                .Where(t => t.TripNo == tripNo)
+                .ExecuteUpdateAsync(set => set.SetProperty(t => t.QuoteExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+        }
+
+        var result = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
+
+        Assert.Equal("quote_expired", result.Error.Code);
+        Assert.Null((await TripAsync(customer, tripNo)).Booking);
+    }
+
+    [Fact]
+    public async Task OtherTravellersThanQuoted_OrSomeoneElse_CantAccept()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+
+        var wrongPeople = await _sql.SendCommandAsync(Accept(tripNo, new AcceptTraveller(TravellerType.Adult, "Solo", true)), customer.Id);
+        var stranger = await _sql.SendCommandAsync(Accept(tripNo), await _sql.NewCustomerAsync());
+
+        Assert.Equal(("travellers_mismatch", "custom_trip_not_found"), (wrongPeople.Error.Code, stranger.Error.Code));
+        Assert.Equal(CustomTripStatus.Quoted, (await TripAsync(customer, tripNo)).Status);
+    }
+
+    [Fact]
+    public async Task AnUnpaidAcceptance_Expires_AndTheQuoteCanBeAcceptedAgain()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+        var first = (await _sql.SendCommandAsync(Accept(tripNo), customer.Id)).Value;
+        await EndTheHoldAsync(_sql, first.BookingNo);
+
+        await _sql.Services.GetRequiredService<BookingExpiryJob>().RunOnceAsync(TestContext.Current.CancellationToken);
+
+        var released = await TripAsync(customer, tripNo);
+        Assert.Equal(CustomTripStatus.Quoted, released.Status); // the offer still stands
+        Assert.Null(released.Booking);
+        var second = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
+        Assert.True(second.IsSuccess, second.Error.Message);
+        Assert.NotEqual(first.BookingNo, second.Value.BookingNo);
+    }
+
+    [Fact]
+    public async Task AcceptingAgain_RightAfterTheHoldRanOut_DoesntWaitForTheJob()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+        var first = (await _sql.SendCommandAsync(Accept(tripNo), customer.Id)).Value;
+        await EndTheHoldAsync(_sql, first.BookingNo); // and the expiry job hasn't run
+
+        var second = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
+
+        Assert.True(second.IsSuccess, second.Error.Message);
+        Assert.NotEqual(first.BookingNo, second.Value.BookingNo);
+        Assert.Equal(BookingStatus.Expired, (await _sql.SendAsync(new GetMyBookingQuery(first.BookingNo), customer.Id)).Value.Status);
+    }
+
+    [Fact]
+    public async Task EndToEnd_SubmitQuoteAcceptPay_TheTripIsPaid_AndTheVoucherIsEmailed()
+    {
+        var (customer, tripNo) = await QuotedAsync();
+        var booking = (await _sql.SendCommandAsync(Accept(tripNo), customer.Id)).Value;
+        await PayAsync(customer, booking.BookingNo, 62_000m);
+        _sql.Emails.Reset();
+
+        await Outbox.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        var trip = await TripAsync(customer, tripNo);
+        Assert.Equal((CustomTripStatus.Paid, BookingStatus.Confirmed), (trip.Status, trip.Booking!.Status));
+        Assert.NotNull(trip.Timeline.PaidAtUtc);
+
+        var email = Assert.Single(_sql.Emails.Sent, e => e.Subject.Contains(booking.BookingNo));
+        Assert.Equal(customer.Email, email.To);
+        Assert.Contains($"Custom trip {tripNo}", email.Subject);
+        Assert.Equal(new[] { $"Voucher-{booking.BookingNo}.pdf", $"Invoice-{booking.BookingNo}.pdf" }, email.Attachments!.Select(a => a.FileName));
+
+        var voucher = await _sql.SendAsync(new GetMyBookingDocumentQuery(booking.BookingNo, BookingDocumentKind.Voucher), customer.Id);
+        Assert.True(voucher.IsSuccess, voucher.Error.Message);
+    }
+
+    [Fact]
+    public async Task CancellingThePaidBooking_CancelsTheTrip_AndRefundsByThePolicy()
+    {
+        await using (var scope = _sql.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.CancellationPolicies.AnyAsync(p => p.PackageId == null))
+            {
+                db.CancellationPolicies.AddRange(
+                    Domain.Entities.Booking.CancellationPolicy.Create(null, 30, 100), Domain.Entities.Booking.CancellationPolicy.Create(null, 0, 0));
+                await db.SaveChangesAsync();
+            }
+        }
+        var (customer, tripNo) = await QuotedAsync(); // starts in 30 days → 100% back
+        var booking = (await _sql.SendCommandAsync(Accept(tripNo), customer.Id)).Value;
+        await PayAsync(customer, booking.BookingNo, 62_000m);
+        await Outbox.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        var cancelled = await _sql.SendCommandAsync(new CancelMyBookingCommand(booking.BookingNo, "Family emergency"), customer.Id);
+
+        Assert.True(cancelled.IsSuccess, cancelled.Error.Message);
+        Assert.Equal(62_000m, cancelled.Value.RefundAmount);
+        var trip = await TripAsync(customer, tripNo);
+        Assert.Equal(CustomTripStatus.Cancelled, trip.Status);
+        Assert.Contains("Family emergency", trip.Timeline.CancelReason);
     }
 }

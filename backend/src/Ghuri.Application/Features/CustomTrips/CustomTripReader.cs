@@ -23,7 +23,11 @@ public sealed record CustomTripDto(
     IReadOnlyList<CustomTripLegDto> Legs,
     CustomTripQuoteDto? Quote,
     CustomTripTimelineDto Timeline,
-    bool CanCancel);
+    bool CanCancel,
+    CustomTripBookingDto? Booking = null);
+
+/// <summary>The booking made when the quote was accepted (Day 15) - waiting for payment, or paid. Null before accepting.</summary>
+public sealed record CustomTripBookingDto(string BookingNo, BookingStatus Status, DateTime? HoldExpiresAtUtc);
 
 public sealed record CustomTripLegDto(int Sequence, Guid DestinationId, string DestinationName, int Nights, TransferMode TransferToNext, DateOnly CheckInDate, DateOnly CheckOutDate);
 
@@ -89,6 +93,14 @@ internal sealed class CustomTripReader(IReadDbContext db, TimeProvider clock)
                 IsExpired: expiresAt <= clock.GetUtcNow().UtcDateTime);
         }
 
+        // The live booking: waiting for payment, or paid. An expired attempt doesn't count - the quote can be accepted again.
+        var booking = await db.Bookings
+            .Where(b => b.CustomTripId == t.Id
+                        && (b.Status == BookingStatus.PendingPayment || b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Completed))
+            .OrderByDescending(b => b.BookingNo.Length).ThenByDescending(b => b.BookingNo)
+            .Select(b => new CustomTripBookingDto(b.BookingNo, b.Status, b.HoldExpiresAtUtc))
+            .FirstOrDefaultAsync(cancellationToken);
+
         var dto = new CustomTripDto(
             t.TripNo, t.Status, t.StartDate, t.EndDate, t.TotalNights, t.Adults, t.Children, t.Infants,
             t.HotelLevel, t.BudgetPerPerson, t.Notes, t.ContactName, t.ContactPhone.Value, t.ContactEmail,
@@ -96,7 +108,8 @@ internal sealed class CustomTripReader(IReadDbContext db, TimeProvider clock)
             new CustomTripTimelineDto(
                 t.SubmittedAtUtc, t.QuotedAtUtc, t.AcceptedAtUtc, t.PaidAtUtc, t.ExpiredAtUtc,
                 t.RejectedAtUtc, t.RejectReason, t.CancelledAtUtc, t.CancelReason),
-            CanCancel: t.Status is CustomTripStatus.Submitted or CustomTripStatus.Quoted or CustomTripStatus.Expired);
+            CanCancel: t.Status is CustomTripStatus.Submitted or CustomTripStatus.Quoted or CustomTripStatus.Expired,
+            booking);
 
         return (t.Id, t.CustomerId, t.QuotedBy, dto);
     }

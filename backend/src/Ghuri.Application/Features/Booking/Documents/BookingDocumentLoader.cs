@@ -46,23 +46,65 @@ internal sealed class BookingDocumentLoader(IReadDbContext db, TimeProvider cloc
             .ToListAsync(cancellationToken);
 
         var lines = new List<DocumentPriceLine>();
-        AddLine(lines, "Adult", b.Adults, b.AdultPriceSnapshot);
-        AddLine(lines, "Child", b.Children, b.ChildPriceSnapshot);
-        AddLine(lines, "Infant", b.Infants, b.InfantPriceSnapshot);
+        var title = row.PackageTitle ?? "Custom trip";
+        List<DocumentStop>? stops = null;
+
+        if (b.CustomTripId is { } tripId)
+        {
+            // A custom trip (Day 15): its quote lines are the invoice, its stops go on the voucher.
+            (title, stops, var quoteLines) = await CustomTripPartsAsync(tripId, cancellationToken);
+            lines.AddRange(quoteLines);
+        }
+        else
+        {
+            AddLine(lines, "Adult", b.Adults, b.AdultPriceSnapshot);
+            AddLine(lines, "Child", b.Children, b.ChildPriceSnapshot);
+            AddLine(lines, "Infant", b.Infants, b.InfantPriceSnapshot);
+        }
+
         lines.AddRange(addOns);
         if (b.DiscountAmount > 0)
             lines.Add(new DocumentPriceLine("Discount", 1, -b.DiscountAmount, -b.DiscountAmount));
 
         return new BookingDocumentData(
             b.BookingNo, b.BookingType, b.Status,
-            row.PackageTitle ?? "Custom trip",
+            title,
             b.StartDate, b.EndDate, b.Nights,
             b.ContactName, b.ContactPhone.Value, b.ContactEmail, b.SpecialRequest,
             travellers, lines,
             b.TotalAmount, b.PaidAmount, b.Currency,
             payments,
-            clock.Today());
+            clock.Today(),
+            stops);
     }
+
+    /// <summary>"Custom trip CT1001: Cox's Bazar → Sylhet", its stops in order, and the quote's price lines.</summary>
+    private async Task<(string Title, List<DocumentStop> Stops, List<DocumentPriceLine> Lines)> CustomTripPartsAsync(
+        Guid tripId, CancellationToken cancellationToken)
+    {
+        var tripNo = await db.CustomTrips.Where(t => t.Id == tripId).Select(t => t.TripNo).SingleAsync(cancellationToken);
+        var stops = await (
+                from l in db.CustomTripLegs
+                where l.CustomTripId == tripId
+                join d in db.Destinations.IgnoreQueryFilters() on l.DestinationId equals d.Id
+                orderby l.Sequence
+                select new { l.Sequence, d.Name, l.CheckInDate, l.CheckOutDate, l.Nights, l.TransferToNext })
+            .ToListAsync(cancellationToken);
+        var quoteLines = await db.CustomTripQuoteLines
+            .Where(l => l.CustomTripId == tripId)
+            .OrderBy(l => l.Sequence)
+            .Select(l => new { l.Category, l.Description, l.Amount })
+            .ToListAsync(cancellationToken);
+
+        return (
+            $"Custom trip {tripNo}: {string.Join(" → ", stops.Select(s => s.Name))}",
+            stops.Select(s => new DocumentStop(
+                s.Sequence, s.Name, s.CheckInDate, s.CheckOutDate, s.Nights,
+                s.TransferToNext == TransferMode.None ? null : TransferName(s.TransferToNext))).ToList(),
+            quoteLines.Select(l => new DocumentPriceLine($"{l.Category}: {l.Description}", 1, l.Amount, l.Amount)).ToList());
+    }
+
+    private static string TransferName(TransferMode mode) => mode == TransferMode.PrivateCar ? "Private car" : mode.ToString();
 
     // A free infant still gets a line ("Infant × 1 - 0"): the customer sees everyone was counted.
     private static void AddLine(List<DocumentPriceLine> lines, string description, int quantity, decimal unitPrice)

@@ -1,5 +1,6 @@
 using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Common;
+using Ghuri.Application.Features.CustomTrips;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public sealed record ExpireBookingCommand(Guid BookingId) : ICommand;
 internal sealed class ExpireBookingHandler(
     IBookingRepository bookings,
     IDepartureRepository departures,
+    CustomTripBookingSync customTrips,
     TimeProvider clock,
     ILogger<ExpireBookingHandler> logger) : ICommandHandler<ExpireBookingCommand>
 {
@@ -37,6 +39,7 @@ internal sealed class ExpireBookingHandler(
             return Result.Success();
 
         booking.Expire(nowUtc);
+        await customTrips.BookingEndedAsync(booking, nowUtc, cancellationToken); // a custom trip can be accepted again
 
         if (booking.SeatsHeld > 0
             && !await departures.ReleaseSeatsAsync(booking.DepartureId!.Value, booking.SeatsHeld, cancellationToken))

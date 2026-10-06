@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { PageMessage } from '@/features/booking/components/PageMessage'
+import { useSecondsLeft } from '@/features/booking/lib/useSecondsLeft'
 import { toAppError } from '@/shared/api/problem'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { PageSpinner } from '@/shared/components/PageSpinner'
@@ -23,6 +24,7 @@ import { formatTaka } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
 import { hotelLevels, myTripQuery, quoteLineLabels, transferLabel, tripKeys, tripsApi, type Trip } from '../api/trips.api'
 import { TripStatusBadge } from '../components/TripStatusBadge'
+import { formatTimeLeft } from '../lib/timeLeft'
 
 /**
  * /account/trips/:tripNo - one custom trip: the stops with their dates, the
@@ -128,10 +130,16 @@ function TripDetails({ trip }: { trip: Trip }) {
   )
 }
 
-/** The price staff sent: the plan, the lines, the total and until when it stands. */
+/**
+ * The price staff sent: the plan, the lines, the total and how long it
+ * stands (ticking) - with "Accept & pay" while it's live, "Pay now" once
+ * accepted, "View booking" once paid (17-day plan, Day 15).
+ */
 function QuoteCard({ trip }: { trip: Trip }) {
   const quote = trip.quote!
-  const live = trip.status === 2 && !quote.isExpired
+  const secondsLeft = useSecondsLeft(trip.status === 2 ? quote.expiresAtUtc : null)
+  const live = trip.status === 2 && !quote.isExpired && secondsLeft !== 0
+  const booking = trip.booking
 
   return (
     <section className={live ? 'grid gap-4 rounded-xl border-2 border-primary bg-card p-4' : 'grid gap-4 rounded-xl border bg-card p-4 opacity-80'}>
@@ -153,11 +161,38 @@ function QuoteCard({ trip }: { trip: Trip }) {
         <dt className="border-t pt-1 font-semibold">Total for everyone</dt>
         <dd className="border-t pt-1 text-right font-semibold tabular-nums">{formatTaka(quote.total)}</dd>
       </dl>
-      <p className={live ? 'text-sm' : 'text-sm text-destructive'}>
-        {live
-          ? `This price is valid until ${formatDateTime(quote.expiresAtUtc)}.`
-          : `This quote ran out on ${formatDateTime(quote.expiresAtUtc)}. Contact us for a new price.`}
-      </p>
+      {live && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+          <p className="text-sm">
+            Valid until {formatDateTime(quote.expiresAtUtc)}
+            {secondsLeft !== null && <span className="text-muted-foreground"> · {formatTimeLeft(secondsLeft)} left</span>}
+          </p>
+          <Button asChild size="lg">
+            <Link to={`/account/trips/${encodeURIComponent(trip.tripNo)}/accept`}>Accept & pay</Link>
+          </Button>
+        </div>
+      )}
+      {booking?.status === 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+          <p className="text-sm">You accepted this quote - booking {booking.bookingNo} is waiting for your payment.</p>
+          <Button asChild size="lg">
+            <Link to={`/checkout/${encodeURIComponent(booking.bookingNo)}`}>Pay now</Link>
+          </Button>
+        </div>
+      )}
+      {booking && booking.status !== 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+          <p className="text-sm">Paid - your trip is booked as {booking.bookingNo}. The voucher is in your email.</p>
+          <Button asChild variant="outline">
+            <Link to={`/account/bookings/${encodeURIComponent(booking.bookingNo)}`}>View booking</Link>
+          </Button>
+        </div>
+      )}
+      {!live && !booking && (trip.status === 2 || trip.status === 6) && (
+        <p className="text-sm text-destructive">
+          This quote ran out on {formatDateTime(quote.expiresAtUtc)}. Contact us for a new price.
+        </p>
+      )}
     </section>
   )
 }

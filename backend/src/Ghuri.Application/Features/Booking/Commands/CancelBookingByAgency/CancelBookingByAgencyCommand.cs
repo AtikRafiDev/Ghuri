@@ -3,6 +3,7 @@ using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
+using Ghuri.Application.Features.CustomTrips;
 using Ghuri.Application.Features.Identity;
 using Ghuri.Domain.Entities.Payment;
 using Ghuri.Domain.Enums;
@@ -38,6 +39,7 @@ internal sealed class CancelBookingByAgencyValidator : AbstractValidator<CancelB
 internal sealed class CancelBookingByAgencyHandler(
     IBookingRepository bookings,
     IDepartureRepository departures,
+    CustomTripBookingSync customTrips,
     IRefundRepository refunds,
     IReadDbContext db,
     ICurrentUser currentUser,
@@ -56,7 +58,9 @@ internal sealed class CancelBookingByAgencyHandler(
             return BookingErrors.NotCancellable("This booking can no longer be cancelled.");
 
         var reason = command.Reason.Trim();
-        booking.Cancel(clock.GetUtcNow().UtcDateTime, reason, staffId);
+        var nowUtc = clock.GetUtcNow().UtcDateTime;
+        booking.Cancel(nowUtc, reason, staffId);
+        await customTrips.BookingEndedAsync(booking, nowUtc, cancellationToken);
 
         if (booking.SeatsHeld > 0
             && !await departures.ReleaseSeatsAsync(booking.DepartureId!.Value, booking.SeatsHeld, cancellationToken))

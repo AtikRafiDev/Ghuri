@@ -45,8 +45,10 @@ internal sealed class GetMyBookingsHandler(IReadDbContext db, ICurrentUser curre
                 where b.CustomerId == customerId
                 join p in db.TourPackages on b.PackageId equals p.Id into packages
                 from p in packages.DefaultIfEmpty()
+                join ct in db.CustomTrips on b.CustomTripId equals (Guid?)ct.Id into customTrips
+                from ct in customTrips.DefaultIfEmpty()
                 orderby b.BookingNo descending
-                select new { Booking = b, PackageTitle = p == null ? null : p.Title, PackageSlug = p == null ? null : p.Slug })
+                select new { Booking = b, PackageTitle = p != null ? p.Title : ct != null ? "Custom trip " + ct.TripNo : null, PackageSlug = p == null ? null : p.Slug })
             .ToListAsync(cancellationToken);
 
         return rows

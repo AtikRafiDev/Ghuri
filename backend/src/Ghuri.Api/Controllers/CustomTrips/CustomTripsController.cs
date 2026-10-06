@@ -1,4 +1,5 @@
 using Ghuri.Api.ErrorHandling;
+using Ghuri.Application.Features.CustomTrips.Commands.AcceptCustomTripQuote;
 using Ghuri.Application.Features.CustomTrips.Commands.CancelCustomTrip;
 using Ghuri.Application.Features.CustomTrips.Commands.SubmitCustomTrip;
 using Ghuri.Application.Features.CustomTrips.Queries;
@@ -38,6 +39,17 @@ public sealed class CustomTripsController(ISender sender) : ControllerBase
     public async Task<IActionResult> Get(string tripNo, CancellationToken cancellationToken) =>
         (await sender.Send(new GetMyCustomTripQuery(tripNo), cancellationToken)).ToActionResult();
 
+    /// <summary>
+    /// Take the quote - body { travellers: [{ type: 1 adult · 2 child · 3 infant, fullName, isLead }], specialRequest }.
+    /// Makes a booking held 20 minutes; pay it like any booking (POST /api/v1/bookings/{bookingNo}/payments).
+    /// 200 = { bookingNo, totalAmount, currency, holdExpiresAtUtc }. 409 quote_expired once the offer has run out.
+    /// Sending it again while that booking waits for payment returns the same booking.
+    /// </summary>
+    [HttpPost("{tripNo}/accept")]
+    public async Task<IActionResult> Accept(string tripNo, AcceptQuoteRequest request, CancellationToken cancellationToken) =>
+        (await sender.Send(new AcceptCustomTripQuoteCommand(tripNo, request.Travellers, request.SpecialRequest), cancellationToken))
+        .ToActionResult();
+
     /// <summary>Withdraw it - body { "reason": "..." } (optional). Only before accepting a quote.</summary>
     [HttpPost("{tripNo}/cancel")]
     public async Task<IActionResult> Cancel(string tripNo, CancelTripRequest? request, CancellationToken cancellationToken) =>
@@ -46,3 +58,6 @@ public sealed class CustomTripsController(ISender sender) : ControllerBase
 
 /// <summary>Body of POST custom-trips/{tripNo}/cancel.</summary>
 public sealed record CancelTripRequest(string? Reason);
+
+/// <summary>Body of POST custom-trips/{tripNo}/accept - the number comes from the URL.</summary>
+public sealed record AcceptQuoteRequest(IReadOnlyList<AcceptTraveller> Travellers, string? SpecialRequest);

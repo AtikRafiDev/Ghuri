@@ -96,6 +96,11 @@ export const router = createBrowserRouter([
       // The quote email links to trips/:tripNo (backend: SendCustomTripQuotedMessages).
       { path: 'trips', lazy: async () => ({ Component: (await import('@/features/trips/pages/MyTripsPage')).MyTripsPage }) },
       { path: 'trips/:tripNo', lazy: async () => ({ Component: (await import('@/features/trips/pages/MyTripPage')).MyTripPage }) },
+      // "Accept & pay" (Day 15): names of the travellers, then the usual payment page.
+      {
+        path: 'trips/:tripNo/accept',
+        lazy: async () => ({ Component: (await import('@/features/trips/pages/AcceptQuotePage')).AcceptQuotePage }),
+      },
     ],
   },
   {
@@ -157,6 +162,15 @@ export const router = createBrowserRouter([
       {
         path: 'refunds',
         lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminRefundsPage')).AdminRefundsPage }),
+      },
+      {
+        path: 'custom-trips',
+        lazy: async () => ({ Component: (await import('@/features/admin/customTrips/pages/AdminCustomTripsPage')).AdminCustomTripsPage }),
+      },
+      {
+        // The staff alert email links here (backend: SendCustomTripSubmittedEmails).
+        path: 'custom-trips/:tripNo',
+        lazy: async () => ({ Component: (await import('@/features/admin/customTrips/pages/AdminCustomTripPage')).AdminCustomTripPage }),
       },
       { path: 'system', lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) },
     ],

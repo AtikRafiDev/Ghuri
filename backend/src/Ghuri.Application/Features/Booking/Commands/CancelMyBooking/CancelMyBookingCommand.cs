@@ -2,6 +2,7 @@ using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
+using Ghuri.Application.Features.CustomTrips;
 using Ghuri.Application.Features.Identity;
 using Ghuri.Domain.Entities.Payment;
 using Ghuri.Domain.Enums;
@@ -33,6 +34,7 @@ public sealed record CancelMyBookingResponse(string BookingNo, decimal RefundPer
 internal sealed class CancelMyBookingHandler(
     IBookingRepository bookings,
     IDepartureRepository departures,
+    CustomTripBookingSync customTrips,
     IRefundRepository refunds,
     IReadDbContext db,
     CancellationTerms terms,
@@ -59,6 +61,7 @@ internal sealed class CancelMyBookingHandler(
         var reason = string.IsNullOrWhiteSpace(command.Reason) ? DefaultReason : command.Reason.Trim();
         var nowUtc = clock.GetUtcNow().UtcDateTime;
         booking.Cancel(nowUtc, reason, customerId);
+        await customTrips.BookingEndedAsync(booking, nowUtc, cancellationToken);
 
         if (booking.SeatsHeld > 0
             && !await departures.ReleaseSeatsAsync(booking.DepartureId!.Value, booking.SeatsHeld, cancellationToken))
