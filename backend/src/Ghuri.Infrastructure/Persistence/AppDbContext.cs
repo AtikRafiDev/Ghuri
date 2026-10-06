@@ -45,6 +45,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<BookingAddOn> BookingAddOns => Set<BookingAddOn>();
     public DbSet<BookingStatusHistory> BookingStatusHistory => Set<BookingStatusHistory>();
     public DbSet<CancellationPolicy> CancellationPolicies => Set<CancellationPolicy>();
+    public DbSet<CustomTrip> CustomTrips => Set<CustomTrip>();
+    public DbSet<CustomTripLeg> CustomTripLegs => Set<CustomTripLeg>();
+    public DbSet<CustomTripQuoteLine> CustomTripQuoteLines => Set<CustomTripQuoteLine>();
 
     // payment schema
     public DbSet<Payment> Payments => Set<Payment>();
@@ -99,6 +102,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// <summary>Same idea again, for support.CustomTourRequests.RequestNo (CR1001).</summary>
     public const string CustomTourRequestNoSequenceName = "CustomTourRequestNoSequence";
 
+    /// <summary>Same idea again, for booking.CustomTrips.TripNo (CT1001).</summary>
+    public const string CustomTripNoSequenceName = "CustomTripNoSequence";
+
     /// <summary>
     /// Every DateTime in this database is UTC (the columns end in "Utc"), but
     /// SQL Server's datetime2 doesn't store that - EF would read them back as
@@ -139,6 +145,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .IncrementsBy(1);
 
         modelBuilder.HasSequence<int>(CustomTourRequestNoSequenceName, schema: "support")
+            .StartsAt(1001)
+            .IncrementsBy(1);
+
+        modelBuilder.HasSequence<int>(CustomTripNoSequenceName, schema: "booking")
             .StartsAt(1001)
             .IncrementsBy(1);
 

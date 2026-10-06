@@ -1,3 +1,4 @@
+using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Entities.Marketing;
@@ -38,9 +39,8 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<BookingEnt
         // Denormalized for reports, per the blueprint - no FK-driven cascading behaviour needed beyond referential integrity.
         builder.HasOne<TourPackage>().WithMany().HasForeignKey(b => b.PackageId).OnDelete(DeleteBehavior.Restrict);
 
-        // A plain column for now: booking.CustomTrips (and so the foreign
-        // key) arrives with the custom-trips feature on Day 13.
-        builder.Property(b => b.CustomTripId);
+        // An accepted custom-trip quote becomes a booking (Day 15).
+        builder.HasOne<CustomTrip>().WithMany().HasForeignKey(b => b.CustomTripId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(b => b.CustomTripId);
 
         // Which links each type must have - the same rule BookingStay

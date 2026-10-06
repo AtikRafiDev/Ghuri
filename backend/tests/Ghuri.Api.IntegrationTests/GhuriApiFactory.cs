@@ -28,6 +28,7 @@ public class GhuriApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jobs:BookingExpiry:Enabled", "false");
         builder.UseSetting("Jobs:Outbox:Enabled", "false"); // tests call OutboxDispatcherJob.RunOnceAsync themselves
         builder.UseSetting("Jobs:Outbox:RetryDelaySeconds", "0"); // ...and retry at once, without waiting
+        builder.UseSetting("Jobs:QuoteExpiry:Enabled", "false");
 
         // Development sends through smtp4dev - a test must never need a mail
         // server running. (SqlServerFixture goes further: a FakeEmailSender

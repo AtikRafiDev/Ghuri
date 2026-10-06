@@ -3,6 +3,8 @@ using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Behaviors;
 using Ghuri.Application.Features.Booking;
 using Ghuri.Application.Features.Booking.Documents;
+using Ghuri.Application.Features.CustomTrips;
+using Ghuri.Application.Features.CustomTrips.Events;
 using Ghuri.Application.Features.Identity;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,8 +53,23 @@ public static class DependencyInjection
         services.AddDomainEventHandlers();
         services.AddScoped<CancellationTerms>();
         services.AddScoped<BookingDocumentLoader>();
+        services.AddCustomTripsFeature();
 
         return services;
+    }
+
+    private static void AddCustomTripsFeature(this IServiceCollection services)
+    {
+        // Links in emails must be full addresses - checked at startup, not when the first quote goes out.
+        services.AddOptions<SiteOptions>()
+            .BindConfiguration(SiteOptions.SectionName)
+            .Validate(o => Uri.TryCreate(o.PublicUrl, UriKind.Absolute, out _),
+                "Site:PublicUrl must be the website's full address, e.g. http://localhost:5173")
+            .ValidateOnStart();
+        services.AddOptions<StaffAlertOptions>().BindConfiguration(StaffAlertOptions.SectionName);
+
+        services.AddScoped<CustomTripReader>();
+        services.AddScoped<CustomTripMessageFormat>();
     }
 
     /// <summary>

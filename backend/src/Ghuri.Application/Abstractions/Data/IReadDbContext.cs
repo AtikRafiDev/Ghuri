@@ -52,6 +52,9 @@ public interface IReadDbContext
     IQueryable<BookingAddOn> BookingAddOns { get; }
     IQueryable<BookingStatusHistory> BookingStatusHistory { get; }
     IQueryable<CancellationPolicy> CancellationPolicies { get; }
+    IQueryable<CustomTrip> CustomTrips { get; }
+    IQueryable<CustomTripLeg> CustomTripLegs { get; }
+    IQueryable<CustomTripQuoteLine> CustomTripQuoteLines { get; }
 
     // payment
     IQueryable<Payment> Payments { get; }

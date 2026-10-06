@@ -39,6 +39,9 @@ internal sealed class ReadDbContext(AppDbContext db) : IReadDbContext
     public IQueryable<BookingAddOn> BookingAddOns => db.BookingAddOns.AsNoTracking();
     public IQueryable<BookingStatusHistory> BookingStatusHistory => db.BookingStatusHistory.AsNoTracking();
     public IQueryable<CancellationPolicy> CancellationPolicies => db.CancellationPolicies.AsNoTracking();
+    public IQueryable<CustomTrip> CustomTrips => db.CustomTrips.AsNoTracking();
+    public IQueryable<CustomTripLeg> CustomTripLegs => db.CustomTripLegs.AsNoTracking();
+    public IQueryable<CustomTripQuoteLine> CustomTripQuoteLines => db.CustomTripQuoteLines.AsNoTracking();
 
     public IQueryable<Payment> Payments => db.Payments.AsNoTracking();
     public IQueryable<PaymentEvent> PaymentEvents => db.PaymentEvents.AsNoTracking();

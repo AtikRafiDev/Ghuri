@@ -114,6 +114,15 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<OutboxDispatcherJob>();
         services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcherJob>());
+
+        // Custom-trip quotes that ran out (Day 13).
+        services.AddOptions<QuoteExpiryOptions>()
+            .BindConfiguration(QuoteExpiryOptions.SectionName)
+            .Validate(o => o.IntervalSeconds is >= 5 and <= 86400 && o.BatchSize is >= 1 and <= 1000,
+                "Jobs:QuoteExpiry: IntervalSeconds must be between 5 and 86400, BatchSize between 1 and 1000.")
+            .ValidateOnStart();
+        services.AddSingleton<QuoteExpiryJob>();
+        services.AddHostedService(sp => sp.GetRequiredService<QuoteExpiryJob>());
     }
 
     private static void AddFileStorage(this IServiceCollection services)
@@ -192,6 +201,8 @@ public static class DependencyInjection
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IRefundRepository, RefundRepository>();
+        services.AddScoped<ICustomTripRepository, CustomTripRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
 
         // "Same request twice = same answer" for POSTs like CreateBooking. Scoped:
         // it must use the request's one AppDbContext, so it joins the transaction.
