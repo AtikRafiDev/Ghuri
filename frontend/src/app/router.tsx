@@ -44,6 +44,17 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        // The custom trip builder (Day 14). Login first: the request belongs to an account,
+        // and the quote is emailed to it. A visitor comes back here after logging in.
+        path: 'plan-trip',
+        element: (
+          <RequireAuth>
+            <Outlet />
+          </RequireAuth>
+        ),
+        children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/trips/pages/PlanTripPage')).PlanTripPage }) }],
+      },
+      {
         // Back from SSLCommerz's page (the API's return address redirects here). No login needed to see it.
         path: 'payment/result',
         lazy: async () => ({ Component: (await import('@/features/booking/pages/PaymentResultPage')).PaymentResultPage }),
@@ -82,6 +93,9 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('@/features/account/pages/MyBookingPage')).MyBookingPage }),
       },
       { path: 'profile', lazy: async () => ({ Component: (await import('@/features/account/pages/ProfilePage')).ProfilePage }) },
+      // The quote email links to trips/:tripNo (backend: SendCustomTripQuotedMessages).
+      { path: 'trips', lazy: async () => ({ Component: (await import('@/features/trips/pages/MyTripsPage')).MyTripsPage }) },
+      { path: 'trips/:tripNo', lazy: async () => ({ Component: (await import('@/features/trips/pages/MyTripPage')).MyTripPage }) },
     ],
   },
   {

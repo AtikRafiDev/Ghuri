@@ -31,6 +31,9 @@ export function SiteHeader() {
           <Button asChild variant="ghost" size="sm">
             <Link to="/packages">Packages</Link>
           </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/plan-trip">Plan my trip</Link>
+          </Button>
         </div>
         <nav className="flex items-center gap-1">
           {status === 'authenticated' && user && (

@@ -22,6 +22,12 @@ internal sealed class EfUnitOfWork(AppDbContext db) : IUnitOfWork
 
         return strategy.ExecuteAsync(async () =>
         {
+            // On a RETRY (SQL Server picked us as a deadlock victim, or the
+            // connection dropped) the handler runs again from the top - so
+            // whatever the failed attempt added or changed must be forgotten,
+            // or it would be saved twice. On the first attempt this clears nothing.
+            db.ChangeTracker.Clear();
+
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
             var result = await work(cancellationToken);

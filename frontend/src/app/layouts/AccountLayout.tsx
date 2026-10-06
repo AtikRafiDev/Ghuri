@@ -5,6 +5,7 @@ import { SiteHeader } from './SiteHeader'
 const tabs = [
   { to: '/account', label: 'Overview', end: true },
   { to: '/account/bookings', label: 'My bookings', end: false },
+  { to: '/account/trips', label: 'My trips', end: false },
   { to: '/account/profile', label: 'Profile', end: true },
 ]
 

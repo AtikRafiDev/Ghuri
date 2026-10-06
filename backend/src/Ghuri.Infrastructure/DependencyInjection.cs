@@ -167,7 +167,14 @@ public static class DependencyInjection
             // them (15 photos × 10 days × 3 categories = 450 rows for one
             // package - "cartesian explosion"). Set here so Application's
             // query handlers get it without referencing SQL-specific EF.
-            .UseSqlServer(connectionString, sql => sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+            .UseSqlServer(connectionString, sql => sql
+                .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+                // Transient SQL errors - a deadlock (two clicks of "Book" at the
+                // same moment), a dropped connection - run the whole command
+                // again (EfUnitOfWork), up to 3 times. The rerun of a deadlock
+                // victim finds the winner's saved answer (Idempotency-Key) and
+                // returns the same booking instead of an error.
+                .EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(2), errorNumbersToAdd: null))
             .AddInterceptors(
                 serviceProvider.GetRequiredService<AuditableEntityInterceptor>(),
                 serviceProvider.GetRequiredService<OutboxInterceptor>())
