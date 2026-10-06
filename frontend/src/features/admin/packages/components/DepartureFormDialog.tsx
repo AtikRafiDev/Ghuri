@@ -1,12 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/lib/utils'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { TextField } from '@/shared/components/TextField'
+import { notify } from '@/shared/lib/notify'
 import { applyServerErrors } from '@/shared/lib/serverErrors'
 import {
   addDays,
@@ -70,6 +72,8 @@ function DepartureForm({ pkg, departure, onDone }: { pkg: AdminPackage; departur
       // Refreshes this tab, the package's "from" price and its publish problems.
       await queryClient.invalidateQueries({ queryKey: packageKeys.all })
       onDone()
+      // The dialog closes, so a toast is the "it worked".
+      notify.success(departure ? 'Departure saved' : 'Departure added', { description: formatDate(body.startDate) })
     } catch (error) {
       setFormError(
         applyServerErrors(form, error, {
@@ -83,57 +87,70 @@ function DepartureForm({ pkg, departure, onDone }: { pkg: AdminPackage; departur
   })
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
+    <form onSubmit={onSubmit} noValidate className="grid gap-6">
       {formError && <FormAlert kind="error">{formError}</FormAlert>}
 
-      <TextField
-        label="Start date"
-        type="date"
-        // The browser's own date picker: no extra library, and good on phones.
-        min={departure?.startDate && departure.startDate < todayInBangladesh() ? undefined : todayInBangladesh()}
-        // readOnly, not disabled: React Hook Form leaves a DISABLED field's
-        // value out of the submitted data, and the date must still be sent.
-        readOnly={dateLocked}
-        error={errors.startDate?.message}
-        hint={
-          dateLocked
-            ? `${booked} seat(s) booked - the date can't move.`
-            : endDate
-              ? `Ends ${formatDate(endDate)} (${pkg.durationDays} days / ${pkg.durationNights} nights).`
-              : undefined
-        }
-        {...form.register('startDate')}
-      />
+      <FieldGroup title="When">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label="Start date"
+            type="date"
+            // The browser's own date picker: no extra library, and good on phones.
+            min={departure?.startDate && departure.startDate < todayInBangladesh() ? undefined : todayInBangladesh()}
+            // readOnly, not disabled: React Hook Form leaves a DISABLED field's
+            // value out of the submitted data, and the date must still be sent.
+            readOnly={dateLocked}
+            className={cn(dateLocked && 'bg-muted text-ink-500')}
+            error={errors.startDate?.message}
+            hint={
+              dateLocked
+                ? `${booked} seat(s) booked - the date can't move.`
+                : endDate
+                  ? `Ends ${formatDate(endDate)} (${pkg.durationDays} days / ${pkg.durationNights} nights).`
+                  : undefined
+            }
+            {...form.register('startDate')}
+          />
+          <TextField
+            label="Booking closes (days before)"
+            inputMode="numeric"
+            className="nums"
+            hint="Time to arrange transport and hotels."
+            error={errors.bookingCutoffDays?.message}
+            {...form.register('bookingCutoffDays')}
+          />
+        </div>
+      </FieldGroup>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <TextField label="Adult price (৳)" inputMode="decimal" error={errors.adultPrice?.message} {...form.register('adultPrice')} />
-        <TextField label="Child price (৳)" inputMode="decimal" error={errors.childPrice?.message} {...form.register('childPrice')} />
-        <TextField label="Infant price (৳)" inputMode="decimal" error={errors.infantPrice?.message} {...form.register('infantPrice')} />
-      </div>
+      {/* Short labels so the three boxes fit one row even on a phone; the group's title says what they are. */}
+      <FieldGroup title="Price per person (৳)">
+        <div className="grid grid-cols-3 gap-3 sm:gap-5">
+          <TextField label="Adult" inputMode="decimal" className="nums" error={errors.adultPrice?.message} {...form.register('adultPrice')} />
+          <TextField label="Child" inputMode="decimal" className="nums" error={errors.childPrice?.message} {...form.register('childPrice')} />
+          <TextField label="Infant" inputMode="decimal" className="nums" error={errors.infantPrice?.message} {...form.register('infantPrice')} />
+        </div>
+      </FieldGroup>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <TextField
-          label="Single room extra (৳)"
-          inputMode="decimal"
-          hint="Empty = not offered."
-          error={errors.singleSupplement?.message}
-          {...form.register('singleSupplement')}
-        />
-        <TextField
-          label="Total seats"
-          inputMode="numeric"
-          hint={booked > 0 ? `At least ${booked} (already booked).` : undefined}
-          error={errors.totalSeats?.message}
-          {...form.register('totalSeats')}
-        />
-        <TextField
-          label="Booking closes (days before)"
-          inputMode="numeric"
-          hint="Time to arrange transport and hotels."
-          error={errors.bookingCutoffDays?.message}
-          {...form.register('bookingCutoffDays')}
-        />
-      </div>
+      <FieldGroup title="Seats and rooms">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label="Total seats"
+            inputMode="numeric"
+            className="nums"
+            hint={booked > 0 ? `At least ${booked} (already booked).` : undefined}
+            error={errors.totalSeats?.message}
+            {...form.register('totalSeats')}
+          />
+          <TextField
+            label="Single room extra (৳)"
+            inputMode="decimal"
+            className="nums"
+            hint="Empty = not offered."
+            error={errors.singleSupplement?.message}
+            {...form.register('singleSupplement')}
+          />
+        </div>
+      </FieldGroup>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={isSubmitting}>
@@ -145,5 +162,18 @@ function DepartureForm({ pkg, departure, onDone }: { pkg: AdminPackage; departur
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+/** A titled set of fields. role="group" + the title: screen readers announce "Price per person" before "Adult". */
+function FieldGroup({ title, children }: { title: string; children: ReactNode }) {
+  const id = useId()
+  return (
+    <div role="group" aria-labelledby={id} className="grid gap-3">
+      <h3 id={id} className="text-[0.6875rem] font-semibold tracking-wider text-ink-400 uppercase">
+        {title}
+      </h3>
+      {children}
+    </div>
   )
 }

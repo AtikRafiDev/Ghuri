@@ -2,15 +2,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { BanIcon, FileDownIcon, HandCoinsIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/features/auth/useAuth'
 import { toAppError } from '@/shared/api/problem'
-import { FormAlert } from '@/shared/components/FormAlert'
+import { FormField } from '@/shared/components/FormField'
+import { TextField } from '@/shared/components/TextField'
 import { formatTaka } from '@/shared/lib/format'
+import { notify } from '@/shared/lib/notify'
 import { saveFile } from '@/shared/lib/saveFile'
 import { ActionDialog } from '../../components/ActionDialog'
 import { cancelRoles, manualPaymentMethods, moneyRoles, operationsApi, operationsKeys, type AdminBooking } from '../api/operations.api'
@@ -19,6 +19,7 @@ import { cancelRoles, manualPaymentMethods, moneyRoles, operationsApi, operation
  * What staff can do with one booking (17-day plan, Day 12): take a payment,
  * cancel for the agency, download its PDFs. Buttons show only for the roles
  * the API allows (ManageMoney / CancelBookings) - the API checks again.
+ * Sits in the page header's action area; a failed download pops up as a toast.
  */
 export function BookingActions({ booking }: { booking: AdminBooking }) {
   const { hasAnyRole } = useAuth()
@@ -29,6 +30,8 @@ export function BookingActions({ booking }: { booking: AdminBooking }) {
   const download = useMutation({
     mutationFn: (kind: 'invoice' | 'voucher') => operationsApi.document(booking.bookingNo, kind),
     onSuccess: (blob, kind) => saveFile(blob, `${kind === 'voucher' ? 'Voucher' : 'Invoice'}-${booking.bookingNo}.pdf`),
+    onError: (error, kind) =>
+      notify.error(`Couldn't download the ${kind === 'voucher' ? 'e-voucher' : 'invoice'}`, { description: toAppError(error).message }),
   })
 
   const canPay = booking.canRecordPayment && hasAnyRole(moneyRoles)
@@ -37,34 +40,31 @@ export function BookingActions({ booking }: { booking: AdminBooking }) {
   const hasInvoice = booking.paidAmount > 0
 
   return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap gap-2">
-        {canPay && (
-          <Button onClick={() => setDialog('pay')}>
-            <HandCoinsIcon />
-            Record payment
-          </Button>
-        )}
-        {canCancel && (
-          <Button variant="outline" onClick={() => setDialog('cancel')}>
-            <BanIcon />
-            Cancel booking
-          </Button>
-        )}
-        {hasVoucher && (
-          <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate('voucher')}>
-            {download.isPending && download.variables === 'voucher' ? <Spinner /> : <FileDownIcon />}
-            E-voucher
-          </Button>
-        )}
-        {hasInvoice && (
-          <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate('invoice')}>
-            {download.isPending && download.variables === 'invoice' ? <Spinner /> : <FileDownIcon />}
-            Invoice
-          </Button>
-        )}
-      </div>
-      {download.isError && <FormAlert kind="error">{toAppError(download.error).message}</FormAlert>}
+    <div className="flex flex-wrap items-center gap-2">
+      {hasVoucher && (
+        <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate('voucher')}>
+          {download.isPending && download.variables === 'voucher' ? <Spinner /> : <FileDownIcon />}
+          E-voucher
+        </Button>
+      )}
+      {hasInvoice && (
+        <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate('invoice')}>
+          {download.isPending && download.variables === 'invoice' ? <Spinner /> : <FileDownIcon />}
+          Invoice
+        </Button>
+      )}
+      {canCancel && (
+        <Button variant="outline" className="text-clay-600 hover:border-clay-300 hover:bg-clay-50 hover:text-clay-700" onClick={() => setDialog('cancel')}>
+          <BanIcon />
+          Cancel booking
+        </Button>
+      )}
+      {canPay && (
+        <Button onClick={() => setDialog('pay')}>
+          <HandCoinsIcon />
+          Record payment
+        </Button>
+      )}
 
       <RecordPaymentDialog booking={booking} open={dialog === 'pay'} onOpenChange={(o) => setDialog(o ? 'pay' : null)} onDone={refresh} />
       <AgencyCancelDialog booking={booking} open={dialog === 'cancel'} onOpenChange={(o) => setDialog(o ? 'cancel' : null)} onDone={refresh} />
@@ -92,6 +92,8 @@ function RecordPaymentDialog({ booking, open, onOpenChange, onDone }: DialogProp
         </>
       }
       submitLabel={`Record ${formatTaka(booking.amountDue)}`}
+      successMessage="Payment recorded"
+      successDescription={`${formatTaka(booking.amountDue)} for ${booking.bookingNo} - the voucher is on its way to the customer.`}
       onSubmit={async () => {
         await operationsApi.recordPayment(booking.bookingNo, {
           amount: booking.amountDue,
@@ -102,24 +104,28 @@ function RecordPaymentDialog({ booking, open, onOpenChange, onDone }: DialogProp
         await onDone()
       }}
     >
-      <div className="grid gap-1.5">
-        <Label htmlFor="pay-method">How did they pay?</Label>
-        <Select value={method} onValueChange={setMethod}>
-          <SelectTrigger id="pay-method">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {manualPaymentMethods.map((m) => (
-              <SelectItem key={m.value} value={String(m.value)}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="pay-reference">Transaction id / receipt no.{needsReference ? '' : ' (optional)'}</Label>
-        <Input id="pay-reference" maxLength={100} value={reference} onChange={(e) => setReference(e.target.value)} />
+      <div className="grid gap-5">
+        <FormField label="How did they pay?" htmlFor="pay-method">
+          <Select value={method} onValueChange={setMethod}>
+            <SelectTrigger id="pay-method" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {manualPaymentMethods.map((m) => (
+                <SelectItem key={m.value} value={String(m.value)}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+        <TextField
+          id="pay-reference"
+          label={`Transaction id / receipt no.${needsReference ? '' : ' (optional)'}`}
+          maxLength={100}
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+        />
       </div>
     </ActionDialog>
   )
@@ -146,16 +152,19 @@ function AgencyCancelDialog({ booking, open, onOpenChange, onDone }: DialogProps
       }
       submitLabel="Cancel booking"
       destructive
+      successMessage="Booking cancelled"
+      successDescription={
+        booking.paidAmount > 0 ? `A ${formatTaka(booking.paidAmount)} refund is waiting under Refunds.` : 'The seats are released.'
+      }
       onSubmit={async () => {
         await operationsApi.cancel(booking.bookingNo, reason)
         setReason('')
         await onDone()
       }}
     >
-      <div className="grid gap-1.5">
-        <Label htmlFor="cancel-reason">Reason (the customer sees it)</Label>
+      <FormField label="Reason (the customer sees it)" htmlFor="cancel-reason">
         <Textarea id="cancel-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-      </div>
+      </FormField>
     </ActionDialog>
   )
 }

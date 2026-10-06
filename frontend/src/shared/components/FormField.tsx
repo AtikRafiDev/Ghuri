@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
+import { FieldMessage } from './TextField'
 
 type FormFieldProps = {
   label: string
@@ -15,16 +16,11 @@ type FormFieldProps = {
  * TextField can't wrap (select, textarea, checkbox, image upload).
  */
 export function FormField({ label, htmlFor, error, hint, children }: FormFieldProps) {
-  const message = error ?? hint
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {message && (
-        <p id={`${htmlFor}-message`} className={error ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
-          {message}
-        </p>
-      )}
+      <FieldMessage id={`${htmlFor}-message`} error={error} hint={hint} />
     </div>
   )
 }

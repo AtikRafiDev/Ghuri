@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { FormField } from '@/shared/components/FormField'
 import { TextField } from '@/shared/components/TextField'
+import { notify } from '@/shared/lib/notify'
 import { applyServerErrors } from '@/shared/lib/serverErrors'
 import { slugify } from '@/shared/lib/slug'
 import { categoriesApi, categoryKeys, type AdminCategory, type CategoryRequest } from '../api/categories.api'
@@ -58,7 +59,7 @@ function CategoryForm({ category, onDone }: { category?: AdminCategory; onDone: 
     },
   })
   const { errors, isSubmitting } = form.formState
-  const [name, slug] = useWatch({ control: form.control, name: ['name', 'slug'] })
+  const [name, slug, icon] = useWatch({ control: form.control, name: ['name', 'slug', 'icon'] })
   const finalSlug = slugify(slug || name)
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -74,23 +75,27 @@ function CategoryForm({ category, onDone }: { category?: AdminCategory; onDone: 
       else await categoriesApi.create(body)
       await queryClient.invalidateQueries({ queryKey: categoryKeys.all })
       onDone()
+      // The dialog closes, so a toast is the "it worked".
+      notify.success(category ? 'Category saved' : 'Category added', { description: values.name })
     } catch (error) {
       setFormError(applyServerErrors(form, error, { category_name_taken: 'name', category_slug_taken: 'slug' }))
     }
   })
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
+    <form onSubmit={onSubmit} noValidate className="grid gap-5">
       {formError && <FormAlert kind="error">{formError}</FormAlert>}
 
-      <TextField label="Name" autoFocus error={errors.name?.message} {...form.register('name')} />
-      <TextField
-        label="URL name (slug)"
-        placeholder="Leave empty to make it from the name"
-        error={errors.slug?.message}
-        hint={finalSlug ? `Address: /tours?category=${finalSlug}` : undefined}
-        {...form.register('slug')}
-      />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField label="Name" autoFocus error={errors.name?.message} {...form.register('name')} />
+        <TextField
+          label="URL name (slug)"
+          placeholder="Empty = made from the name"
+          error={errors.slug?.message}
+          hint={finalSlug ? `Address: /tours?category=${finalSlug}` : undefined}
+          {...form.register('slug')}
+        />
+      </div>
 
       <FormField label="Icon" htmlFor="icon-none" error={errors.icon?.message}>
         <Controller
@@ -98,7 +103,8 @@ function CategoryForm({ category, onDone }: { category?: AdminCategory; onDone: 
           name="icon"
           render={({ field }) => (
             // A grid of buttons behaves like radio buttons: exactly one is chosen.
-            <div role="radiogroup" aria-label="Icon" className="grid grid-cols-8 gap-1.5">
+            // auto-fill: as many equal squares per row as fit the dialog's width.
+            <div role="radiogroup" aria-label="Icon" className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-2">
               {['', ...Object.keys(categoryIcons)].map((iconName) => (
                 <button
                   key={iconName || 'none'}
@@ -110,11 +116,11 @@ function CategoryForm({ category, onDone }: { category?: AdminCategory; onDone: 
                   title={iconName || 'No icon'}
                   onClick={() => field.onChange(iconName)}
                   className={cn(
-                    'flex aspect-square items-center justify-center rounded-md border text-muted-foreground hover:bg-muted',
-                    field.value === iconName && 'border-primary bg-primary text-primary-foreground hover:bg-primary',
+                    'flex aspect-square items-center justify-center rounded-xl border border-ink-200 bg-card text-ink-500 shadow-soft transition-[background-color,border-color,color,translate] duration-200 outline-none hover:-translate-y-0.5 hover:border-forest-300 hover:bg-forest-50 hover:text-forest-700 focus-visible:border-forest-500 focus-visible:ring-4 focus-visible:ring-forest-500/15',
+                    field.value === iconName && 'border-primary bg-primary text-white hover:border-primary hover:bg-primary hover:text-white',
                   )}
                 >
-                  {iconName ? <CategoryIcon name={iconName} className="size-4" /> : <span className="text-xs">None</span>}
+                  {iconName ? <CategoryIcon name={iconName} className="size-[18px]" /> : <span className="text-[0.6875rem] font-semibold">None</span>}
                 </button>
               ))}
             </div>
@@ -122,14 +128,26 @@ function CategoryForm({ category, onDone }: { category?: AdminCategory; onDone: 
         />
       </FormField>
 
-      <TextField
-        label="Sort order"
-        type="number"
-        min={0}
-        hint="Lower numbers come first."
-        error={errors.sortOrder?.message}
-        {...form.register('sortOrder', { valueAsNumber: true })}
-      />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField
+          label="Sort order"
+          type="number"
+          min={0}
+          hint="Lower numbers come first."
+          error={errors.sortOrder?.message}
+          {...form.register('sortOrder', { valueAsNumber: true })}
+        />
+        {/* The chosen icon and name together, as a chip - the same height as the field beside it. */}
+        <div className="grid content-start gap-2">
+          <span className="text-[0.8125rem] leading-none font-semibold text-ink-700">Preview</span>
+          <span className="inline-flex h-10 w-fit max-w-full items-center gap-2 rounded-full border border-ink-200 bg-card pr-4 pl-1.5 text-sm font-semibold text-ink-900 shadow-soft">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-forest-50 text-forest-700">
+              <CategoryIcon name={icon || null} className="size-4" />
+            </span>
+            <span className="truncate">{name.trim() || 'Category name'}</span>
+          </span>
+        </div>
+      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={isSubmitting}>

@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/AuthProvider'
+import { useAuth } from '@/features/auth/useAuth'
 import { AppError } from '@/shared/api/problem'
+import { markBootReady } from '@/shared/loader/bootSplash'
 
 // Retrying helps with a flaky connection (network error, 5xx), but a 4xx
 // ("not found", "not allowed", "invalid input") will give the same answer
@@ -23,11 +26,25 @@ export function Providers({ children }: { children: ReactNode }) {
 
   // TooltipProvider: one shared timer for every tooltip (the collapsed admin
   // sidebar's labels, "can't delete" hints) - shadcn's tooltip needs it once, at the top.
+  // Toaster: where every pop-up message (shared/lib/notify.tsx) appears.
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <BootSplashGate />
+          {children}
+        </AuthProvider>
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   )
+}
+
+/** Tells the boot splash (index.html) once we know who is logged in - one of its two "ready" signals. */
+function BootSplashGate() {
+  const { status } = useAuth()
+  useEffect(() => {
+    if (status !== 'checking') markBootReady('auth')
+  }, [status])
+  return null
 }

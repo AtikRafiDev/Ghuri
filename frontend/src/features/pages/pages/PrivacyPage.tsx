@@ -1,3 +1,4 @@
+import { ShieldCheckIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { site } from '@/shared/config/site'
 import { StaticPage } from '../components/StaticPage'
@@ -13,6 +14,7 @@ export function PrivacyPage() {
       title="Privacy policy"
       description={`What personal data ${site.name} keeps, why, and your choices.`}
       updated="6 October 2026"
+      icon={ShieldCheckIcon}
       draft
     >
       <p>

@@ -1,44 +1,215 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "./shared/loader/packingScene.css";
 
+/*
+ * The taka sign ৳. Plus Jakarta Sans has no Bengali characters, so ৳ fell
+ * back to a thin, undersized system glyph. These faces borrow ONLY that one
+ * character (unicode-range) from a Bengali font already on the device -
+ * nothing is downloaded - with a bold twin so bold prices get a bold sign.
+ * Windows: Nirmala UI · Apple: Kohinoor/Bangla Sangam · Android: Noto.
+ */
+@font-face {
+    font-family: 'Taka';
+    src: local('Nirmala UI'), local('NirmalaUI'), local('Kohinoor Bangla'), local('Bangla Sangam MN'), local('Noto Sans Bengali'), local('Vrinda');
+    unicode-range: U+09F3;
+    font-weight: 100 549;
+    size-adjust: 100%;
+}
+@font-face {
+    font-family: 'Taka';
+    src: local('Nirmala UI Bold'), local('NirmalaUI-Bold'), local('Kohinoor Bangla Semibold'), local('Bangla Sangam MN Bold'), local('Noto Sans Bengali Bold'), local('Vrinda Bold');
+    unicode-range: U+09F3;
+    font-weight: 550 900;
+    size-adjust: 100%;
+}
+
+/* No dark theme is offered; the variant stays so shadcn's dark: classes still compile. */
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
+/*
+ * THE GHURI PALETTE - the only colours the app may use.
+ *
+ * `--color-*: initial` removes Tailwind's built-in palette (red-500,
+ * blue-600, ...). A class like `text-amber-600` now simply produces no CSS,
+ * so nobody can drift off-brand by accident - the build enforces it.
+ *
+ *   forest  the brand green, 50 (mist) → 950 (night forest)
+ *   ink     green-tinted neutrals: page canvas, borders, text
+ *   sun     warm amber accent: highlights, "hurry", warnings
+ *   clay    terracotta: errors, cancellations, destructive actions
+ */
+@theme {
+    --color-*: initial;
+    --color-white: #ffffff;
+
+    --color-forest-50: #eef7f1;
+    --color-forest-100: #dcefe3;
+    --color-forest-200: #bfe3cd;
+    --color-forest-300: #8cc7a6;
+    --color-forest-400: #5fae86;
+    --color-forest-500: #2e8b63;
+    --color-forest-600: #1f6f51;
+    --color-forest-700: #17583f;
+    --color-forest-800: #134a37;
+    --color-forest-900: #0f3b2c;
+    --color-forest-950: #0b2a20;
+
+    --color-ink-50: #f4f6f2;
+    --color-ink-100: #edf1ee;
+    --color-ink-200: #dfe6e1;
+    --color-ink-300: #c5d0c9;
+    --color-ink-400: #8a9a91;
+    --color-ink-500: #5f7168;
+    --color-ink-600: #4a5b53;
+    --color-ink-700: #33433c;
+    --color-ink-900: #0f1f18;
+
+    --color-sun-50: #fdf6ea;
+    --color-sun-100: #fcefd9;
+    --color-sun-300: #f2c878;
+    --color-sun-500: #e8a33d;
+    --color-sun-700: #8f5c10;
+
+    --color-clay-50: #fdf1ee;
+    --color-clay-100: #fbe3dd;
+    --color-clay-300: #ee9c8c;
+    --color-clay-500: #d2553f;
+    --color-clay-600: #b8432e;
+    --color-clay-700: #96341f;
+
+    --font-sans: 'Plus Jakarta Sans Variable', 'Taka', ui-sans-serif, system-ui, sans-serif;
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
-    --color-ring: var(--ring);
-    --color-input: var(--input);
-    --color-border: var(--border);
-    --color-destructive: var(--destructive);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-accent: var(--accent);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-muted: var(--muted);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-secondary: var(--secondary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-popover: var(--popover);
-    --color-card-foreground: var(--card-foreground);
-    --color-card: var(--card);
-    --color-foreground: var(--foreground);
+
+    /* Shadows tinted with the forest green instead of grey - they read warmer. */
+    --shadow-soft: 0 1px 2px rgb(15 59 44 / 0.04), 0 2px 8px -2px rgb(15 59 44 / 0.06);
+    --shadow-card: 0 1px 2px rgb(15 59 44 / 0.04), 0 8px 24px -12px rgb(15 59 44 / 0.12);
+    --shadow-lift: 0 2px 4px rgb(15 59 44 / 0.04), 0 18px 40px -16px rgb(15 59 44 / 0.28);
+    --shadow-pop: 0 12px 48px -12px rgb(11 42 32 / 0.35), 0 2px 6px rgb(11 42 32 / 0.06);
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /*
+     * Entrance animations use "backwards" fill: the first frame holds during
+     * any delay, and nothing stays applied afterwards. ("both" would leave a
+     * transform behind, which makes the element the containing block for its
+     * position:fixed children - sticky bars inside a page would stop sticking.)
+     */
+    --animate-fade-up: fade-up 0.6s var(--ease-out-expo) backwards;
+    --animate-fade-in: fade-in 0.4s ease-out backwards;
+    --animate-scale-in: scale-in 0.45s var(--ease-spring) backwards;
+    --animate-shake: shake 0.45s ease-in-out;
+    --animate-float: float 6s ease-in-out infinite;
+    --animate-shimmer: shimmer 1.6s linear infinite;
+
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: none; }
+    }
+    @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes scale-in {
+        from { opacity: 0; transform: scale(0.92); }
+        to { opacity: 1; transform: none; }
+    }
+    @keyframes shake {
+        0%, 100% { transform: none; }
+        20%, 60% { transform: translateX(-5px); }
+        40%, 80% { transform: translateX(5px); }
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    @keyframes shimmer {
+        from { background-position: 200% 0; }
+        to { background-position: -200% 0; }
+    }
+    /* An SVG stroke drawing itself: give the path stroke-dasharray/offset = its length. */
+    @keyframes draw {
+        to { stroke-dashoffset: 0; }
+    }
+    /* A ring that ripples outward and fades - success badges, live dots. */
+    @keyframes ring-ping {
+        from { transform: scale(0.7); opacity: 0.55; }
+        to { transform: scale(1.9); opacity: 0; }
+    }
+    /* Confetti piece: flies to (--x, --y), spinning, then fades. */
+    @keyframes confetti {
+        0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4) rotate(0); }
+        70% { opacity: 1; }
+        100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1) rotate(var(--r)); }
+    }
+    /* The toast's time-left bar. */
+    @keyframes toast-progress {
+        from { transform: scaleX(1); }
+        to { transform: scaleX(0); }
+    }
+    /* The paper plane on the login panel, gliding along its offset-path. */
+    @keyframes fly {
+        0% { offset-distance: 0%; opacity: 0; }
+        12%, 82% { opacity: 1; }
+        100% { offset-distance: 100%; opacity: 0; }
+    }
+    /* Chart bars growing from their baseline. */
+    @keyframes grow-y {
+        from { transform: scaleY(0); }
+        to { transform: none; }
+    }
+    @keyframes grow-x {
+        from { transform: scaleX(0); }
+        to { transform: none; }
+    }
+    /* Route progress bar: rushes to ~70% then crawls - it never "finishes" until the page arrives. */
+    @keyframes route-grow {
+        0% { transform: scaleX(0); }
+        30% { transform: scaleX(0.55); }
+        100% { transform: scaleX(0.92); }
+    }
+}
+
+/* shadcn's semantic names (bg-primary, text-muted-foreground...) → the palette. */
+@theme inline {
     --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -49,85 +220,275 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --radius: 0.75rem;
+    --background: var(--color-ink-50);
+    --foreground: var(--color-ink-900);
+    --card: var(--color-white);
+    --card-foreground: var(--color-ink-900);
+    --popover: var(--color-white);
+    --popover-foreground: var(--color-ink-900);
+    --primary: var(--color-forest-700);
+    --primary-foreground: var(--color-white);
+    --secondary: var(--color-forest-100);
+    --secondary-foreground: var(--color-forest-800);
+    --muted: var(--color-ink-100);
+    --muted-foreground: var(--color-ink-500);
+    --accent: var(--color-forest-50);
+    --accent-foreground: var(--color-forest-800);
+    --destructive: var(--color-clay-600);
+    --success: var(--color-forest-600);
+    --warning: var(--color-sun-500);
+    --warning-foreground: var(--color-sun-700);
+    --border: var(--color-ink-200);
+    --input: var(--color-ink-300);
+    --ring: var(--color-forest-500);
+    /* Chart series (checked for colour-blind separation): paid, waiting, lost, then two supporting greens. */
+    --chart-1: var(--color-forest-500);
+    --chart-2: var(--color-sun-500);
+    --chart-3: var(--color-clay-500);
+    --chart-4: var(--color-forest-300);
+    --chart-5: var(--color-forest-800);
+    --sidebar: var(--color-white);
+    --sidebar-foreground: var(--color-ink-700);
+    --sidebar-primary: var(--color-forest-700);
+    --sidebar-primary-foreground: var(--color-white);
+    --sidebar-accent: var(--color-forest-50);
+    --sidebar-accent-foreground: var(--color-forest-800);
+    --sidebar-border: var(--color-ink-200);
+    --sidebar-ring: var(--color-forest-500);
+    --primary-hover: var(--color-forest-800);
 }
 
+/*
+ * DARK THEME - the same four colour families, re-stepped for a dark page.
+ * Every step keeps its JOB, not its brightness, so components need no
+ * dark: classes of their own:
+ *   ink 50→900        "page … text": the whole scale turns over
+ *   forest/sun/clay 50-200    soft tinted fills → dark tints
+ *   forest 600-900, sun-700, clay-600/700    coloured TEXT → light, to stay readable
+ *   forest 300-500, sun 300/500, clay 300/500, forest-950    read well on both - unchanged
+ * For a solid green fill use bg-primary (it stays a deep green in both
+ * themes); bg-forest-700 is "green ink" and turns light here.
+ * Switched by the "dark" class on <html> (shared/theme/theme.ts).
+ */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    --color-ink-50: #0b1310;
+    --color-ink-100: #141f1a;
+    --color-ink-200: #1f2b25;
+    --color-ink-300: #2f3d36;
+    --color-ink-400: #6b7d74;
+    --color-ink-500: #93a39b;
+    --color-ink-600: #b1beb7;
+    --color-ink-700: #ccd6d1;
+    --color-ink-900: #edf3ef;
+    --color-forest-50: #10241b;
+    --color-forest-100: #153224;
+    --color-forest-200: #1c4432;
+    --color-forest-600: #4fa27b;
+    --color-forest-700: #7cc39d;
+    --color-forest-800: #a3d7ba;
+    --color-forest-900: #c5e7d3;
+    --color-sun-50: #2a2011;
+    --color-sun-100: #3a2c12;
+    --color-sun-700: #f2c878;
+    --color-clay-50: #2b1511;
+    --color-clay-100: #3d1d17;
+    --color-clay-600: #f0907d;
+    --color-clay-700: #f4ad9f;
+
+    --card: #111b16;
+    --popover: #15201b;
+    --primary: #1f6f51;
+    --primary-hover: #2e8b63;
+    --success: var(--color-forest-600);
+    --sidebar: #0f1813;
+    --sidebar-primary: #1f6f51;
+}
+
+/*
+ * Brand surfaces - the deep green hero, footer, dashboard cards, login
+ * panel... - are painted in brand colours and look exactly the same in both
+ * themes: inside them every step gets its light-theme value back.
+ * (Same hex as the @theme block at the top.)
+ */
+.dark .brand-surface {
+    color-scheme: light;
+    --color-ink-50: #f4f6f2;
+    --color-ink-100: #edf1ee;
+    --color-ink-200: #dfe6e1;
+    --color-ink-300: #c5d0c9;
+    --color-ink-400: #8a9a91;
+    --color-ink-500: #5f7168;
+    --color-ink-600: #4a5b53;
+    --color-ink-700: #33433c;
+    --color-ink-900: #0f1f18;
+    --color-forest-50: #eef7f1;
+    --color-forest-100: #dcefe3;
+    --color-forest-200: #bfe3cd;
+    --color-forest-600: #1f6f51;
+    --color-forest-700: #17583f;
+    --color-forest-800: #134a37;
+    --color-forest-900: #0f3b2c;
+    --color-sun-50: #fdf6ea;
+    --color-sun-100: #fcefd9;
+    --color-sun-700: #8f5c10;
+    --color-clay-50: #fdf1ee;
+    --color-clay-100: #fbe3dd;
+    --color-clay-600: #b8432e;
+    --color-clay-700: #96341f;
+    /* The semantic tokens are worked out where they're declared (on <html>), so they're re-declared here to pick up the values above. */
+    --background: var(--color-ink-50);
+    --foreground: var(--color-ink-900);
+    --card: var(--color-white);
+    --card-foreground: var(--color-ink-900);
+    --popover: var(--color-white);
+    --popover-foreground: var(--color-ink-900);
+    --primary: var(--color-forest-700);
+    --primary-hover: var(--color-forest-800);
+    --secondary: var(--color-forest-100);
+    --secondary-foreground: var(--color-forest-800);
+    --muted: var(--color-ink-100);
+    --muted-foreground: var(--color-ink-500);
+    --accent: var(--color-forest-50);
+    --accent-foreground: var(--color-forest-800);
+    --destructive: var(--color-clay-600);
+    --success: var(--color-forest-600);
+    --warning-foreground: var(--color-sun-700);
+    --border: var(--color-ink-200);
+    --input: var(--color-ink-300);
+}
+
+/* While the theme switches, nothing animates - every colour changes in the same frame (shared/theme/theme.ts). */
+.theme-switching,
+.theme-switching * {
+    transition: none !important;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+    html {
+        @apply font-sans antialiased;
+        scrollbar-gutter: stable;
     }
-  button:not(:disabled), [role="button"]:not(:disabled) {
-    cursor: pointer;
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: 'ss01', 'cv11';
     }
-  html {
-    @apply font-sans;
+    h1, h2, h3, h4 {
+        @apply tracking-tight text-balance;
     }
+    button:not(:disabled), [role="button"]:not(:disabled) {
+        cursor: pointer;
+    }
+    ::selection {
+        @apply bg-forest-200 text-forest-950;
+    }
+    /* Slim, palette-coloured scrollbars (Chromium / Firefox). */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-ink-300) transparent;
+    }
+}
+
+/*
+ * Motion that respects the visitor: with "reduce motion" switched on in the
+ * OS, every animation jumps to its end state (content still appears, nothing moves).
+ */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+@layer utilities {
+    /* Children fade up one after another: <div class="stagger">...</div>. */
+    .stagger > * {
+        animation: fade-up 0.6s var(--ease-out-expo) backwards;
+    }
+    .stagger > :nth-child(2) { animation-delay: 60ms; }
+    .stagger > :nth-child(3) { animation-delay: 120ms; }
+    .stagger > :nth-child(4) { animation-delay: 180ms; }
+    .stagger > :nth-child(5) { animation-delay: 240ms; }
+    .stagger > :nth-child(6) { animation-delay: 300ms; }
+    .stagger > :nth-child(7) { animation-delay: 360ms; }
+    .stagger > :nth-child(8) { animation-delay: 420ms; }
+    .stagger > :nth-child(n + 9) { animation-delay: 480ms; }
+
+    /* A card that rises toward the pointer. */
+    .hover-lift {
+        transition: transform 0.35s var(--ease-out-expo), box-shadow 0.35s var(--ease-out-expo), border-color 0.2s;
+    }
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lift);
+    }
+
+    /* Topographic contour lines - the brand's background texture (hero, promo cards, footer). */
+    .bg-topo {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1.2'%3E%3Cpath d='M-20 120c80-40 150 30 230 0s140-90 230-50 120 60 180 30'/%3E%3Cpath d='M-20 160c80-40 150 30 230 0s140-90 230-50 120 60 180 30'/%3E%3Cpath d='M-20 200c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cpath d='M-20 320c70 30 140-40 220-10s150 80 230 40 110-50 190-20'/%3E%3Cpath d='M-20 360c70 30 140-40 220-10s150 80 230 40 110-50 190-20'/%3E%3Cpath d='M-20 400c80 20 150-30 230 0s140 70 220 30 120-40 190-10'/%3E%3Cpath d='M-20 520c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cpath d='M-20 560c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cellipse cx='470' cy='250' rx='60' ry='34'/%3E%3Cellipse cx='470' cy='250' rx='36' ry='18'/%3E%3Cellipse cx='120' cy='460' rx='54' ry='28'/%3E%3C/g%3E%3C/svg%3E");
+        background-size: 600px 600px;
+    }
+
+    /*
+     * Skeleton shimmer: a soft band of light sweeping across. Not called
+     * "shimmer" - shadcn's stylesheet already has a .shimmer (a text effect)
+     * that wipes the gradient for reduce-motion users. The solid colour
+     * underneath keeps the block visible whatever happens to the gradient.
+     */
+    .skeleton-shimmer {
+        background-color: var(--color-ink-100);
+        background-image: linear-gradient(90deg, var(--color-ink-100) 0%, var(--color-ink-50) 40%, var(--color-ink-100) 80%);
+        background-size: 200% 100%;
+        animation: var(--animate-shimmer);
+    }
+
+    /* Numbers that line up in columns (tables, axis ticks) - not for big standalone figures. */
+    .nums {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+/* The toast's time-left bar holds still while the pointer is over the toasts (sonner pauses its timer then too). */
+[data-sonner-toaster]:hover .toast-progress {
+    animation-play-state: paused !important;
+}
+
+/* The page-load bar along the very top (RouteProgress): grows while a page's code downloads, then completes and fades. */
+.route-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 60;
+    height: 3px;
+    transform-origin: left;
+    transform: scaleX(1);
+    opacity: 0;
+    background: linear-gradient(90deg, var(--color-forest-400), var(--color-forest-600) 60%, var(--color-sun-500));
+    box-shadow: 0 0 12px var(--color-forest-400);
+    pointer-events: none;
+    transition: transform 0.25s ease-out, opacity 0.4s ease 0.25s;
+}
+.route-progress[data-busy='true'] {
+    opacity: 1;
+    transition: opacity 0.2s ease 0.12s;
+    animation: route-grow 6s cubic-bezier(0.1, 0.7, 0.1, 1) both;
+}
+
+/*
+ * Wide tables on a phone scroll sideways inside their card. These soft
+ * shadows appear on whichever edge has more columns hidden, and vanish at
+ * the ends - pure CSS: the white "covers" scroll with the content
+ * (background-attachment: local) while the shadows stay put (scroll).
+ */
+.scroll-shadow-x {
+    background:
+        linear-gradient(to right, var(--card) 30%, transparent) left / 3rem 100% no-repeat local,
+        linear-gradient(to left, var(--card) 30%, transparent) right / 3rem 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgb(15 59 44 / 0.14), transparent) left / 1rem 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgb(15 59 44 / 0.14), transparent) right / 1rem 100% no-repeat scroll;
 }

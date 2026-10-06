@@ -4,9 +4,63 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17583f" />
     <title>Ghuri</title>
+    <!-- Light or dark before the first paint (see the file). Must stay above the styles. -->
+    <script src="/theme-init.js"></script>
+    <!-- The boot splash: visible from the very first byte, before any JavaScript.
+         src/shared/loader/bootSplash.ts fades it out once the app is ready. -->
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(60rem 40rem at 50% 30%, #eef7f1 0%, #f4f6f2 60%);
+        transition: opacity 0.45s ease, visibility 0.45s;
+      }
+      /* Dark theme: the night version of the same scene (theme-init.js has already set the class). */
+      .dark #boot-splash {
+        background: radial-gradient(60rem 40rem at 50% 30%, #10241b 0%, #0b1310 60%);
+      }
+      .dark #boot-splash .boot-brand {
+        color: #edf3ef;
+      }
+      .dark #boot-splash .pk-caption {
+        color: #edf3ef;
+      }
+      .dark #boot-splash .pk-sub {
+        color: #93a39b;
+      }
+      #boot-splash.is-done {
+        opacity: 0;
+        visibility: hidden;
+      }
+      #boot-splash .boot-brand {
+        position: absolute;
+        top: 32px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font: 700 20px/1 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: -0.02em;
+        color: #0f3b2c;
+      }
+      #boot-splash .pk-scene {
+        --pk-size: 210px;
+      }
+    </style>
+    <!-- packing-scene:css -->
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-label="Loading Ghuri">
+      <div class="boot-brand">
+        <img src="/favicon.svg" width="30" height="30" alt="" />
+        Ghuri
+      </div>
+      <!-- packing-scene:html -->
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

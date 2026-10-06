@@ -1,0 +1,149 @@
+/*
+ * "Packing your bags" - the loading animation (markup: packingScene.html).
+ *
+ * Used twice from this ONE file: vite.config.ts inlines it into index.html
+ * for the boot splash (before any JavaScript arrives), and index.css imports
+ * it for the in-app loader (PackingLoader). That is why the colours are
+ * var(--color-…, #hex): inside the app the palette variables exist; in the
+ * splash they don't yet, and the identical palette hex is used instead.
+ *
+ * One 4.4s loop: four things drop into the case one by one → the lid
+ * closes → the case bounces → zip, handle, swinging tag, sparkles → reopen.
+ */
+.pk-scene {
+  --pk-cycle: 4.4s;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+  font-family: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+}
+.pk-art {
+  width: var(--pk-size, 176px);
+  height: auto;
+  overflow: visible;
+}
+.pk-art * {
+  transform-box: fill-box;
+}
+
+.pk-shadow { fill: var(--color-forest-900, #0f3b2c); opacity: 0.12; transform-origin: center; animation: pk-shadow var(--pk-cycle) ease-in-out infinite; }
+
+.pk-lid { transform-origin: 50% 100%; animation: pk-lid var(--pk-cycle) cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.pk-lid-shell { fill: var(--color-forest-800, #134a37); }
+.pk-lid-lining { fill: var(--color-forest-100, #dcefe3); }
+.pk-lid-stitch { stroke: var(--color-forest-200, #bfe3cd); stroke-width: 2; stroke-dasharray: 4 4; fill: none; }
+.pk-lid-pocket { fill: var(--color-forest-200, #bfe3cd); }
+.pk-lid-zip { stroke: var(--color-forest-300, #8cc7a6); stroke-width: 2; fill: none; }
+
+.pk-item { opacity: 0; transform-origin: center; animation: pk-drop var(--pk-cycle) cubic-bezier(0.5, 0, 0.3, 1) infinite both; }
+.pk-item-2 { animation-delay: 0.38s; }
+.pk-item-3 { animation-delay: 0.76s; }
+.pk-item-4 { animation-delay: 1.14s; }
+.pk-shirt { fill: var(--color-clay-500, #d2553f); }
+.pk-shirt-fold { stroke: var(--color-clay-300, #ee9c8c); stroke-width: 2; stroke-linecap: round; fill: none; }
+.pk-camera { fill: var(--color-ink-900, #0f1f18); }
+.pk-camera-lens { fill: var(--color-forest-300, #8cc7a6); stroke: var(--color-white, #ffffff); stroke-width: 2; }
+.pk-camera-glint { fill: var(--color-white, #ffffff); }
+.pk-camera-flash { fill: var(--color-sun-500, #e8a33d); }
+.pk-glasses { fill: var(--color-forest-950, #0b2a20); }
+.pk-glasses-bridge { stroke: var(--color-forest-950, #0b2a20); stroke-width: 2.6; fill: none; stroke-linecap: round; }
+.pk-glasses-glint { stroke: var(--color-white, #ffffff); stroke-width: 1.6; stroke-linecap: round; opacity: 0.7; }
+.pk-passport { fill: var(--color-forest-600, #1f6f51); }
+.pk-passport-seal { fill: none; stroke: var(--color-sun-300, #f2c878); stroke-width: 1.8; }
+.pk-passport-line { stroke: var(--color-sun-300, #f2c878); stroke-width: 1.8; stroke-linecap: round; }
+
+.pk-body { transform-origin: 50% 100%; animation: pk-bounce var(--pk-cycle) ease-in-out infinite; }
+.pk-body-shell { fill: var(--color-forest-700, #17583f); }
+.pk-rim { fill: var(--color-forest-900, #0f3b2c); }
+.pk-zip { stroke: var(--color-sun-300, #f2c878); stroke-width: 2.5; stroke-dasharray: 140; stroke-dashoffset: 140; stroke-linecap: round; fill: none; animation: pk-zip var(--pk-cycle) ease-in-out infinite; }
+.pk-strap { fill: var(--color-sun-500, #e8a33d); }
+.pk-buckle { fill: var(--color-forest-950, #0b2a20); }
+.pk-ridge { stroke: var(--color-forest-600, #1f6f51); stroke-width: 4; stroke-linecap: round; }
+.pk-wheel { fill: var(--color-ink-900, #0f1f18); }
+
+.pk-handle { stroke: var(--color-forest-900, #0f3b2c); stroke-width: 7; stroke-linecap: round; fill: none; opacity: 0; animation: pk-handle var(--pk-cycle) ease-out infinite; }
+
+.pk-tag { transform-box: view-box; transform-origin: 188px 128px; animation: pk-swing var(--pk-cycle) ease-in-out infinite; }
+.pk-tag-string { stroke: var(--color-ink-400, #8a9a91); stroke-width: 1.6; fill: none; }
+.pk-tag-card { fill: var(--color-white, #ffffff); stroke: var(--color-sun-500, #e8a33d); stroke-width: 2; }
+.pk-tag-hole { fill: var(--color-ink-200, #dfe6e1); }
+.pk-tag-line { stroke: var(--color-sun-500, #e8a33d); stroke-width: 2; stroke-linecap: round; }
+
+.pk-spark { fill: var(--color-sun-500, #e8a33d); opacity: 0; transform-origin: center; animation: pk-twinkle var(--pk-cycle) ease-out infinite; }
+.pk-spark-2 { animation-delay: 0.12s; }
+.pk-spark-3 { animation-delay: 0.24s; }
+
+.pk-caption { margin: 6px 0 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--color-ink-900, #0f1f18); }
+.pk-dots i { font-style: normal; animation: pk-dot 1.2s ease-in-out infinite both; }
+.pk-dots i:nth-child(2) { animation-delay: 0.2s; }
+.pk-dots i:nth-child(3) { animation-delay: 0.4s; }
+.pk-sub { display: grid; margin: 0; font-size: 13px; color: var(--color-ink-500, #5f7168); }
+.pk-sub span { grid-area: 1 / 1; opacity: 0; animation: pk-sub 8.8s ease-in-out infinite both; }
+.pk-sub span:nth-child(2) { animation-delay: 2.2s; }
+.pk-sub span:nth-child(3) { animation-delay: 4.4s; }
+.pk-sub span:nth-child(4) { animation-delay: 6.6s; }
+
+@keyframes pk-drop {
+  0% { opacity: 0; transform: translateY(-110px) rotate(-24deg); }
+  5% { opacity: 1; }
+  17% { transform: translateY(6px) rotate(5deg); }
+  20% { transform: translateY(0) rotate(0); }
+  26% { opacity: 1; transform: translateY(72px); }
+  27%, 100% { opacity: 0; transform: translateY(72px); }
+}
+@keyframes pk-lid {
+  0%, 55% { transform: scaleY(1); }
+  64%, 88% { transform: scaleY(0.07); }
+  97%, 100% { transform: scaleY(1); }
+}
+@keyframes pk-bounce {
+  0%, 62% { transform: none; }
+  66% { transform: scale(1.04, 0.93); }
+  71% { transform: translateY(-5px) scale(0.98, 1.03); }
+  76%, 100% { transform: none; }
+}
+@keyframes pk-shadow {
+  0%, 64% { transform: scaleX(1); opacity: 0.12; }
+  71% { transform: scaleX(0.88); opacity: 0.08; }
+  76%, 100% { transform: scaleX(1); opacity: 0.12; }
+}
+@keyframes pk-zip {
+  0%, 63% { stroke-dashoffset: 140; opacity: 1; }
+  72%, 86% { stroke-dashoffset: 0; opacity: 1; }
+  90%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes pk-handle {
+  0%, 63% { opacity: 0; transform: translateY(8px); }
+  69%, 86% { opacity: 1; transform: none; }
+  90%, 100% { opacity: 0; transform: translateY(8px); }
+}
+@keyframes pk-swing {
+  0%, 64% { transform: rotate(0); }
+  69% { transform: rotate(16deg); }
+  75% { transform: rotate(-10deg); }
+  81% { transform: rotate(5deg); }
+  87%, 100% { transform: rotate(0); }
+}
+@keyframes pk-twinkle {
+  0%, 66% { opacity: 0; transform: scale(0.3) rotate(0); }
+  73% { opacity: 1; transform: scale(1) rotate(45deg); }
+  84%, 100% { opacity: 0; transform: scale(0.5) rotate(90deg); }
+}
+@keyframes pk-dot {
+  0%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+@keyframes pk-sub {
+  0% { opacity: 0; transform: translateY(6px); }
+  4%, 22% { opacity: 1; transform: none; }
+  25%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+/* Reduce motion: one calm, finished frame - the case packed and closed, its first caption showing. */
+@media (prefers-reduced-motion: reduce) {
+  .pk-scene * { animation: none !important; }
+  .pk-lid { transform: scaleY(0.07); }
+  .pk-handle, .pk-zip { opacity: 1; stroke-dashoffset: 0; }
+  .pk-sub span:first-child { opacity: 1; }
+}

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CalendarXIcon } from 'lucide-react'
 import { useState } from 'react'
 import {
   AlertDialog,
@@ -8,15 +9,18 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { bookingKeys, bookingsApi, type MyBooking } from '@/features/booking/api/bookings.api'
+import { cn } from '@/lib/utils'
 import { toAppError } from '@/shared/api/problem'
 import { FormAlert } from '@/shared/components/FormAlert'
+import { FormField } from '@/shared/components/FormField'
 import { formatTaka } from '@/shared/lib/format'
+import { notify } from '@/shared/lib/notify'
 
 type CancelBookingDialogProps = {
   booking: MyBooking
@@ -26,19 +30,28 @@ type CancelBookingDialogProps = {
 
 /**
  * "Cancel this booking?" - says exactly what comes back BEFORE the customer
- * confirms (the API's cancellation quote, the same numbers the refund will use).
+ * confirms (the API's cancellation quote, the same numbers the refund will
+ * use). Once it's done, a toast says what happened and the page reloads the
+ * booking (which then shows "Cancelled" and the refund).
  */
 export function CancelBookingDialog({ booking, open, onOpenChange }: CancelBookingDialogProps) {
   const queryClient = useQueryClient()
   const [reason, setReason] = useState('')
-  const { refundAmount, refundPercent } = booking.cancellation
+  const { refundAmount, refundPercent, daysBeforeStart } = booking.cancellation
   const paid = booking.paidAmount > 0
 
   const cancel = useMutation({
     mutationFn: () => bookingsApi.cancel(booking.bookingNo, reason.trim() || null),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: bookingKeys.all }) // this booking, the list, the seats
       onOpenChange(false)
+      notify.success(`Booking ${result.bookingNo} cancelled`, {
+        description: result.refundNo
+          ? `Refund ${result.refundNo} of ${formatTaka(result.refundAmount)} is on its way - our team will send it to you.`
+          : paid
+            ? 'By our cancellation policy, no refund is due this close to the trip.'
+            : 'Nothing was charged - your seats are released.',
+      })
     },
   })
 
@@ -51,19 +64,37 @@ export function CancelBookingDialog({ booking, open, onOpenChange }: CancelBooki
   const whatHappens = !paid
     ? 'Nothing has been paid, so nothing is charged. Your seats will be released.'
     : refundAmount > 0
-      ? `You'll get ${formatTaka(refundAmount)} back (${refundPercent}% of what you paid, by our cancellation policy). Our team will send it to you.`
+      ? 'Here is what comes back, by our cancellation policy. Our team will send it to you.'
       : 'This close to the trip, our cancellation policy gives no refund.'
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="data-[size=default]:sm:max-w-md">
         <AlertDialogHeader>
+          <AlertDialogMedia>
+            <CalendarXIcon />
+          </AlertDialogMedia>
           <AlertDialogTitle>Cancel booking {booking.bookingNo}?</AlertDialogTitle>
           <AlertDialogDescription>{whatHappens} This can't be undone.</AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="cancel-reason">Why are you cancelling? (optional)</Label>
+        {/* The quote in two big numbers: the share of the payment and the taka that come back. */}
+        {paid && (
+          <dl className="grid grid-cols-2 divide-x divide-ink-200/80 rounded-2xl bg-ink-50 py-4 ring-1 ring-ink-200/60 ring-inset">
+            <div className="grid gap-1 px-4">
+              <dt className="text-[0.6875rem] font-semibold tracking-wider text-ink-400 uppercase">Refund</dt>
+              <dd className={cn('text-2xl leading-tight font-bold tracking-tight', refundAmount > 0 ? 'text-ink-900' : 'text-clay-600')}>{refundPercent}%</dd>
+              <dd className="text-xs text-ink-500">{daysBeforeStart} days before the trip</dd>
+            </div>
+            <div className="grid gap-1 px-4">
+              <dt className="text-[0.6875rem] font-semibold tracking-wider text-ink-400 uppercase">You get back</dt>
+              <dd className={cn('text-2xl leading-tight font-bold tracking-tight', refundAmount > 0 ? 'text-forest-700' : 'text-clay-600')}>{formatTaka(refundAmount)}</dd>
+              <dd className="text-xs text-ink-500">of {formatTaka(booking.paidAmount)} paid</dd>
+            </div>
+          </dl>
+        )}
+
+        <FormField label="Why are you cancelling? (optional)" htmlFor="cancel-reason">
           <Textarea
             id="cancel-reason"
             maxLength={500}
@@ -71,7 +102,7 @@ export function CancelBookingDialog({ booking, open, onOpenChange }: CancelBooki
             onChange={(e) => setReason(e.target.value)}
             disabled={cancel.isPending}
           />
-        </div>
+        </FormField>
 
         {cancel.isError && <FormAlert kind="error">{toAppError(cancel.error).message}</FormAlert>}
 

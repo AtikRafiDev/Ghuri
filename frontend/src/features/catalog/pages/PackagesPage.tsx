@@ -1,12 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { SearchIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react'
+import { CloudOffIcon, FileSearchIcon, SearchIcon, SearchXIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/shared/components/EmptyState'
+import { PageHeader } from '@/shared/components/PageHeader'
 import { Pagination } from '@/shared/components/Pagination'
 import { formatTaka } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
@@ -39,56 +41,81 @@ export function PackagesPage() {
   const update = (changes: Partial<PackageSearchParams>) => setSearchParams(toPackageSearch({ ...search, ...changes, page: 1 }))
   const clearFilters = () => setSearchParams(toPackageSearch({ sort: search.sort }))
   const filterCount = countFilters(search)
+  const total = packages.data?.totalCount
 
   const filters = (
     <PackageFilters search={search} onChange={update} destinations={destinations} categories={categories} />
   )
 
   return (
-    <div className="grid gap-6">
-      <header className="grid gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{heading}</h1>
+    <div className="grid gap-8">
+      <div className="grid gap-5">
+        <PageHeader title={heading} description="Group departures on set dates and flexible stays on yours - book and pay online." />
         {/* key: when q changes in the URL (Clear, Back), the box shows the new text. */}
         <SearchBox key={search.q ?? ''} initial={search.q ?? ''} onSearch={(q) => update({ q: q || undefined })} />
-      </header>
+      </div>
 
-      <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
-        {/* Laptop: filters in a sidebar that stays in view. */}
-        <aside className="hidden lg:sticky lg:top-4 lg:grid lg:gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Filters</h2>
+      {/*
+        Two columns on a laptop. Each column starts with a 40px-tall bar (the "Filters" title | the count + sort)
+        and then its panel, with the same gap - so the two bars sit on one line and the panels start level.
+      */}
+      <div className="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
+        {/* Laptop: filters in a card that stays in view below the sticky site header. */}
+        <aside className="hidden lg:sticky lg:top-24 lg:grid lg:gap-4" aria-label="Filters">
+          <div className="flex h-10 items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-base font-bold text-ink-900">
+              <SlidersHorizontalIcon className="size-4 text-forest-600" />
+              Filters
+              {filterCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] font-bold text-white">
+                  {filterCount}
+                </span>
+              )}
+            </h2>
             {filterCount > 0 && (
-              <Button variant="link" size="sm" className="h-auto px-0" onClick={clearFilters}>
+              <Button variant="link" size="sm" onClick={clearFilters}>
                 Clear all
               </Button>
             )}
           </div>
-          {filters}
+          <div className="rounded-3xl bg-card p-5 shadow-card ring-1 ring-ink-200/80">{filters}</div>
         </aside>
 
-        <section className="grid gap-4" aria-label="Results">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              {packages.data ? `${packages.data.totalCount} package${packages.data.totalCount === 1 ? '' : 's'}` : ' '}
+        <section className="grid min-w-0 gap-4" aria-label="Results">
+          <div className="flex min-h-10 flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-ink-500" aria-live="polite">
+              {total !== undefined ? (
+                <>
+                  <span className="font-bold text-ink-900">{total}</span> package{total === 1 ? '' : 's'}
+                </>
+              ) : (
+                ' '
+              )}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-sm:w-full">
               {/* Phone: the same filters in a sheet that slides in from the side. */}
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden">
+                  <Button variant="outline" className="max-sm:min-w-0 max-sm:flex-1 lg:hidden">
                     <SlidersHorizontalIcon />
-                    Filters{filterCount > 0 && ` (${filterCount})`}
+                    Filters
+                    {filterCount > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] font-bold text-white">
+                        {filterCount}
+                      </span>
+                    )}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[85%] overflow-y-auto">
-                  <SheetHeader>
+                  <SheetHeader className="border-b">
                     <SheetTitle>Filters</SheetTitle>
+                    <SheetDescription>The list updates as you choose.</SheetDescription>
                   </SheetHeader>
                   <div className="px-4">{filters}</div>
-                  <SheetFooter>
+                  <SheetFooter className="border-t">
                     <SheetClose asChild>
                       <Button>
-                        {packages.data ? `Show ${packages.data.totalCount} package${packages.data.totalCount === 1 ? '' : 's'}` : 'Show results'}
+                        {total !== undefined ? `Show ${total} package${total === 1 ? '' : 's'}` : 'Show results'}
                       </Button>
                     </SheetClose>
                     {filterCount > 0 && (
@@ -101,7 +128,8 @@ export function PackagesPage() {
               </Sheet>
 
               <Select value={search.sort} onValueChange={(v) => update({ sort: v as PackageSort })}>
-                <SelectTrigger size="sm" className="w-44" aria-label="Sort by">
+                <SelectTrigger className="min-w-0 flex-1 sm:w-60 sm:flex-none" aria-label="Sort by">
+                  <span className="text-ink-400 max-sm:hidden">Sort:</span>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper" align="end">
@@ -130,12 +158,11 @@ export function PackagesPage() {
           />
 
           {packages.isError ? (
-            <div className="rounded-lg border py-12 text-center text-sm">
-              <p className="text-muted-foreground">Packages couldn’t be loaded.</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => packages.refetch()}>
+            <EmptyState icon={CloudOffIcon} title="Packages couldn’t be loaded" text="Check your connection and try again.">
+              <Button variant="outline" onClick={() => packages.refetch()}>
                 Try again
               </Button>
-            </div>
+            </EmptyState>
           ) : packages.data && packages.data.items.length === 0 ? (
             <EmptyResults
               pastLastPage={search.page > 1}
@@ -146,7 +173,7 @@ export function PackagesPage() {
           ) : (
             <div
               className={cn(
-                'grid gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3',
+                'stagger grid gap-5 transition-opacity duration-300 sm:grid-cols-2 xl:grid-cols-3',
                 packages.isPlaceholderData && 'pointer-events-none opacity-60',
               )}
               aria-busy={packages.isFetching}
@@ -157,11 +184,13 @@ export function PackagesPage() {
           )}
 
           {packages.data && (
-            <Pagination
-              page={search.page}
-              totalPages={packages.data.totalPages}
-              hrefFor={(page) => `?${toPackageSearch({ ...search, page })}`}
-            />
+            <div className="pt-4">
+              <Pagination
+                page={search.page}
+                totalPages={packages.data.totalPages}
+                hrefFor={(page) => `?${toPackageSearch({ ...search, page })}`}
+              />
+            </div>
           )}
         </section>
       </div>
@@ -169,7 +198,10 @@ export function PackagesPage() {
   )
 }
 
-/** Free-text search (title or destination). Searches on Enter / the button, not on every key. */
+/**
+ * Free-text search (title or destination). Searches on Enter / the button, not on every key.
+ * Field and button are both the standard 40px, so their edges line up.
+ */
 function SearchBox({ initial, onSearch }: { initial: string; onSearch: (q: string) => void }) {
   const [text, setText] = useState(initial)
   const onSubmit = (event: FormEvent) => {
@@ -179,8 +211,8 @@ function SearchBox({ initial, onSearch }: { initial: string; onSearch: (q: strin
 
   return (
     <form onSubmit={onSubmit} role="search" className="flex gap-2">
-      <div className="relative flex-1">
-        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative min-w-0 flex-1">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-400" />
         <Input
           type="search"
           value={text}
@@ -188,11 +220,12 @@ function SearchBox({ initial, onSearch }: { initial: string; onSearch: (q: strin
           maxLength={100}
           placeholder="Search by place or tour name"
           aria-label="Search packages"
-          className="h-10 pl-8"
+          className="pl-10"
         />
       </div>
-      <Button type="submit" size="lg" className="h-10">
-        Search
+      <Button type="submit" className="sm:px-6">
+        <SearchIcon className="sm:hidden" />
+        <span className="max-sm:sr-only">Search</span>
       </Button>
     </form>
   )
@@ -208,15 +241,17 @@ function ActiveFilters({ chips, onClear }: { chips: (Chip | false | undefined | 
   return (
     <ul className="flex flex-wrap gap-2" aria-label="Active filters">
       {active.map((chip) => (
-        <li key={chip.label}>
+        <li key={chip.label} className="animate-scale-in">
           <button
             type="button"
             onClick={() => onClear(chip.clear)}
-            className="flex items-center gap-1 rounded-full border bg-muted/50 py-1 pr-2 pl-3 text-xs font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="group flex h-8 items-center gap-1.5 rounded-full bg-forest-50 pr-1.5 pl-3 text-xs font-semibold text-forest-800 ring-1 ring-forest-200 transition-colors ring-inset hover:bg-forest-100 focus-visible:ring-4 focus-visible:ring-ring/25 focus-visible:outline-none"
             aria-label={`Remove filter: ${chip.label}`}
           >
             {chip.label}
-            <XIcon className="size-3.5" />
+            <span className="flex size-5 items-center justify-center rounded-full bg-card/80 text-forest-700 transition-colors group-hover:bg-primary group-hover:text-white">
+              <XIcon className="size-3" />
+            </span>
           </button>
         </li>
       ))}
@@ -238,27 +273,26 @@ function EmptyResults({
   // E.g. an old link to page 4 after packages were removed: there are results, just not on this page.
   if (pastLastPage) {
     return (
-      <div className="rounded-lg border py-12 text-center text-sm">
-        <p className="text-muted-foreground">There’s nothing on this page.</p>
-        <Button variant="outline" size="sm" className="mt-3" onClick={onFirstPage}>
+      <EmptyState icon={FileSearchIcon} title="There’s nothing on this page" text="The list has fewer pages now - start again from the first one.">
+        <Button variant="outline" onClick={onFirstPage}>
           Go to the first page
         </Button>
-      </div>
+      </EmptyState>
     )
   }
 
   return (
-    <div className="rounded-lg border py-12 text-center">
-      <p className="font-medium">No packages found</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {hasFilters ? 'Try fewer filters or a different destination.' : 'New packages are on their way - check back soon.'}
-      </p>
+    <EmptyState
+      icon={SearchXIcon}
+      title="No packages found"
+      text={hasFilters ? 'Try fewer filters or a different destination.' : 'New packages are on their way - check back soon.'}
+    >
       {hasFilters && (
-        <Button variant="outline" size="sm" className="mt-4" onClick={onClear}>
+        <Button variant="outline" onClick={onClear}>
           Clear all filters
         </Button>
       )}
-    </div>
+    </EmptyState>
   )
 }
 

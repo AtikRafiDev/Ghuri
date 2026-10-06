@@ -1,5 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRightIcon, MinusIcon, PhoneIcon, PlusIcon } from 'lucide-react'
+import {
+  ArrowRightIcon,
+  CalendarCheckIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  CircleAlertIcon,
+  FlameIcon,
+  MinusIcon,
+  PhoneIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -12,6 +23,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 import { toAppError } from '@/shared/api/problem'
+import { FormAlert } from '@/shared/components/FormAlert'
 import { site } from '@/shared/config/site'
 import { addDays, formatDate } from '@/shared/lib/dates'
 import { formatTaka } from '@/shared/lib/format'
@@ -82,8 +94,9 @@ export function BookingPanel({ pkg }: { pkg: PackageDetails }) {
   }
 
   return (
-    <div className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm">
-      <h2 className="text-lg font-semibold">{isFlexible ? 'Choose your stay' : 'Choose a date'}</h2>
+    // Kept compact on purpose: on a laptop the whole box (down to "Book now") should fit on screen while it stays in view.
+    <div className="grid gap-4 rounded-3xl bg-card p-5 shadow-card ring-1 ring-ink-200/80">
+      <h2 className="text-lg font-bold text-ink-900">{isFlexible ? 'Choose your stay' : 'Choose a date'}</h2>
 
       {isFlexible ? (
         <FlexibleStayPicker
@@ -109,40 +122,41 @@ export function BookingPanel({ pkg }: { pkg: PackageDetails }) {
       <TravellerPicker value={travellers} onChange={setTravellers} />
       <Separator />
 
-      <div className="grid gap-3" aria-live="polite">
+      <div className="grid gap-4" aria-live="polite">
         {quoteError ? (
-          <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{quoteError}</p>
+          <FormAlert kind="error">{quoteError}</FormAlert>
         ) : params === null ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 rounded-xl bg-ink-50 px-3.5 py-3 text-sm text-ink-500 ring-1 ring-ink-200/70 ring-inset">
+            <CalendarDaysIcon className="size-4 shrink-0 text-ink-400" />
             {isFlexible ? 'Pick a check-in date to see the price.' : 'Pick a date to see the price.'}
           </p>
         ) : quote.data ? (
-          <div className={cn('transition-opacity', quote.isFetching && 'opacity-60')}>
+          <div className={cn('transition-opacity duration-300', quote.isFetching && 'opacity-60')}>
             <PriceBreakdown quote={quote.data} />
           </div>
         ) : (
-          <div className="grid gap-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-6 w-full" />
+          <div className="grid gap-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-7 w-full" />
           </div>
         )}
 
-        <Button size="lg" className="h-11 w-full text-base" disabled={!canBook} onClick={onBook}>
+        <Button size="lg" className="w-full" disabled={!canBook} onClick={onBook}>
           {quote.isFetching && params !== null ? <Spinner /> : null}
           Book now
-          <ArrowRightIcon />
+          <ArrowRightIcon className="group-hover/button:translate-x-0.5" />
         </Button>
 
-        <p className="text-center text-xs text-muted-foreground">
-          {status === 'anonymous' ? 'You’ll log in or create an account next. ' : ''}
-          Nothing is charged until you pay.
-        </p>
-        {isFlexible && (
-          <p className="text-center text-xs text-muted-foreground">
-            Hotel rooms are confirmed within 24 hours - if they can’t be, you get a full refund.
+        <div className="grid gap-1.5 text-center text-xs text-ink-500">
+          {/* The shield sits inline with the words, so it stays beside the text when the line wraps. */}
+          <p className="text-balance">
+            <ShieldCheckIcon className="mr-1 inline size-3.5 -translate-y-px text-forest-600" />
+            {status === 'anonymous' ? 'You’ll log in or create an account next. ' : ''}
+            Nothing is charged until you pay.
           </p>
-        )}
+          {isFlexible && <p>Hotel rooms are confirmed within 24 hours - if they can’t be, you get a full refund.</p>}
+        </div>
       </div>
     </div>
   )
@@ -168,7 +182,7 @@ function DeparturePicker({
     return (
       <div className="grid gap-2">
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="h-14 rounded-lg" />
+          <Skeleton key={i} className="h-[3.625rem] rounded-2xl" />
         ))}
       </div>
     )
@@ -176,8 +190,8 @@ function DeparturePicker({
 
   if (isError || !departures) {
     return (
-      <div className="grid justify-items-start gap-2 text-sm">
-        <p className="text-muted-foreground">Dates couldn’t be loaded.</p>
+      <div className="grid justify-items-start gap-3 rounded-2xl bg-ink-50 p-4 text-sm ring-1 ring-ink-200/70 ring-inset">
+        <p className="text-ink-600">Dates couldn’t be loaded.</p>
         <Button variant="outline" size="sm" onClick={onRetry}>
           Try again
         </Button>
@@ -187,10 +201,13 @@ function DeparturePicker({
 
   if (departures.length === 0) {
     return (
-      <div className="grid gap-2 rounded-lg bg-muted/50 p-3 text-sm">
-        <p className="font-medium">No dates open right now</p>
-        <p className="text-muted-foreground">New dates are added often. Call us and we’ll tell you when the next group leaves.</p>
-        <a href={`tel:${site.phone.replace(/[^+\d]/g, '')}`} className="flex items-center gap-1.5 font-medium text-primary">
+      <div className="grid gap-2 rounded-2xl bg-ink-50 p-4 text-sm ring-1 ring-ink-200/70 ring-inset">
+        <p className="font-semibold text-ink-900">No dates open right now</p>
+        <p className="text-ink-500">New dates are added often. Call us and we’ll tell you when the next group leaves.</p>
+        <a
+          href={`tel:${site.phone.replace(/[^+\d]/g, '')}`}
+          className="mt-1 flex w-fit items-center gap-2 font-semibold text-forest-700 underline-offset-4 hover:underline"
+        >
           <PhoneIcon className="size-4" />
           {site.phone}
         </a>
@@ -199,11 +216,12 @@ function DeparturePicker({
   }
 
   return (
-    // Long lists scroll inside the box, so the price and the button stay close.
-    <div role="group" aria-label="Departure dates" className="-mx-1 grid max-h-80 gap-2 overflow-y-auto px-1 py-1">
+    // Long lists scroll inside the box, so the price and the button stay close. -m-1 p-1: room for the selected ring.
+    <div role="group" aria-label="Departure dates" className="-m-1 grid max-h-68 gap-2 overflow-y-auto p-1">
       {departures.map((d) => {
         const soldOut = d.seatsLeft === 0
         const selected = d.id === selectedId
+        const fewLeft = !soldOut && d.seatsLeft <= 5
         return (
           <button
             key={d.id}
@@ -212,22 +230,39 @@ function DeparturePicker({
             aria-pressed={selected}
             onClick={() => onSelect(d.id)}
             className={cn(
-              'flex items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
-              selected && 'border-primary bg-primary/5 ring-1 ring-primary hover:bg-primary/5',
+              'flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left ring-1 transition-[background-color,box-shadow] duration-200 ring-inset focus-visible:ring-4 focus-visible:ring-ring/25 focus-visible:outline-none',
+              soldOut
+                ? 'cursor-not-allowed bg-ink-50 ring-ink-200/80'
+                : selected
+                  ? 'bg-forest-50 ring-2 ring-forest-600'
+                  : 'bg-card ring-ink-200 hover:bg-forest-50/50 hover:ring-forest-300',
             )}
           >
-            <span className="grid">
-              <span className="font-medium">{formatDate(d.startDate)}</span>
-              <span className="text-xs text-muted-foreground">to {formatDate(d.endDate)}</span>
+            {/* The radio-style dot: empty, or a filled forest circle with a tick when this date is chosen. */}
+            <span
+              aria-hidden
+              className={cn(
+                'flex size-5 shrink-0 items-center justify-center rounded-full ring-1 transition-colors duration-200 ring-inset',
+                selected ? 'bg-forest-600 text-white ring-forest-600' : soldOut ? 'bg-ink-100 ring-ink-200' : 'bg-card ring-ink-300',
+              )}
+            >
+              {selected && <CheckIcon className="size-3 animate-scale-in" strokeWidth={3} />}
             </span>
-            <span className="grid text-right">
-              <span className="font-semibold tabular-nums">{formatTaka(d.adultPrice)}</span>
+            <span className="grid min-w-0 flex-1 gap-0.5">
+              <span className={cn('text-sm font-semibold', soldOut ? 'text-ink-400' : 'text-ink-900')}>{formatDate(d.startDate)}</span>
+              <span className={cn('text-xs', soldOut ? 'text-ink-400' : 'text-ink-500')}>to {formatDate(d.endDate)}</span>
+            </span>
+            <span className="grid shrink-0 justify-items-end gap-0.5">
+              <span className={cn('nums text-sm font-bold', soldOut ? 'text-ink-400 line-through' : 'text-ink-900')}>
+                {formatTaka(d.adultPrice)}
+              </span>
               <span
                 className={cn(
-                  'text-xs',
-                  soldOut ? 'text-destructive' : d.seatsLeft <= 5 ? 'font-medium text-amber-600 dark:text-amber-500' : 'text-muted-foreground',
+                  'flex items-center gap-1 text-xs',
+                  soldOut ? 'font-semibold text-ink-400' : fewLeft ? 'font-semibold text-sun-700' : 'text-ink-500',
                 )}
               >
+                {fewLeft && <FlameIcon className="size-3.5" />}
                 {soldOut ? 'Sold out' : `${d.seatsLeft} seat${d.seatsLeft === 1 ? '' : 's'} left`}
               </span>
             </span>
@@ -261,22 +296,21 @@ function FlexibleStayPicker({
   return (
     <div className="grid gap-3">
       <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="check-in">Check-in</Label>
           <Input
             id="check-in"
             type="date"
-            className="h-9"
             min={pkg.earliestStartDate ?? undefined}
             value={startDate}
             onChange={(e) => onStartDateChange(e.target.value)}
             aria-invalid={tooSoon}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="nights">Nights</Label>
           <Select value={String(nights)} onValueChange={(v) => onNightsChange(Number(v))}>
-            <SelectTrigger id="nights" className="h-9 w-full">
+            <SelectTrigger id="nights" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
@@ -291,15 +325,24 @@ function FlexibleStayPicker({
       </div>
 
       {tooSoon && pkg.earliestStartDate ? (
-        <p className="text-xs text-destructive">The earliest check-in is {formatDate(pkg.earliestStartDate)}.</p>
+        <p className="flex animate-fade-in items-center gap-1.5 text-xs font-medium text-destructive">
+          <CircleAlertIcon className="size-3.5 shrink-0" />
+          The earliest check-in is {formatDate(pkg.earliestStartDate)}.
+        </p>
       ) : startDate ? (
-        <p className="text-xs text-muted-foreground">Check-out: {formatDate(addDays(startDate, nights))}</p>
+        <p className="flex items-center gap-1.5 text-xs text-ink-500">
+          <CalendarCheckIcon className="size-3.5 shrink-0 text-forest-600" />
+          Check-out: <span className="font-semibold text-ink-700">{formatDate(addDays(startDate, nights))}</span>
+        </p>
       ) : null}
     </div>
   )
 }
 
-/** Adults / children / infants with − and + buttons. The limits match the API's traveller rules. */
+/**
+ * Adults / children / infants with − and + buttons. The limits match the API's traveller rules.
+ * Every stepper is the same width, so the three line up in one column on the right.
+ */
 function TravellerPicker({ value, onChange }: { value: Travellers; onChange: (value: Travellers) => void }) {
   const { adults, children, infants } = value
   const total = adults + children + infants
@@ -352,26 +395,27 @@ function Counter({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="grid">
-        <span className="text-sm font-medium">{label}</span>
-        <span className="text-xs text-muted-foreground">{hint}</span>
+      <div className="grid min-w-0 gap-0.5">
+        <span className="text-sm font-semibold text-ink-900">{label}</span>
+        <span className="text-xs text-ink-500">{hint}</span>
       </div>
-      <div className="flex items-center gap-2">
+      {/* − value + in one pill-shaped track; the value has a fixed width so every row's buttons line up. */}
+      <div className="flex shrink-0 items-center rounded-full bg-ink-50 p-1 ring-1 ring-ink-200/80 ring-inset">
         <Button
           variant="outline"
           size="icon-sm"
-          className="rounded-full"
+          className="size-8 rounded-full"
           disabled={value <= min}
           onClick={() => onChange(value - 1)}
           aria-label={`Fewer ${label.toLowerCase()}`}
         >
           <MinusIcon />
         </Button>
-        <span className="w-6 text-center text-sm font-medium tabular-nums">{value}</span>
+        <span className="nums w-9 text-center text-sm font-bold text-ink-900">{value}</span>
         <Button
           variant="outline"
           size="icon-sm"
-          className="rounded-full"
+          className="size-8 rounded-full"
           disabled={value >= max}
           onClick={() => onChange(value + 1)}
           aria-label={`More ${label.toLowerCase()}`}

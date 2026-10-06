@@ -1,17 +1,36 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 // The .NET API's address when started with plain `dotnet run` (the "http"
 // profile in backend/src/Ghuri.Api/Properties/launchSettings.json).
 const apiTarget = 'http://localhost:5176'
 
+/**
+ * Puts the "packing your bags" animation straight into index.html, so the
+ * boot splash shows before a single byte of JavaScript has arrived. The
+ * markup and CSS live in ONE place (src/shared/loader) - React's
+ * PackingLoader reuses the very same files, so the two can never drift apart.
+ */
+function packingSplash(): Plugin {
+  const dir = path.resolve(import.meta.dirname, 'src/shared/loader')
+  return {
+    name: 'ghuri-packing-splash',
+    transformIndexHtml(html) {
+      const css = fs.readFileSync(path.join(dir, 'packingScene.css'), 'utf8')
+      const scene = fs.readFileSync(path.join(dir, 'packingScene.html'), 'utf8')
+      return html.replace('<!-- packing-scene:css -->', `<style>${css}</style>`).replace('<!-- packing-scene:html -->', scene)
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // tailwindcss(): turns the utility classes used in components
   // (e.g. "p-4 text-sm") into real CSS - only the ones actually used.
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), packingSplash()],
   resolve: {
     // "@/features/auth/..." instead of "../../../features/auth/..."
     // (coding standards: imports through the @/ alias). tsconfig.app.json

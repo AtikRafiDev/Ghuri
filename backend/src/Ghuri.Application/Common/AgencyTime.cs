@@ -24,4 +24,7 @@ public static class AgencyDay
     /// <summary>Midnight in Dhaka, in UTC: 7 Oct 00:00 (UTC+6) = 6 Oct 18:00 UTC.</summary>
     public static DateTime StartUtc(DateOnly day) =>
         DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue) - AgencyTime.UtcOffset, DateTimeKind.Utc);
+
+    /// <summary>The Dhaka calendar day a UTC moment falls on: 6 Oct 18:30 UTC = 7 Oct in Dhaka.</summary>
+    public static DateOnly Of(DateTime utc) => DateOnly.FromDateTime(utc + AgencyTime.UtcOffset);
 }

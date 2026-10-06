@@ -1,3 +1,4 @@
+import { TriangleAlertIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import {
   AlertDialog,
@@ -7,11 +8,13 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { toAppError } from '@/shared/api/problem'
+import { notify } from '@/shared/lib/notify'
 
 type ConfirmDeleteDialogProps = {
   open: boolean
@@ -22,6 +25,8 @@ type ConfirmDeleteDialogProps = {
   confirmLabel?: string
   /** The actual delete. If it throws, the API's message is shown and the dialog stays open. */
   onConfirm: () => Promise<void>
+  /** The toast once it's done - "Destination deleted", "Departure closed". */
+  successMessage?: ReactNode
 }
 
 /** "Are you sure?" before any delete - an accidental click must never remove data. */
@@ -32,6 +37,7 @@ export function ConfirmDeleteDialog({
   description,
   confirmLabel = 'Delete',
   onConfirm,
+  successMessage = 'Done',
 }: ConfirmDeleteDialogProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,6 +54,7 @@ export function ConfirmDeleteDialog({
     try {
       await onConfirm()
       onOpenChange(false)
+      notify.success(successMessage)
     } catch (err) {
       // e.g. 409 destination_in_use: "Tour packages still use this destination..."
       setError(toAppError(err).message)
@@ -60,6 +67,9 @@ export function ConfirmDeleteDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
+          <AlertDialogMedia>
+            <TriangleAlertIcon />
+          </AlertDialogMedia>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>

@@ -1,17 +1,24 @@
 import { Badge } from '@/components/ui/badge'
 import type { BookingStatus } from '@/features/booking/api/bookings.api'
 
-const labels: Record<BookingStatus, { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  1: { text: 'Waiting for payment', variant: 'outline' },
-  2: { text: 'Confirmed', variant: 'default' },
-  3: { text: 'Partly paid', variant: 'secondary' },
-  4: { text: 'Completed', variant: 'secondary' },
-  5: { text: 'Cancelled', variant: 'destructive' },
-  6: { text: 'Expired', variant: 'secondary' },
+type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
+
+// Tone = what the status means: green good, amber waiting on someone, terracotta lost, grey over.
+const labels: Record<BookingStatus, { text: string; tone: Tone }> = {
+  1: { text: 'Waiting for payment', tone: 'warning' },
+  2: { text: 'Confirmed', tone: 'success' },
+  3: { text: 'Partly paid', tone: 'info' },
+  4: { text: 'Completed', tone: 'neutral' },
+  5: { text: 'Cancelled', tone: 'danger' },
+  6: { text: 'Expired', tone: 'neutral' },
 }
 
-/** A booking's status as a coloured label: "Confirmed", "Cancelled"... */
+/** A booking's status as a coloured pill with a dot: "Confirmed", "Cancelled"... */
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
-  const { text, variant } = labels[status]
-  return <Badge variant={variant}>{text}</Badge>
+  const { text, tone } = labels[status]
+  return (
+    <Badge variant={tone} dot>
+      {text}
+    </Badge>
+  )
 }

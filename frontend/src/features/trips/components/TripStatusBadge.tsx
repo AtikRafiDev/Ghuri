@@ -1,17 +1,22 @@
 import { Badge } from '@/components/ui/badge'
 import { tripStatusLabels, type TripStatus } from '../api/trips.api'
 
-const variants: Record<TripStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  1: 'outline',
-  2: 'default',
-  3: 'default',
-  4: 'default',
-  5: 'destructive',
-  6: 'secondary',
-  7: 'secondary',
+// Tone = what the status means: amber waiting on staff, green-tint quoted/accepted, green paid, terracotta rejected, grey over.
+const tones: Record<TripStatus, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  1: 'warning',
+  2: 'info',
+  3: 'info',
+  4: 'success',
+  5: 'danger',
+  6: 'neutral',
+  7: 'neutral',
 }
 
-/** A custom trip's status as a coloured label: "Quote ready", "Waiting for a quote"... */
+/** A custom trip's status as a coloured pill: "Quote ready", "Waiting for a quote"... */
 export function TripStatusBadge({ status }: { status: TripStatus }) {
-  return <Badge variant={variants[status]}>{tripStatusLabels[status]}</Badge>
+  return (
+    <Badge variant={tones[status]} dot>
+      {tripStatusLabels[status]}
+    </Badge>
+  )
 }

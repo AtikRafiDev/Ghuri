@@ -1,3 +1,4 @@
+import { ReceiptTextIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { site } from '@/shared/config/site'
 import { StaticPage } from '../components/StaticPage'
@@ -14,6 +15,7 @@ export function RefundPolicyPage() {
       title="Cancellation & refund policy"
       description={`How cancelling a ${site.name} booking works, and how much you get back.`}
       updated="6 October 2026"
+      icon={ReceiptTextIcon}
       draft
     >
       <p>

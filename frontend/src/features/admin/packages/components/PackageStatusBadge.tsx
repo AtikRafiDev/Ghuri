@@ -1,8 +1,12 @@
 import { Badge } from '@/components/ui/badge'
 import { PackageStatus, packageStatusLabels } from '../api/packages.api'
 
-/** Draft = grey outline, Published = solid (it's live), Archived = muted. */
+/** Published = green (it's live), Draft = amber (not finished), Archived = grey. */
 export function PackageStatusBadge({ status }: { status: PackageStatus }) {
-  const variant = status === PackageStatus.Published ? 'default' : status === PackageStatus.Draft ? 'outline' : 'secondary'
-  return <Badge variant={variant}>{packageStatusLabels[status]}</Badge>
+  const variant = status === PackageStatus.Published ? 'success' : status === PackageStatus.Draft ? 'warning' : 'neutral'
+  return (
+    <Badge variant={variant} dot>
+      {packageStatusLabels[status]}
+    </Badge>
+  )
 }

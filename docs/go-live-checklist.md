@@ -29,6 +29,9 @@ site goes public. Work top to bottom; most items are settings, not code.
 - [ ] Nginx forwards `/api`, `/health`, `/files`, **`/sitemap.xml`** and **`/robots.txt`** to the API; everything else serves the React build (`npm run build` → `dist/`), with unknown paths falling back to `index.html`.
 - [ ] Nginx sends `X-Forwarded-For` and `X-Forwarded-Proto`. The API trusts these only from the same machine; if Nginx runs in a **separate container**, add its network to `KnownNetworks` (Program.cs, `UseForwardedHeaders`) or every visitor shares one rate limit.
 - [ ] Security headers for the website's own files (the API already sends its own): `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`.
+  - `script-src 'self'` is enough: the theme picker is a file (`/theme-init.js`), not inline code.
+  - `style-src` needs `'self' 'unsafe-inline'`: `index.html` inlines the loading-screen styles, and React sets `style=""` attributes (chart sizes, animation delays).
+  - `img-src 'self' data:`: uploaded photos, plus the contour-line background texture, which is a `data:` SVG in `index.css`.
 - [ ] Linux: install a Bengali font (`fonts-noto-core` / Noto Sans Bengali) so names typed in Bangla print on vouchers.
 - [ ] Docker for smtp4dev is development-only - don't run it on the server.
 

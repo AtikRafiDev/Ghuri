@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from 'lucide-react'
+import { ChevronDownIcon, CircleHelpIcon, MessageCircleIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { site, whatsAppLink } from '@/shared/config/site'
@@ -67,28 +67,39 @@ const questions: { q: string; a: ReactNode }[] = [
   },
 ]
 
-/** /faq - questions and answers, each one opens on click (no JavaScript needed: details/summary). */
+/**
+ * /faq - questions and answers as an accordion: each one opens on click (no
+ * JavaScript needed: details/summary). Hairlines between the questions; the
+ * open one's chevron turns over and goes green.
+ */
 export function FaqPage() {
   return (
-    <StaticPage title="Frequently asked questions" description={`Answers about booking, paying and cancelling with ${site.name}.`} updated="6 October 2026" draft>
-      <div className="grid divide-y rounded-xl border">
+    <StaticPage title="Frequently asked questions" description={`Answers about booking, paying and cancelling with ${site.name}.`} updated="6 October 2026" icon={CircleHelpIcon} draft>
+      <div className="-mt-3 grid divide-y divide-ink-100">
         {questions.map(({ q, a }) => (
-          <details key={q} className="group px-4 py-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
+          <details key={q} className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-xl py-4 text-base leading-snug font-semibold text-ink-900 transition-colors hover:text-forest-700 focus-visible:ring-4 focus-visible:ring-ring/25 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
               {q}
-              <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink-50 text-ink-500 ring-1 ring-ink-200 transition-[rotate,background-color,color] duration-300 group-open:rotate-180 group-open:bg-forest-50 group-open:text-forest-700 group-open:ring-forest-200">
+                <ChevronDownIcon className="size-4" />
+              </span>
             </summary>
-            <p className="mt-2 text-muted-foreground">{a}</p>
+            <p className="animate-fade-in pr-12 pb-5 text-ink-600">{a}</p>
           </details>
         ))}
       </div>
-      <p>
-        Still have a question? Call {site.phone} or{' '}
-        <a href={whatsAppLink()} target="_blank" rel="noopener noreferrer">
-          chat with us on WhatsApp
-        </a>
-        .
-      </p>
+      <div className="mt-2 flex items-center gap-4 rounded-2xl bg-forest-50 p-4 ring-1 ring-forest-100 sm:p-5">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-card text-forest-600 shadow-soft">
+          <MessageCircleIcon className="size-5" />
+        </span>
+        <p className="text-ink-700">
+          Still have a question? Call {site.phone} or{' '}
+          <a href={whatsAppLink()} target="_blank" rel="noopener noreferrer">
+            chat with us on WhatsApp
+          </a>
+          .
+        </p>
+      </div>
     </StaticPage>
   )
 }

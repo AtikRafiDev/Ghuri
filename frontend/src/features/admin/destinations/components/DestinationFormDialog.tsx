@@ -12,13 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { FormField } from '@/shared/components/FormField'
 import { TextField } from '@/shared/components/TextField'
+import { notify } from '@/shared/lib/notify'
 import { applyServerErrors } from '@/shared/lib/serverErrors'
 import { slugify } from '@/shared/lib/slug'
 import { ImageGalleryUpload } from '../../components/ImageGalleryUpload'
@@ -89,6 +89,8 @@ function DestinationForm({ destination, onDone }: { destination?: AdminDestinati
       // Every cached page/filter of the table is now out of date.
       await queryClient.invalidateQueries({ queryKey: destinationKeys.all })
       onDone()
+      // The dialog closes, so a toast is the "it worked".
+      notify.success(destination ? 'Destination saved' : 'Destination added', { description: values.name })
     } catch (error) {
       setFormError(
         applyServerErrors(form, error, {
@@ -101,86 +103,78 @@ function DestinationForm({ destination, onDone }: { destination?: AdminDestinati
   })
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-6">
+    <form onSubmit={onSubmit} noValidate className="grid gap-5">
       {formError && <FormAlert kind="error">{formError}</FormAlert>}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Left: what customers read */}
-        <div className="grid content-start gap-4">
-          <TextField label="Name" autoFocus error={errors.name?.message} {...form.register('name')} />
+      {/* Row by row (not two separate columns), so fields side by side
+          always start at the same height. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField label="Name" autoFocus error={errors.name?.message} {...form.register('name')} />
 
-          <TextField
-            label="URL name (slug)"
-            placeholder="Leave empty to make it from the name"
-            error={errors.slug?.message}
-            hint={finalSlug ? `Address: /destinations/${finalSlug}` : undefined}
-            {...form.register('slug')}
+        <FormField label="Country" htmlFor="countryId" error={errors.countryId?.message}>
+          <Controller
+            control={form.control}
+            name="countryId"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange} disabled={countries.isPending}>
+                <SelectTrigger id="countryId" className="w-full" aria-invalid={errors.countryId ? true : undefined}>
+                  <SelectValue placeholder={countries.isPending ? 'Loading countries…' : 'Choose a country'} />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-72">
+                  {bangladesh && <SelectItem value={String(bangladesh.id)}>{bangladesh.name}</SelectItem>}
+                  <SelectSeparator />
+                  {countries.data
+                    ?.filter((c) => c.id !== bangladesh?.id)
+                    .map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
           />
+        </FormField>
 
-          <FormField label="Country" htmlFor="countryId" error={errors.countryId?.message}>
-            <Controller
-              control={form.control}
-              name="countryId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange} disabled={countries.isPending}>
-                  <SelectTrigger id="countryId" className="w-full" aria-invalid={errors.countryId ? true : undefined}>
-                    <SelectValue placeholder={countries.isPending ? 'Loading countries…' : 'Choose a country'} />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-72">
-                    {bangladesh && <SelectItem value={String(bangladesh.id)}>{bangladesh.name}</SelectItem>}
-                    <SelectSeparator />
-                    {countries.data
-                      ?.filter((c) => c.id !== bangladesh?.id)
-                      .map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </FormField>
+        <TextField
+          label="URL name (slug)"
+          placeholder="Empty = made from the name"
+          error={errors.slug?.message}
+          hint={finalSlug ? `Address: /destinations/${finalSlug}` : undefined}
+          {...form.register('slug')}
+        />
 
-          <FormField label="Summary" htmlFor="summary" error={errors.summary?.message} hint="One or two sentences for the destination card.">
-            <Textarea id="summary" rows={4} aria-invalid={errors.summary ? true : undefined} {...form.register('summary')} />
-          </FormField>
-        </div>
-
-        {/* Right: photo, display and SEO */}
-        <div className="grid content-start gap-4">
-          <div className="grid grid-cols-2 items-end gap-4">
-            <TextField
-              label="Sort order"
-              type="number"
-              min={0}
-              error={errors.sortOrder?.message}
-              {...form.register('sortOrder', { valueAsNumber: true })}
-            />
-            <Controller
-              control={form.control}
-              name="isFeatured"
-              render={({ field }) => (
-                <div className="flex h-8 items-center gap-2">
-                  <Checkbox id="isFeatured" checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
-                  <Label htmlFor="isFeatured">Show on home page</Label>
-                </div>
-              )}
-            />
-          </div>
-
-          <TextField
-            label="SEO title"
-            placeholder={name ? `${name} Tour Packages | Ghuri` : undefined}
-            error={errors.seoTitle?.message}
-            hint="The blue link text on Google. Empty = the name."
-            {...form.register('seoTitle')}
-          />
-          <FormField label="SEO description" htmlFor="seoDescription" error={errors.seoDescription?.message} hint="The grey text under the link on Google.">
-            <Textarea id="seoDescription" rows={3} aria-invalid={errors.seoDescription ? true : undefined} {...form.register('seoDescription')} />
-          </FormField>
-        </div>
+        <TextField
+          label="Sort order"
+          type="number"
+          min={0}
+          hint="Lower numbers come first."
+          error={errors.sortOrder?.message}
+          {...form.register('sortOrder', { valueAsNumber: true })}
+        />
       </div>
+
+      <FormField label="Summary" htmlFor="summary" error={errors.summary?.message} hint="One or two sentences for the destination card.">
+        <Textarea id="summary" rows={3} aria-invalid={errors.summary ? true : undefined} {...form.register('summary')} />
+      </FormField>
+
+      <Controller
+        control={form.control}
+        name="isFeatured"
+        render={({ field }) => (
+          // The whole card is the click target; it turns green while ticked.
+          <label
+            htmlFor="isFeatured"
+            className="flex cursor-pointer items-start gap-3 rounded-2xl border border-ink-200 bg-card p-4 shadow-soft transition-colors duration-200 hover:border-forest-300 has-data-[state=checked]:border-forest-300 has-data-[state=checked]:bg-forest-50/60"
+          >
+            <Checkbox id="isFeatured" className="mt-0.5" checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
+            <span className="grid gap-0.5">
+              <span className="text-sm font-semibold text-ink-900">Show on home page</span>
+              <span className="text-[0.8125rem] text-ink-500">Feature it among the destinations on the website's home page.</span>
+            </span>
+          </label>
+        )}
+      />
 
       {/* Full width: room for a row of thumbnails */}
       <FormField label="Photos" htmlFor="images" error={errors.images?.message}>
@@ -199,6 +193,24 @@ function DestinationForm({ destination, onDone }: { destination?: AdminDestinati
           )}
         />
       </FormField>
+
+      {/* How it shows on Google - optional, so it sits last, under a quiet heading. */}
+      <div className="grid gap-5 border-t border-ink-200 pt-5">
+        <div className="grid gap-0.5">
+          <h3 className="text-sm font-bold text-ink-900">Search engines</h3>
+          <p className="text-[0.8125rem] text-ink-500">Optional - how the destination's page shows up on Google.</p>
+        </div>
+        <TextField
+          label="SEO title"
+          placeholder={name ? `${name} Tour Packages | Ghuri` : undefined}
+          error={errors.seoTitle?.message}
+          hint="The blue link text on Google. Empty = the name."
+          {...form.register('seoTitle')}
+        />
+        <FormField label="SEO description" htmlFor="seoDescription" error={errors.seoDescription?.message} hint="The grey text under the link on Google.">
+          <Textarea id="seoDescription" rows={2} aria-invalid={errors.seoDescription ? true : undefined} {...form.register('seoDescription')} />
+        </FormField>
+      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={isSubmitting}>

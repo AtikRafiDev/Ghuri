@@ -1,3 +1,4 @@
+import { ArrowRightIcon, CompassIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { site } from '@/shared/config/site'
@@ -6,8 +7,8 @@ import { StaticPage } from '../components/StaticPage'
 /** /about - a draft frame; the agency's own story, team and licence numbers come from the client. */
 export function AboutPage() {
   return (
-    <StaticPage title={`About ${site.name}`} description={`${site.name} - ${site.tagline}.`} updated="6 October 2026" draft>
-      <p className="text-lg">
+    <StaticPage title={`About ${site.name}`} description={`${site.name} - ${site.tagline}.`} updated="6 October 2026" icon={CompassIcon} draft>
+      <p className="text-lg leading-8 text-ink-700">
         {site.name} plans tours across Bangladesh and beyond - from a weekend at Cox's Bazar to a trip through several cities, planned
         around you.
       </p>
@@ -35,11 +36,14 @@ export function AboutPage() {
 
       {/* ⚠ CLIENT CONTENT: the agency's story, founding year, team, trade licence and tourism board registration numbers. */}
       <h2>Our story</h2>
-      <p className="text-muted-foreground">[The agency's own story, team and registration details go here.]</p>
+      <p className="text-ink-400 italic">[The agency's own story, team and registration details go here.]</p>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-3 border-t border-ink-100 pt-7">
         <Button asChild>
-          <Link to="/packages">See our packages</Link>
+          <Link to="/packages">
+            See our packages
+            <ArrowRightIcon className="group-hover/button:translate-x-0.5" />
+          </Link>
         </Button>
         <Button asChild variant="outline">
           <Link to="/plan-trip">Plan my trip</Link>

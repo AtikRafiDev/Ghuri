@@ -1,3 +1,4 @@
+import { ScrollTextIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { site } from '@/shared/config/site'
 import { StaticPage } from '../components/StaticPage'
@@ -9,6 +10,7 @@ export function TermsPage() {
       title="Terms & conditions"
       description={`The terms for booking tours with ${site.name}.`}
       updated="6 October 2026"
+      icon={ScrollTextIcon}
       draft
     >
       <p>

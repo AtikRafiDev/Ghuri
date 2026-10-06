@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Spinner } from '@/components/ui/spinner'
 import { toAppError } from '@/shared/api/problem'
 import { FormAlert } from '@/shared/components/FormAlert'
+import { notify } from '@/shared/lib/notify'
 
 type ActionDialogProps = {
   open: boolean
@@ -16,6 +17,9 @@ type ActionDialogProps = {
   destructive?: boolean
   /** Does the work. If it throws, the API's message is shown and the dialog stays open. */
   onSubmit: () => Promise<void>
+  /** The toast shown once it worked: "Payment recorded". */
+  successMessage?: ReactNode
+  successDescription?: ReactNode
 }
 
 /**
@@ -23,7 +27,7 @@ type ActionDialogProps = {
  * "Cancel booking", "Mark refunded"... Stays open, with the API's message,
  * if the action fails; can't be closed half-way.
  */
-export function ActionDialog({ open, onOpenChange, title, description, children, submitLabel, destructive, onSubmit }: ActionDialogProps) {
+export function ActionDialog({ open, onOpenChange, title, description, children, submitLabel, destructive, onSubmit, successMessage, successDescription }: ActionDialogProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +44,7 @@ export function ActionDialog({ open, onOpenChange, title, description, children,
     try {
       await onSubmit()
       onOpenChange(false)
+      if (successMessage) notify.success(successMessage, { description: successDescription })
     } catch (err) {
       setError(toAppError(err).message)
     } finally {
@@ -50,7 +55,7 @@ export function ActionDialog({ open, onOpenChange, title, description, children,
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>

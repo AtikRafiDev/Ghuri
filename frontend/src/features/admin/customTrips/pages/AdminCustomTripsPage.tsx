@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { SearchIcon } from 'lucide-react'
-import { Link } from 'react-router'
+import { CheckCheckIcon, RouteIcon, SearchIcon, SearchXIcon } from 'lucide-react'
+import type { MouseEvent } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,7 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { tripStatusLabels, type TripStatus } from '@/features/trips/api/trips.api'
 import { TripStatusBadge } from '@/features/trips/components/TripStatusBadge'
+import { cn } from '@/lib/utils'
 import { toAppError } from '@/shared/api/problem'
+import { EmptyState } from '@/shared/components/EmptyState'
+import { FormAlert } from '@/shared/components/FormAlert'
+import { PageHeader } from '@/shared/components/PageHeader'
 import { formatDate, formatDateTime } from '@/shared/lib/dates'
 import { formatTaka } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
@@ -26,6 +31,7 @@ const statuses = [1, 2, 3, 4, 5, 6, 7] as const satisfies readonly TripStatus[]
  */
 export function AdminCustomTripsPage() {
   useDocumentMeta({ title: 'Custom trips' })
+  const navigate = useNavigate()
   const list = useListParams()
   const rawStatus = list.get('status')
   const params: TripQueueParams = {
@@ -40,19 +46,25 @@ export function AdminCustomTripsPage() {
     placeholderData: keepPreviousData,
   })
 
+  // A click anywhere on a row opens the request - except on the link itself,
+  // or when the click ended a text selection (copying a trip number).
+  const openRow = (tripNo: string) => (event: MouseEvent) => {
+    if ((event.target as HTMLElement).closest('a, button') || window.getSelection()?.toString()) return
+    navigate(`/admin/custom-trips/${encodeURIComponent(tripNo)}`)
+  }
+
   return (
     <div className="grid gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Custom trips</h1>
-        <p className="text-muted-foreground">Requests customers designed themselves. Target: a quote within 24 hours.</p>
-      </div>
+      <PageHeader title="Custom trips" description="Requests customers designed themselves. Target: a quote within 24 hours." />
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Filters: the tabs are trimmed to h-10 so they line up with the search box; on a phone they scroll sideways. */}
+      <div className="flex min-w-0 animate-fade-up flex-wrap items-center gap-3">
         <Tabs
           value={params.status === null ? 'all' : String(params.status)}
           onValueChange={(v) => list.update({ status: v === '1' ? null : v })}
+          className="min-w-0"
         >
-          <TabsList>
+          <TabsList className="group-data-horizontal/tabs:h-10">
             <TabsTrigger value="1">Waiting</TabsTrigger>
             <TabsTrigger value="2">Quoted</TabsTrigger>
             <TabsTrigger value="3">Accepted</TabsTrigger>
@@ -60,89 +72,107 @@ export function AdminCustomTripsPage() {
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative min-w-60 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative w-full sm:w-auto sm:min-w-56 sm:flex-1">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-400" />
           <Input
             value={list.searchText}
             onChange={(e) => list.onSearchChange(e.target.value)}
             placeholder="Trip no. (CT1001), name or mobile…"
-            className="pl-8"
+            className="pl-10"
             aria-label="Search custom trips"
           />
         </div>
       </div>
 
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Request</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead className="text-right">Quote</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className={isFetching && !isPending ? 'opacity-60 transition-opacity' : undefined}>
-            {isPending &&
-              Array.from({ length: 4 }, (_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={columnCount}>
-                    <Skeleton className="h-10 w-full" />
-                  </TableCell>
+      {isError && (
+        <div className="grid justify-items-start gap-3">
+          <FormAlert kind="error">{toAppError(error).message}</FormAlert>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Try again
+          </Button>
+        </div>
+      )}
+
+      {data?.items.length === 0 ? (
+        params.search ? (
+          <EmptyState icon={SearchXIcon} title="No request matches your search" text="Try another trip number, name or mobile number.">
+            <Button variant="outline" onClick={() => list.onSearchChange('')}>
+              Clear the search
+            </Button>
+          </EmptyState>
+        ) : params.status === 1 ? (
+          <EmptyState icon={CheckCheckIcon} title="All quoted" text="No requests waiting - every customer has a price." />
+        ) : (
+          <EmptyState icon={RouteIcon} title={`No ${params.status ? tripStatusLabels[params.status].toLowerCase() : ''} requests`} text="Requests move through these tabs as customers accept and pay." />
+        )
+      ) : (
+        (isPending || data) && (
+          <div className="animate-fade-up overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-ink-200/80">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Request</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Dates</TableHead>
+                  <TableHead className="text-right">Quote</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            {isError && (
-              <TableRow>
-                <TableCell colSpan={columnCount} className="py-10 text-center">
-                  <p className="text-destructive">{toAppError(error).message}</p>
-                  <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
-                    Try again
-                  </Button>
-                </TableCell>
-              </TableRow>
-            )}
-            {data?.items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columnCount} className="py-10 text-center text-muted-foreground">
-                  {params.status === 1 ? 'No requests waiting - all quoted.' : `No ${params.status ? tripStatusLabels[params.status].toLowerCase() : ''} requests.`}
-                </TableCell>
-              </TableRow>
-            )}
-            {data?.items.map((t) => (
-              <TableRow key={t.tripNo}>
-                <TableCell>
-                  <Link to={`/admin/custom-trips/${encodeURIComponent(t.tripNo)}`} className="font-mono font-medium hover:underline">
-                    {t.tripNo}
-                  </Link>
-                  <div className="text-xs text-muted-foreground">{formatDateTime(t.submittedAtUtc)}</div>
-                </TableCell>
-                <TableCell className="max-w-64 whitespace-normal">{t.route}</TableCell>
-                <TableCell>
-                  {t.contactName}
-                  <div className="text-xs text-muted-foreground">
-                    {t.contactPhone} · {t.people} people
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {formatDate(t.startDate)}
-                  <div className="text-xs text-muted-foreground">{t.totalNights} nights</div>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {t.quoteTotal !== null ? formatTaka(t.quoteTotal) : '-'}
-                  {t.quoteExpiresAtUtc && t.status === 2 && (
-                    <div className="text-xs text-muted-foreground">until {formatDateTime(t.quoteExpiresAtUtc)}</div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <TripStatusBadge status={t.status} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody aria-busy={isPending || undefined} className={cn('transition-opacity duration-300', isFetching && !isPending && 'opacity-60')}>
+                {/* First load: rows of shimmer in the table's own shape, so nothing jumps when the requests arrive. */}
+                {isPending &&
+                  Array.from({ length: 5 }, (_, i) => (
+                    <TableRow key={i} className="hover:bg-transparent">
+                      {Array.from({ length: columnCount }, (_, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className={cn('h-4', j === 4 ? 'ml-auto w-16' : j === 1 ? 'w-40' : 'w-24')} />
+                          {j !== 1 && j !== 5 && <Skeleton className={cn('mt-2 h-3', j === 4 ? 'ml-auto w-12' : 'w-20')} />}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+
+                {data?.items.map((t) => (
+                  <TableRow key={t.tripNo} onClick={openRow(t.tripNo)} className="cursor-pointer">
+                    <TableCell>
+                      <Link
+                        to={`/admin/custom-trips/${encodeURIComponent(t.tripNo)}`}
+                        className="font-mono text-[0.8125rem] font-semibold text-ink-900 underline-offset-4 transition-colors hover:text-forest-700 hover:underline"
+                      >
+                        {t.tripNo}
+                      </Link>
+                      <div className="text-xs text-ink-500">{formatDateTime(t.submittedAtUtc)}</div>
+                    </TableCell>
+                    <TableCell className="max-w-64 min-w-44 font-medium whitespace-normal text-ink-900">{t.route}</TableCell>
+                    <TableCell>
+                      <div className="font-medium text-ink-900">{t.contactName}</div>
+                      <div className="nums text-xs text-ink-500">
+                        {t.contactPhone} · {t.people} people
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-ink-900">{formatDate(t.startDate)}</div>
+                      <div className="text-xs text-ink-500">{t.totalNights} nights</div>
+                    </TableCell>
+                    <TableCell className="nums text-right">
+                      {t.quoteTotal !== null ? (
+                        <div className="font-semibold text-ink-900">{formatTaka(t.quoteTotal)}</div>
+                      ) : (
+                        <div className="text-ink-400">Not quoted</div>
+                      )}
+                      {t.quoteExpiresAtUtc && t.status === 2 && <div className="text-xs text-ink-500">until {formatDateTime(t.quoteExpiresAtUtc)}</div>}
+                    </TableCell>
+                    <TableCell>
+                      <TripStatusBadge status={t.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
+      )}
 
       <ListFooter data={data} onPage={(page) => list.update({ page: page > 1 ? String(page) : null })} />
     </div>

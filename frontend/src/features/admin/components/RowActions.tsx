@@ -11,20 +11,25 @@ type RowActionsProps = {
   deleteBlockedReason?: string
 }
 
-/** The Edit / Delete buttons at the end of an admin table row. */
+/** The Edit / Delete buttons at the end of an admin table row: green on hover to edit, terracotta to delete. */
 export function RowActions({ name, onEdit, onDelete, deleteBlockedReason }: RowActionsProps) {
   return (
     <div className="flex justify-end gap-1">
-      <Button variant="ghost" size="icon-sm" aria-label={`Edit ${name}`} onClick={onEdit}>
-        <PencilIcon />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label={`Edit ${name}`} onClick={onEdit} className="text-ink-400 hover:bg-forest-50 hover:text-forest-700">
+            <PencilIcon />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Edit</TooltipContent>
+      </Tooltip>
       {deleteBlockedReason ? (
         <Tooltip>
           <TooltipTrigger asChild>
             {/* A disabled button gets no mouse or focus events, so the tooltip
                 hangs on a focusable wrapper - keyboard users can reach it too. */}
-            <span tabIndex={0}>
-              <Button variant="ghost" size="icon-sm" disabled aria-label={`Delete ${name}`}>
+            <span tabIndex={0} className="rounded-lg">
+              <Button variant="ghost" size="icon-sm" disabled aria-label={`Delete ${name}`} className="text-ink-300">
                 <Trash2Icon />
               </Button>
             </span>
@@ -32,9 +37,14 @@ export function RowActions({ name, onEdit, onDelete, deleteBlockedReason }: RowA
           <TooltipContent>{deleteBlockedReason}</TooltipContent>
         </Tooltip>
       ) : (
-        <Button variant="ghost" size="icon-sm" aria-label={`Delete ${name}`} onClick={onDelete}>
-          <Trash2Icon />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label={`Delete ${name}`} onClick={onDelete} className="text-ink-400 hover:bg-clay-50 hover:text-clay-600">
+              <Trash2Icon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

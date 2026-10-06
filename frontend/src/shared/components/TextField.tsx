@@ -1,4 +1,5 @@
-import type { ComponentProps } from 'react'
+import { CircleAlertIcon } from 'lucide-react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -16,22 +17,37 @@ type TextFieldProps = ComponentProps<typeof Input> & {
 export function TextField({ label, error, hint, id, ...inputProps }: TextFieldProps) {
   const inputId = id ?? inputProps.name
   const messageId = `${inputId}-message`
-  const message = error ?? hint
 
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-2">
       <Label htmlFor={inputId}>{label}</Label>
       <Input
         id={inputId}
         aria-invalid={error ? true : undefined}
-        aria-describedby={message ? messageId : undefined}
+        aria-describedby={error || hint ? messageId : undefined}
         {...inputProps}
       />
-      {message && (
-        <p id={messageId} className={error ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
-          {message}
-        </p>
-      )}
+      <FieldMessage id={messageId} error={error} hint={hint} />
     </div>
   )
+}
+
+/** The line under a field: an error (terracotta, with an icon, sliding in) or a quiet hint. */
+export function FieldMessage({ id, error, hint }: { id: string; error?: string; hint?: ReactNode }) {
+  if (error) {
+    return (
+      <p id={id} className="flex animate-[fade-up_0.3s_var(--ease-out-expo)_backwards] items-start gap-1.5 text-[0.8125rem] font-medium text-destructive">
+        <CircleAlertIcon className="mt-px size-3.5 shrink-0" />
+        {error}
+      </p>
+    )
+  }
+  if (hint) {
+    return (
+      <p id={id} className="text-[0.8125rem] text-ink-500">
+        {hint}
+      </p>
+    )
+  }
+  return null
 }

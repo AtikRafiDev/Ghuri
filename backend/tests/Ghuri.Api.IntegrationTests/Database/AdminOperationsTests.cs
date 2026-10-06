@@ -320,12 +320,25 @@ public class AdminOperationsTests : IClassFixture<SqlServerFixture>
         Assert.Equal(before.RevenueToday + paid.Total, middle.RevenueToday);
         Assert.Equal(before.RefundsToProcess + 1, middle.RefundsToProcess);
 
+        // The chart's last point is today, and agrees with the cards above it.
+        Assert.Equal(14, middle.Last14Days.Count);
+        Assert.Equal(middle.Today, middle.Last14Days[^1].Date);
+        Assert.Equal(before.Last14Days[^1].Bookings + 2, middle.Last14Days[^1].Bookings);
+        Assert.Equal(middle.RevenueToday, middle.Last14Days[^1].Revenue);
+        // One booking still waiting, the paid one now cancelled by the agency.
+        Assert.Equal(MixCount(before, BookingStatus.PendingPayment) + 1, MixCount(middle, BookingStatus.PendingPayment));
+        Assert.Equal(MixCount(before, BookingStatus.Cancelled) + 1, MixCount(middle, BookingStatus.Cancelled));
+
         await _sql.SendCommandAsync(new CompleteRefundCommand(refundNo, "BK-1"), staff); // money back out today
 
         var after = (await _sql.SendAsync(new GetAdminDashboardQuery())).Value;
         Assert.Equal(before.RevenueToday, after.RevenueToday); // in and out the same day
+        Assert.Equal(after.RevenueToday, after.Last14Days[^1].Revenue);
         Assert.Equal(before.RefundsToProcess, after.RefundsToProcess);
     }
+
+    private static int MixCount(AdminDashboardDto dashboard, BookingStatus status) =>
+        dashboard.StatusMix.FirstOrDefault(s => s.Status == status)?.Count ?? 0;
 
     // ---------- Who may do what (HTTP, real tokens) ----------
 

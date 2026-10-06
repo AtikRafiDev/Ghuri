@@ -200,6 +200,14 @@ export type AdminDashboard = {
   refundsToProcessAmount: number
   upcomingTripCount: number
   upcomingTrips: { bookingNo: string; packageTitle: string | null; contactName: string; contactPhone: string; startDate: string; travellers: number }[]
+  /** Custom trip requests nobody has priced yet. */
+  customTripsToQuote: number
+  /** One row per Bangladesh day, oldest first, today last - zeros included. */
+  last14Days: { date: string; bookings: number; revenue: number }[]
+  /** Bookings made in the last 30 days, by what became of them. */
+  statusMix: { status: BookingStatus; count: number }[]
+  /** Best sellers of the last 30 days (paid or part-paid bookings). */
+  topPackages: { title: string; slug: string; bookings: number; amount: number }[]
 }
 
 const base = '/api/v1/admin'
