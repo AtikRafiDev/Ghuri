@@ -1,4 +1,5 @@
 import { Outlet, ScrollRestoration } from 'react-router'
+import { WhatsAppButton } from '@/shared/components/WhatsAppButton'
 import { SiteFooter } from './SiteFooter'
 import { SiteHeader } from './SiteHeader'
 
@@ -15,6 +16,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <WhatsAppButton />
     </div>
   )
 }

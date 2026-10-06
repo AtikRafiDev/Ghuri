@@ -59,6 +59,13 @@ public static class BookingErrors
     public static readonly Error BookingNotFound =
         Error.NotFound("booking_not_found", "This booking doesn't exist.");
 
+    /// <summary>Unpaid bookings one customer may have holding seats at once (Day 16 security pass).</summary>
+    public const int MaxUnpaidHolds = 3;
+
+    public static readonly Error TooManyUnpaidBookings =
+        Error.Conflict("too_many_unpaid_bookings",
+            $"You already have {MaxUnpaidHolds} bookings waiting for payment. Please pay or cancel one of them first - unpaid holds end after 20 minutes.");
+
     // Cancelling (Day 11)
 
     /// <summary>Expired, already cancelled, or the trip has started - Message says which (from CancellationQuote.Reason).</summary>

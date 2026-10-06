@@ -33,6 +33,9 @@ export default defineConfig({
       '/health': { target: apiTarget, changeOrigin: true },
       // Uploaded images (backend Storage:PublicBaseUrl).
       '/files': { target: apiTarget, changeOrigin: true },
+      // For search engines - made by the API from the published packages (Day 16, SeoController).
+      '/sitemap.xml': { target: apiTarget, changeOrigin: true },
+      '/robots.txt': { target: apiTarget, changeOrigin: true },
     },
   },
 })

@@ -1,4 +1,5 @@
 using Ghuri.Api.ErrorHandling;
+using Ghuri.Api.RateLimiting;
 using Ghuri.Application.Features.CustomTrips.Commands.AcceptCustomTripQuote;
 using Ghuri.Application.Features.CustomTrips.Commands.CancelCustomTrip;
 using Ghuri.Application.Features.CustomTrips.Commands.SubmitCustomTrip;
@@ -6,6 +7,7 @@ using Ghuri.Application.Features.CustomTrips.Queries;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ghuri.Api.Controllers.CustomTrips;
 
@@ -21,6 +23,7 @@ public sealed class CustomTripsController(ISender sender) : ControllerBase
     /// 201 = { tripNo, startDate, endDate, totalNights }.
     /// </summary>
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Submit(SubmitCustomTripCommand command, CancellationToken cancellationToken)
     {
         var result = await sender.Send(command, cancellationToken);
@@ -46,12 +49,14 @@ public sealed class CustomTripsController(ISender sender) : ControllerBase
     /// Sending it again while that booking waits for payment returns the same booking.
     /// </summary>
     [HttpPost("{tripNo}/accept")]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Accept(string tripNo, AcceptQuoteRequest request, CancellationToken cancellationToken) =>
         (await sender.Send(new AcceptCustomTripQuoteCommand(tripNo, request.Travellers, request.SpecialRequest), cancellationToken))
         .ToActionResult();
 
     /// <summary>Withdraw it - body { "reason": "..." } (optional). Only before accepting a quote.</summary>
     [HttpPost("{tripNo}/cancel")]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Cancel(string tripNo, CancelTripRequest? request, CancellationToken cancellationToken) =>
         (await sender.Send(new CancelCustomTripCommand(tripNo, request?.Reason), cancellationToken)).ToActionResult();
 }

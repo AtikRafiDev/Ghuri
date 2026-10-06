@@ -25,5 +25,8 @@ public interface IBookingRepository
     /// <summary>GetByIdForUpdateAsync by the booking's number - e.g. a customer cancelling while their payment is being confirmed.</summary>
     Task<Booking?> GetByBookingNoForUpdateAsync(string bookingNo, CancellationToken cancellationToken);
 
+    /// <summary>The customer's bookings still waiting for payment inside their 20-minute hold - each one holds seats.</summary>
+    Task<int> CountUnpaidHoldsAsync(Guid customerId, DateTime nowUtc, CancellationToken cancellationToken);
+
     void Add(Booking booking);
 }

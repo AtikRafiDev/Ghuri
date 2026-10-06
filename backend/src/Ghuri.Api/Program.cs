@@ -6,6 +6,7 @@ using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Infrastructure;
 using Ghuri.Infrastructure.Storage;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -76,6 +77,18 @@ if (args.Contains("seed-demo"))
 
 // First in the pipeline on purpose: it has to wrap everything after it to
 // be able to catch their exceptions.
+// FIRST (Day 16 security pass): behind Nginx every request arrives from
+// Nginx's address over plain http. Nginx passes the visitor's real IP and
+// "it was https" in X-Forwarded-For / X-Forwarded-Proto; this reads them -
+// otherwise every visitor shares ONE rate-limit bucket (5 logins a minute
+// for the whole country), and the HTTPS redirect would loop forever.
+// Trusted only from loopback (Nginx on the same server) by default, so a
+// visitor can't fake their IP by sending the header themselves.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseExceptionHandler();
 
 // One concise log line per HTTP request (method, path, status, duration)
@@ -110,8 +123,26 @@ if (app.Environment.IsDevelopment())
 // In production HTTPS is enforced anyway (Nginx, Day 7/14).
 if (!app.Environment.IsDevelopment())
 {
+    // HSTS (Day 16 security pass): "this site is HTTPS-only - for a year,
+    // never even try http://". A browser that has seen it once can't be
+    // tricked onto a plain-http copy of the site. Never in Development:
+    // browsers remember it per host, and localhost would stop working on http.
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
+
+// Security headers on every API answer (Day 16 security pass). The website's
+// own files get theirs from Nginx in production (a Content-Security-Policy
+// for the React app is a go-live item).
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.XContentTypeOptions = "nosniff";          // trust the Content-Type, never guess
+    headers.XFrameOptions = "DENY";                   // nobody may show us inside their page (clickjacking)
+    headers["Referrer-Policy"] = "no-referrer";       // links out never carry our URLs (they can hold booking numbers)
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
 
 // Uploaded images at /files/... (see LocalDiskFileStorage). On the real
 // server Nginx serves this folder itself and the request never reaches us;

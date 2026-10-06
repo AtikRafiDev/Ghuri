@@ -2,8 +2,7 @@ import { MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { site } from '@/shared/config/site'
 
-// The policy pages arrive on Day 16 (static pages); the links are here now
-// so the footer doesn't change shape later. SSLCommerz also asks for these
+// The information pages (Day 16, features/pages). SSLCommerz asks for these
 // pages before approving a live merchant account.
 const policyLinks = [
   { to: '/about', label: 'About us' },

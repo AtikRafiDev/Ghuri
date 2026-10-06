@@ -59,6 +59,12 @@ internal sealed class CreateBookingHandler(
                 : BookingErrors.IdempotencyKeyReused;
         }
 
+        // Security pass (Day 16): every unpaid booking holds seats for 20
+        // minutes, so one account booking over and over without paying could
+        // block a whole departure. A few open holds at a time is plenty for a person.
+        if (await bookings.CountUnpaidHoldsAsync(customerId, clock.GetUtcNow().UtcDateTime, cancellationToken) >= BookingErrors.MaxUnpaidHolds)
+            return BookingErrors.TooManyUnpaidBookings;
+
         // (2) The package must be for sale.
         var package = await packages.GetPublishedBySlugAsync(Slug.Create(command.PackageSlug), cancellationToken);
         if (package is null)

@@ -1,4 +1,5 @@
 using Ghuri.Api.ErrorHandling;
+using Ghuri.Api.RateLimiting;
 using Ghuri.Application.Features.Booking.Commands.CancelMyBooking;
 using Ghuri.Application.Features.Booking.Commands.CreateBooking;
 using Ghuri.Application.Features.Booking.Queries.GetMyBooking;
@@ -8,6 +9,7 @@ using Ghuri.Application.Features.Payments.Commands.InitiatePayment;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ghuri.Api.Controllers.Bookings;
 
@@ -27,6 +29,7 @@ public sealed class BookingsController(ISender sender) : ControllerBase
     /// 201 = { bookingId, bookingNo, totalAmount, currency, holdExpiresAtUtc }.
     /// </summary>
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Create(
         CreateBookingCommand command,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
@@ -44,6 +47,7 @@ public sealed class BookingsController(ISender sender) : ControllerBase
     /// 409 booking_hold_ended once the 20 minutes are over.
     /// </summary>
     [HttpPost("{bookingNo}/payments")]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Pay(string bookingNo, CancellationToken cancellationToken) =>
         (await sender.Send(new InitiatePaymentCommand(bookingNo), cancellationToken)).ToActionResult();
 
@@ -66,6 +70,7 @@ public sealed class BookingsController(ISender sender) : ControllerBase
     /// 409 booking_not_cancellable once expired, cancelled or the trip has started.
     /// </summary>
     [HttpPost("{bookingNo}/cancel")]
+    [EnableRateLimiting(RateLimitPolicies.CustomerWrites)]
     public async Task<IActionResult> Cancel(string bookingNo, CancelBookingRequest? request, CancellationToken cancellationToken) =>
         (await sender.Send(new CancelMyBookingCommand(bookingNo, request?.Reason), cancellationToken)).ToActionResult();
 

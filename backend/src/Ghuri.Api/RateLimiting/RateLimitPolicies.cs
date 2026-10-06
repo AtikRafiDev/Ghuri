@@ -31,12 +31,22 @@ public static class RateLimitPolicies
     /// </summary>
     public const string AuthRefresh = "auth-refresh";
 
+    /// <summary>
+    /// What customers DO - book, pay, cancel, ask for or accept a custom trip
+    /// (Day 16 security pass): 20 per minute per IP. Far more than a person
+    /// clicks; stops a script from booking (and so holding seats) in a loop.
+    /// Per IP, not per user: the limiter runs before login is checked
+    /// (Program.cs), so a flood is refused before any work is spent on it.
+    /// </summary>
+    public const string CustomerWrites = "customer-writes";
+
     public static IServiceCollection AddRateLimitPolicies(this IServiceCollection services)
     {
         services.AddRateLimiter(options =>
         {
             options.AddPolicy(AuthStrict, context => PerIp(context, permitsPerMinute: 5));
             options.AddPolicy(AuthRefresh, context => PerIp(context, permitsPerMinute: 30));
+            options.AddPolicy(CustomerWrites, context => PerIp(context, permitsPerMinute: 20));
 
             // "Too many requests" as ProblemDetails with a code, like every
             // other error - the frontend handles all errors the same way.

@@ -59,6 +59,15 @@ export const router = createBrowserRouter([
         path: 'payment/result',
         lazy: async () => ({ Component: (await import('@/features/booking/pages/PaymentResultPage')).PaymentResultPage }),
       },
+      // Information pages (Day 16) - the footer links them; SSLCommerz asks for terms, privacy and refund policy before going live.
+      { path: 'about', lazy: async () => ({ Component: (await import('@/features/pages/pages/AboutPage')).AboutPage }) },
+      { path: 'faq', lazy: async () => ({ Component: (await import('@/features/pages/pages/FaqPage')).FaqPage }) },
+      { path: 'terms', lazy: async () => ({ Component: (await import('@/features/pages/pages/TermsPage')).TermsPage }) },
+      { path: 'privacy', lazy: async () => ({ Component: (await import('@/features/pages/pages/PrivacyPage')).PrivacyPage }) },
+      {
+        path: 'refund-policy',
+        lazy: async () => ({ Component: (await import('@/features/pages/pages/RefundPolicyPage')).RefundPolicyPage }),
+      },
       { path: 'login', lazy: async () => ({ Component: (await import('@/features/auth/pages/LoginPage')).LoginPage }) },
       { path: 'register', lazy: async () => ({ Component: (await import('@/features/auth/pages/RegisterPage')).RegisterPage }) },
       {

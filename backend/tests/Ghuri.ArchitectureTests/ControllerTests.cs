@@ -29,4 +29,29 @@ public class ControllerTests
 
         Assert.Empty(offenders);
     }
+
+    /// <summary>
+    /// Day 16 security pass: every controller under /api/v1/admin requires a
+    /// staff role (the AdminArea policy) on the class itself - a new admin
+    /// controller that forgets it fails here, before it can be shipped open.
+    /// </summary>
+    [Fact]
+    public void AdminControllers_RequireStaff()
+    {
+        var adminControllers = Controllers
+            .Where(c => c.GetCustomAttributes(typeof(RouteAttribute), inherit: true)
+                .Cast<RouteAttribute>()
+                .Any(r => r.Template.StartsWith("api/v1/admin", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        Assert.NotEmpty(adminControllers);
+
+        var open = adminControllers
+            .Where(c => !c.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), inherit: true)
+                .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+                .Any(a => a.Policy == "AdminArea"))
+            .Select(c => c.Name)
+            .ToList();
+
+        Assert.Empty(open);
+    }
 }

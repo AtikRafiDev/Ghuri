@@ -1,4 +1,5 @@
 using Ghuri.Domain.Entities.Booking;
+using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +44,11 @@ internal sealed class BookingRepository(AppDbContext db) : IBookingRepository
             .ToListAsync(cancellationToken);
         return rows.SingleOrDefault();
     }
+
+    public Task<int> CountUnpaidHoldsAsync(Guid customerId, DateTime nowUtc, CancellationToken cancellationToken) =>
+        db.Bookings.CountAsync(
+            b => b.CustomerId == customerId && b.Status == BookingStatus.PendingPayment && b.HoldExpiresAtUtc > nowUtc,
+            cancellationToken);
 
     public void Add(Booking booking) => db.Bookings.Add(booking);
 }
