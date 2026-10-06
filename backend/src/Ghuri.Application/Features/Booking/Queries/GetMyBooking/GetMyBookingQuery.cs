@@ -15,6 +15,8 @@ public sealed record GetMyBookingQuery(string BookingNo) : IQuery<MyBookingDto>;
 /// The booking as the customer sees it. Prices are the snapshot taken when
 /// booking - later price changes on the package never change it.
 /// HoldExpiresAtUtc is only set while Status is PendingPayment (the countdown).
+/// Cancellation: whether it can be cancelled now and what would come back
+/// (shown before the customer decides). Refund: set once a refund exists.
 /// </summary>
 public sealed record MyBookingDto(
     Guid Id,
@@ -40,6 +42,12 @@ public sealed record MyBookingDto(
     string ContactPhone,
     string? ContactEmail,
     string? SpecialRequest,
-    IReadOnlyList<MyBookingTravellerDto> Travellers);
+    IReadOnlyList<MyBookingTravellerDto> Travellers,
+    CancellationQuote Cancellation,
+    MyBookingRefundDto? Refund,
+    DateTime? CancelledAtUtc);
 
 public sealed record MyBookingTravellerDto(string FullName, TravellerType Type, bool IsLead);
+
+/// <summary>The newest refund for this booking, if any - "Refund RF1001 of ৳17,000: requested".</summary>
+public sealed record MyBookingRefundDto(string RefundNo, decimal Amount, RefundStatus Status);

@@ -9,6 +9,7 @@ using Ghuri.Application.Features.Identity.Commands.Logout;
 using Ghuri.Application.Features.Identity.Commands.RefreshSession;
 using Ghuri.Application.Features.Identity.Commands.RegisterCustomer;
 using Ghuri.Application.Features.Identity.Commands.ResetPassword;
+using Ghuri.Application.Features.Identity.Commands.UpdateProfile;
 using Ghuri.Application.Features.Identity.Queries.GetMe;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
@@ -105,6 +106,17 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [Authorize]
     public async Task<IActionResult> Me(CancellationToken cancellationToken) =>
         (await sender.Send(new GetMeQuery(), cancellationToken)).ToActionResult();
+
+    /// <summary>
+    /// Change your own name and email - { fullName, email, currentPassword }.
+    /// currentPassword is needed only when the email changes. 204 = saved.
+    /// Rate-limited like login: a wrong currentPassword is a password guess.
+    /// </summary>
+    [HttpPut("me")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
+    public async Task<IActionResult> UpdateMe(UpdateProfileCommand command, CancellationToken cancellationToken) =>
+        (await sender.Send(command, cancellationToken)).ToActionResult();
 
     /// <summary>
     /// Splits a new session in two: the refresh token into the HttpOnly

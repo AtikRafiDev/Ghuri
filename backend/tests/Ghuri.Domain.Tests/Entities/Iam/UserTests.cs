@@ -118,4 +118,35 @@ public class UserTests
         Assert.True(user.HasRole(SystemRole.Customer));
         Assert.False(user.HasRole(SystemRole.SuperAdmin));
     }
+
+    // ---------- Profile (Day 11) ----------
+
+    [Fact]
+    public void UpdateProfile_ANewEmail_IsNotConfirmedYet()
+    {
+        var user = NewUser();
+
+        user.UpdateProfile(" Rahim Ahmed ", " new@example.com ");
+
+        Assert.Equal(("Rahim Ahmed", "new@example.com", "NEW@EXAMPLE.COM", false),
+            (user.FullName, user.Email, user.NormalizedEmail, user.EmailConfirmed));
+    }
+
+    [Fact]
+    public void UpdateProfile_NoEmail_ClearsIt()
+    {
+        var user = NewUser();
+
+        user.UpdateProfile("Rahim Uddin", "  ");
+
+        Assert.Equal(((string?)null, (string?)null), (user.Email, user.NormalizedEmail));
+    }
+
+    [Theory]
+    [InlineData("rahim@example.com", " RAHIM@Example.com ", true)]
+    [InlineData(null, null, true)]
+    [InlineData("rahim@example.com", null, false)]
+    [InlineData("a@example.com", "b@example.com", false)]
+    public void EmailEquals_IgnoresCaseAndSpaces(string? a, string? b, bool expected) =>
+        Assert.Equal(expected, User.EmailEquals(a, b));
 }

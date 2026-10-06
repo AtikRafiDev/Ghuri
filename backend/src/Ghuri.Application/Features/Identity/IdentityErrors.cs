@@ -49,4 +49,8 @@ public static class IdentityErrors
 
     public static readonly Error EmailTaken =
         Error.Conflict("email_taken", "This email is already registered.");
+
+    // Profile.
+    public static readonly Error StaffEmailRequired =
+        Error.Failure("staff_email_required", "Staff accounts need an email address.");
 }

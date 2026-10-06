@@ -25,9 +25,14 @@ internal sealed class LogEmailSender(ILogger<LogEmailSender> logger) : IEmailSen
         // program would. (Safe: the console never renders HTML.)
         var readableBody = WebUtility.HtmlDecode(message.HtmlBody);
 
+        // A PDF can't be shown in a console - just say what would be attached.
+        var attachments = message.Attachments is { Count: > 0 } files
+            ? string.Join(", ", files.Select(f => $"{f.FileName} ({f.Content.Length / 1024.0:0.#} KB)"))
+            : "none";
+
         logger.LogInformation(
-            "DEVELOPMENT EMAIL - not really sent{NewLine}To: {To}{NewLine}Subject: {Subject}{NewLine}{Body}",
-            Environment.NewLine, message.To, Environment.NewLine, message.Subject, Environment.NewLine, readableBody);
+            "DEVELOPMENT EMAIL - not really sent{NewLine}To: {To}{NewLine}Subject: {Subject}{NewLine}Attachments: {Attachments}{NewLine}{Body}",
+            Environment.NewLine, message.To, Environment.NewLine, message.Subject, Environment.NewLine, attachments, Environment.NewLine, readableBody);
 
         return Task.CompletedTask;
     }

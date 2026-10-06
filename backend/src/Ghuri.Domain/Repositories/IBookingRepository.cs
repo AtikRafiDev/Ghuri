@@ -22,5 +22,8 @@ public interface IBookingRepository
     /// </summary>
     Task<Booking?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>GetByIdForUpdateAsync by the booking's number - e.g. a customer cancelling while their payment is being confirmed.</summary>
+    Task<Booking?> GetByBookingNoForUpdateAsync(string bookingNo, CancellationToken cancellationToken);
+
     void Add(Booking booking);
 }

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Ghuri.Application.Features.Booking.Queries.GetMyBooking;
 
-internal sealed class GetMyBookingHandler(IReadDbContext db, ICurrentUser currentUser)
+internal sealed class GetMyBookingHandler(IReadDbContext db, ICurrentUser currentUser, CancellationTerms terms)
     : IQueryHandler<GetMyBookingQuery, MyBookingDto>
 {
     public async ValueTask<Result<MyBookingDto>> Handle(GetMyBookingQuery query, CancellationToken cancellationToken)
@@ -34,6 +34,13 @@ internal sealed class GetMyBookingHandler(IReadDbContext db, ICurrentUser curren
             .Select(t => new MyBookingTravellerDto(t.FullName, t.TravellerType, t.IsLead))
             .ToListAsync(cancellationToken);
 
+        var cancellation = await terms.QuoteAsync(booking.Status, booking.PackageId, booking.StartDate, booking.PaidAmount, cancellationToken);
+        var refund = await db.Refunds
+            .Where(r => r.BookingId == booking.Id)
+            .OrderByDescending(r => r.RefundNo.Length).ThenByDescending(r => r.RefundNo) // RF999 < RF1000: by length first
+            .Select(r => new MyBookingRefundDto(r.RefundNo, r.Amount, r.Status))
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new MyBookingDto(
             booking.Id, booking.BookingNo, booking.BookingType, booking.Status,
             row.PackageTitle, row.PackageSlug?.Value,
@@ -42,6 +49,6 @@ internal sealed class GetMyBookingHandler(IReadDbContext db, ICurrentUser curren
             booking.AdultPriceSnapshot, booking.ChildPriceSnapshot, booking.InfantPriceSnapshot,
             booking.TotalAmount, booking.PaidAmount, booking.Currency, booking.HoldExpiresAtUtc,
             booking.ContactName, booking.ContactPhone.Value, booking.ContactEmail, booking.SpecialRequest,
-            travellers);
+            travellers, cancellation, refund, booking.CancelledAtUtc);
     }
 }

@@ -71,7 +71,7 @@ function PaymentStep({ booking }: { booking: MyBooking }) {
     return (
       <PageMessage title="This booking is paid" text={`Booking ${booking.bookingNo} is confirmed - your voucher is on its way by email.`}>
         <Button asChild variant="outline">
-          <Link to="/account">My account</Link>
+          <Link to={`/account/bookings/${encodeURIComponent(booking.bookingNo)}`}>View booking</Link>
         </Button>
       </PageMessage>
     )

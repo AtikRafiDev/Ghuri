@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import { queryOptions } from '@tanstack/react-query'
 import { http } from '@/shared/api/http'
 
@@ -60,7 +61,43 @@ export type MyBooking = {
   contactEmail: string | null
   specialRequest: string | null
   travellers: { fullName: string; type: TravellerType; isLead: boolean }[]
+  /** Can it be cancelled NOW, and what would come back (shown before the customer decides). */
+  cancellation: CancellationQuote
+  /** The newest refund, once one exists. */
+  refund: { refundNo: string; amount: number; status: RefundStatus } | null
+  cancelledAtUtc: string | null
 }
+
+/** Backend: CancellationQuote. canCancel false → reason says why. */
+export type CancellationQuote = {
+  canCancel: boolean
+  daysBeforeStart: number
+  refundPercent: number
+  refundAmount: number
+  reason: string | null
+}
+
+/** 1 requested · 2 approved · 3 rejected · 4 processing · 5 completed · 6 failed (backend: RefundStatus). */
+export type RefundStatus = 1 | 2 | 3 | 4 | 5 | 6
+
+/** One line of "My bookings" (backend: MyBookingSummaryDto). */
+export type MyBookingSummary = {
+  bookingNo: string
+  bookingType: 1 | 2 | 3
+  status: BookingStatus
+  packageTitle: string | null
+  packageSlug: string | null
+  startDate: string
+  endDate: string
+  nights: number
+  travellers: number
+  totalAmount: number
+  currency: string
+  holdExpiresAtUtc: string | null
+}
+
+/** 200 from POST /api/v1/bookings/{bookingNo}/cancel. refundNo null = nothing refunded. */
+export type CancelBookingResponse = { bookingNo: string; refundPercent: number; refundAmount: number; refundNo: string | null }
 
 /** POST /api/v1/bookings/{bookingNo}/payments: where to send the browser. */
 export type StartPaymentResponse = { paymentNo: string; paymentPageUrl: string }
@@ -94,6 +131,38 @@ export const bookingsApi = {
     return data
   },
 
+  async list(): Promise<MyBookingSummary[]> {
+    const { data } = await http.get<MyBookingSummary[]>('/api/v1/bookings')
+    return data
+  },
+
+  async cancel(bookingNo: string, reason: string | null): Promise<CancelBookingResponse> {
+    const { data } = await http.post<CancelBookingResponse>(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/cancel`, { reason })
+    return data
+  },
+
+  /**
+   * The invoice or e-voucher PDF. Fetched through the API client (not a
+   * plain link) because it needs the login token; the caller saves the Blob.
+   */
+  async document(bookingNo: string, kind: 'invoice' | 'voucher'): Promise<Blob> {
+    try {
+      const { data } = await http.get<Blob>(`/api/v1/bookings/${encodeURIComponent(bookingNo)}/${kind}`, { responseType: 'blob' })
+      return data
+    } catch (error) {
+      // With responseType 'blob' an error's JSON arrives as a Blob too - turn
+      // it back into JSON so toAppError can show the API's own message.
+      if (isAxiosError(error) && error.response?.data instanceof Blob) {
+        try {
+          error.response.data = JSON.parse(await error.response.data.text())
+        } catch {
+          // not JSON - the generic message will do
+        }
+      }
+      throw error
+    }
+  },
+
   async mine(bookingNo: string): Promise<MyBooking> {
     const { data } = await http.get<MyBooking>(`/api/v1/bookings/${encodeURIComponent(bookingNo)}`)
     return data
@@ -112,9 +181,12 @@ export const bookingsApi = {
 
 export const bookingKeys = {
   all: ['bookings'] as const,
+  list: () => [...bookingKeys.all, 'list'] as const,
   mine: (bookingNo: string) => [...bookingKeys.all, bookingNo] as const,
   payment: (paymentNo: string) => [...bookingKeys.all, 'payment', paymentNo] as const,
 }
+
+export const myBookingsQuery = queryOptions({ queryKey: bookingKeys.list(), queryFn: bookingsApi.list })
 
 /** Always fresh: a booking's status changes (paid, expired) while the page is open. */
 export const myBookingQuery = (bookingNo: string) =>

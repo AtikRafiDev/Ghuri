@@ -1,5 +1,8 @@
 using FluentValidation;
+using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Behaviors;
+using Ghuri.Application.Features.Booking;
+using Ghuri.Application.Features.Booking.Documents;
 using Ghuri.Application.Features.Identity;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,8 +48,28 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
 
         services.AddIdentityFeature();
+        services.AddDomainEventHandlers();
+        services.AddScoped<CancellationTerms>();
+        services.AddScoped<BookingDocumentLoader>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Finds every IDomainEventHandler&lt;T&gt; in this project and registers it
+    /// (scoped - handlers read the database). Like the validators: a new
+    /// handler needs no extra wiring.
+    /// </summary>
+    private static void AddDomainEventHandlers(this IServiceCollection services)
+    {
+        var handlers = typeof(DependencyInjection).Assembly.GetTypes()
+            .Where(type => type is { IsAbstract: false, IsInterface: false })
+            .SelectMany(type => type.GetInterfaces()
+                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDomainEventHandler<>))
+                .Select(i => (Service: i, Implementation: type)));
+
+        foreach (var (service, implementation) in handlers)
+            services.AddScoped(service, implementation);
     }
 
     private static void AddIdentityFeature(this IServiceCollection services)

@@ -58,4 +58,14 @@ public static class BookingErrors
 
     public static readonly Error BookingNotFound =
         Error.NotFound("booking_not_found", "This booking doesn't exist.");
+
+    // Cancelling (Day 11)
+
+    /// <summary>Expired, already cancelled, or the trip has started - Message says which (from CancellationQuote.Reason).</summary>
+    public static Error NotCancellable(string reason) =>
+        Error.Conflict("booking_not_cancellable", reason);
+
+    /// <summary>The invoice before anything is paid, or the voucher of a booking that isn't confirmed.</summary>
+    public static Error DocumentNotAvailable(string message) =>
+        Error.Conflict("document_not_available", message);
 }

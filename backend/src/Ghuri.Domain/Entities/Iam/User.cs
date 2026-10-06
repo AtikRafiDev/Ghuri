@@ -164,6 +164,29 @@ public sealed class User : AggregateRoot, IAuditable
         LockoutEndUtc = null;
     }
 
+    /// <summary>
+    /// The user's own name and email (Day 11: UpdateProfile). The phone
+    /// number can't change here: it's how they log in, and changing it needs
+    /// an SMS code (Phase 2: OTP).
+    /// </summary>
+    /// <remarks>A different email is not confirmed yet - EmailConfirmed goes back to false.</remarks>
+    public void UpdateProfile(string fullName, string? email)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+
+        if (!EmailEquals(Email, email))
+            EmailConfirmed = false;
+
+        FullName = fullName.Trim();
+        Email = email;
+        NormalizedEmail = email is null ? null : NormalizeEmail(email);
+    }
+
+    /// <summary>Same address, ignoring case and spaces (NormalizeEmail) - or both empty.</summary>
+    public static bool EmailEquals(string? a, string? b) =>
+        a is null || b is null ? a is null && b is null : NormalizeEmail(a) == NormalizeEmail(b);
+
     /// <summary>Gives the user a role. Assigning a role they already have does nothing.</summary>
     public void AssignRole(SystemRole role, DateTime nowUtc)
     {

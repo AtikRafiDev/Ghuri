@@ -1,4 +1,5 @@
 using System.Globalization;
+using Ghuri.Domain.Entities.Booking;
 using Ghuri.Domain.Entities.Catalog;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
@@ -41,6 +42,34 @@ internal sealed class DatabaseSeeder(
 
         await SeedCountriesAsync(cancellationToken);
         await SeedSuperAdminAsync(cancellationToken);
+        await SeedCancellationPolicyAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The global refund rule for customer cancellations (decided 2026-10-06):
+    /// 30+ days before the trip 100% · 15-29 days 50% · 7-14 days 25% · less 0%.
+    /// </summary>
+    /// <remarks>
+    /// Here and not in a migration: staff will change these rows (Phase 2
+    /// admin screen), and a migration would put its own numbers back. So
+    /// only when there's no global rule at all - never over staff's changes.
+    /// </remarks>
+    private async Task SeedCancellationPolicyAsync(CancellationToken cancellationToken)
+    {
+        if (await db.CancellationPolicies.AnyAsync(p => p.PackageId == null, cancellationToken))
+        {
+            logger.LogInformation("A global cancellation policy already exists - nothing to seed.");
+            return;
+        }
+
+        db.CancellationPolicies.AddRange(
+            CancellationPolicy.Create(packageId: null, minDaysBefore: 30, refundPercent: 100),
+            CancellationPolicy.Create(packageId: null, minDaysBefore: 15, refundPercent: 50),
+            CancellationPolicy.Create(packageId: null, minDaysBefore: 7, refundPercent: 25),
+            CancellationPolicy.Create(packageId: null, minDaysBefore: 0, refundPercent: 0));
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Global cancellation policy created: 30+ days 100%, 15+ 50%, 7+ 25%, less 0%.");
     }
 
     /// <summary>

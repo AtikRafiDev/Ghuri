@@ -40,4 +40,21 @@ public sealed class OutboxMessage : BaseEntity
             Attempts = 0
         };
     }
+
+    /// <summary>Handled - the dispatcher won't pick it up again.</summary>
+    public void MarkProcessed(DateTime nowUtc)
+    {
+        Attempts++;
+        ProcessedAtUtc = nowUtc;
+        Error = null;
+    }
+
+    /// <summary>A handler threw. Counted; the dispatcher tries again until its attempt limit, keeping the newest error for staff.</summary>
+    public void RecordFailure(string error)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(error);
+
+        Attempts = Attempts == byte.MaxValue ? Attempts : (byte)(Attempts + 1);
+        Error = error.Length <= 1000 ? error : error[..1000]; // Error column
+    }
 }

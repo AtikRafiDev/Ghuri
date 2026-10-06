@@ -308,6 +308,7 @@ public sealed class Booking : AggregateRoot, IAuditable
         EnsurePaidInFull();
 
         ChangeStatus(BookingStatus.Confirmed, nowUtc, confirmedBy, note: null);
+        RaiseDomainEvent(new BookingConfirmed(Id));
     }
 
     /// <summary>
@@ -324,6 +325,7 @@ public sealed class Booking : AggregateRoot, IAuditable
         EnsurePaidInFull();
 
         ChangeStatus(BookingStatus.Confirmed, nowUtc, changedBy: null, "Paid after the payment window ended.");
+        RaiseDomainEvent(new BookingConfirmed(Id));
     }
 
     private void EnsurePaidInFull()

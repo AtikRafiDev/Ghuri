@@ -211,6 +211,27 @@ public class BookingTests
     }
 
     [Fact]
+    public void Confirming_RaisesBookingConfirmed_ForTheVoucherEmail()
+    {
+        var booking = Paid(FixedBooking());
+
+        booking.Confirm(Now.AddMinutes(5));
+
+        Assert.Equal(new BookingConfirmed(booking.Id), Assert.Single(booking.DomainEvents));
+    }
+
+    [Fact]
+    public void ConfirmingAfterExpiry_RaisesBookingConfirmed_Too()
+    {
+        var booking = FixedBooking();
+        booking.Expire(Now.AddMinutes(25));
+
+        Paid(booking).ConfirmAfterExpiry(Now.AddMinutes(30));
+
+        Assert.IsType<BookingConfirmed>(Assert.Single(booking.DomainEvents));
+    }
+
+    [Fact]
     public void Confirm_BeforeItIsPaidInFull_IsRefused()
     {
         var booking = FixedBooking();

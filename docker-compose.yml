@@ -1,0 +1,21 @@
+# Development helpers that run in Docker (Docker Desktop must be running).
+# The app itself still runs locally: dotnet run (API) + npm run dev (website),
+# SQL Server is LocalDB. Start:  docker compose up -d   · Stop:  docker compose down
+name: ghuri
+
+services:
+  # A fake mail server: catches every email the API sends (password resets,
+  # booking confirmations with their PDFs) and shows them in a web inbox.
+  # Nothing is ever delivered to a real mailbox. See README section 8.
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: ghuri-smtp4dev
+    ports:
+      - "5000:80" # the inbox:  http://localhost:5000
+      - "25:25" # SMTP: the API sends to localhost:25 (Email:Smtp in appsettings.Development.json)
+    volumes:
+      - smtp4dev-data:/smtp4dev # keeps the emails when the container restarts
+    restart: unless-stopped # comes back by itself with Docker Desktop
+
+volumes:
+  smtp4dev-data:

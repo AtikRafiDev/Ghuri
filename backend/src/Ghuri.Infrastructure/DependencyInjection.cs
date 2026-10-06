@@ -2,6 +2,7 @@ using System.Text;
 using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Domain.Repositories;
+using Ghuri.Infrastructure.Documents;
 using Ghuri.Infrastructure.Images;
 using Ghuri.Infrastructure.Jobs;
 using Ghuri.Infrastructure.Payments;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         services.AddPersistence(configuration);
         services.AddSecurity();
         services.AddEmail(configuration);
+        services.AddDocuments();
         services.AddFileStorage();
         services.AddBackgroundJobs();
         services.AddPaymentGateway();
@@ -99,6 +101,19 @@ public static class DependencyInjection
         // starts and stops. "dotnet run -- seed" never starts hosted services.
         services.AddSingleton<BookingExpiryJob>();
         services.AddHostedService(sp => sp.GetRequiredService<BookingExpiryJob>());
+
+        // Sends what the domain events ask for (the voucher email) - see OutboxDispatcherJob.
+        services.AddOptions<OutboxOptions>()
+            .BindConfiguration(OutboxOptions.SectionName)
+            .Validate(o => o.IntervalSeconds is >= 1 and <= 3600,
+                "Jobs:Outbox:IntervalSeconds must be between 1 and 3600.")
+            .Validate(o => o.BatchSize is >= 1 and <= 1000 && o.MaxAttempts is >= 1 and <= 20,
+                "Jobs:Outbox:BatchSize must be between 1 and 1000, and MaxAttempts between 1 and 20.")
+            .Validate(o => o.RetryDelaySeconds is >= 0 and <= 3600,
+                "Jobs:Outbox:RetryDelaySeconds must be between 0 and 3600.")
+            .ValidateOnStart();
+        services.AddSingleton<OutboxDispatcherJob>();
+        services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcherJob>());
     }
 
     private static void AddFileStorage(this IServiceCollection services)
@@ -132,6 +147,7 @@ public static class DependencyInjection
         // Scoped, not singleton: it depends on ICurrentUser, which changes
         // with every request.
         services.AddScoped<AuditableEntityInterceptor>();
+        services.AddSingleton<OutboxInterceptor>(); // keeps no state - only the clock
 
         // The (serviceProvider, options) overload lets each DbContext pick
         // up the interceptor instance for ITS OWN request scope.
@@ -143,7 +159,9 @@ public static class DependencyInjection
             // package - "cartesian explosion"). Set here so Application's
             // query handlers get it without referencing SQL-specific EF.
             .UseSqlServer(connectionString, sql => sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
-            .AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>())
+            .AddInterceptors(
+                serviceProvider.GetRequiredService<AuditableEntityInterceptor>(),
+                serviceProvider.GetRequiredService<OutboxInterceptor>())
             // When the BROWSER hangs up mid-request, EF logs the cancelled
             // transaction as an Error - noise that buries real errors.
             // Lowered to Warning. Nothing is lost: a REAL transaction
@@ -173,6 +191,7 @@ public static class DependencyInjection
         services.AddScoped<IDepartureRepository, DepartureRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IRefundRepository, RefundRepository>();
 
         // "Same request twice = same answer" for POSTs like CreateBooking. Scoped:
         // it must use the request's one AppDbContext, so it joins the transaction.
@@ -223,10 +242,31 @@ public static class DependencyInjection
             case "Log":
                 services.AddSingleton<IEmailSender, LogEmailSender>();
                 break;
+            case "Smtp":
+                services.AddOptions<SmtpEmailOptions>()
+                    .BindConfiguration(SmtpEmailOptions.SectionName)
+                    .Validate(o => !string.IsNullOrWhiteSpace(o.FromAddress),
+                        "Email:FromAddress is required, e.g. bookings@ghuri.com.")
+                    .Validate(o => !string.IsNullOrWhiteSpace(o.Smtp.Host) && o.Smtp.Port is > 0 and <= 65535,
+                        "Email:Smtp:Host and Email:Smtp:Port are required, e.g. localhost and 25 for smtp4dev.")
+                    .ValidateOnStart();
+                services.AddSingleton<IEmailSender, SmtpEmailSender>();
+                break;
             default:
                 throw new InvalidOperationException(
-                    $"Email:Sender '{sender}' is not supported. Use \"Log\" (development only - writes emails to the console).");
+                    $"Email:Sender '{sender}' is not supported. Use \"Smtp\" (a mail server - smtp4dev locally) " +
+                    "or \"Log\" (development only - writes emails to the console).");
         }
+    }
+
+    /// <summary>The invoice and e-voucher PDFs (Day 11), with the agency's details from "Agency".</summary>
+    private static void AddDocuments(this IServiceCollection services)
+    {
+        services.AddOptions<AgencyOptions>()
+            .BindConfiguration(AgencyOptions.SectionName)
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Name), "Agency:Name is required - it's printed on every invoice and voucher.")
+            .ValidateOnStart();
+        services.AddSingleton<IBookingDocumentRenderer, QuestPdfBookingDocumentRenderer>();
     }
 
     /// <summary>

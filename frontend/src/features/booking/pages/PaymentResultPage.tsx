@@ -54,10 +54,11 @@ export function PaymentResultPage() {
 
   const payment = result.data
   const bookingNo = payment?.bookingNo ?? (paymentNo ? bookingForPayment(paymentNo) : null)
-  const viewBooking = (label: string) =>
+  // "Try again" goes back to paying; "View your booking" to the booking in My account.
+  const bookingLink = (label: string, to: 'pay' | 'account') =>
     bookingNo && (
       <Button asChild>
-        <Link to={`/checkout/${bookingNo}`}>{label}</Link>
+        <Link to={to === 'pay' ? `/checkout/${bookingNo}` : `/account/bookings/${bookingNo}`}>{label}</Link>
       </Button>
     )
   const seePackages = (
@@ -69,7 +70,7 @@ export function PaymentResultPage() {
   if (outcome === 'cancel') {
     return (
       <PageMessage title="Payment cancelled" text="Nothing was charged. Your seats stay held until the countdown ends - you can still pay.">
-        {viewBooking('Try again')}
+        {bookingLink('Try again', 'pay')}
       </PageMessage>
     )
   }
@@ -80,7 +81,7 @@ export function PaymentResultPage() {
         title="The payment didn't go through"
         text="Nothing was charged. You can try again while your seats are still held, or use another payment method."
       >
-        {viewBooking('Try again') ?? seePackages}
+        {bookingLink('Try again', 'pay') ?? seePackages}
       </PageMessage>
     )
   }
@@ -108,7 +109,7 @@ export function PaymentResultPage() {
         title="Payment received - you're booked!"
         text={`Booking ${payment.bookingNo} is confirmed. Your voucher is on its way by email.`}
       >
-        {viewBooking('View your booking')}
+        {bookingLink('View your booking', 'account')}
       </PageMessage>
     )
   }
@@ -132,7 +133,7 @@ export function PaymentResultPage() {
         title="The payment didn't go through"
         text="Nothing was charged. You can try again while your seats are still held."
       >
-        {viewBooking('Try again') ?? seePackages}
+        {bookingLink('Try again', 'pay') ?? seePackages}
       </PageMessage>
     )
   }
@@ -143,7 +144,7 @@ export function PaymentResultPage() {
         title="Still confirming your payment"
         text="This is taking longer than usual - there's nothing more you need to do. Your booking is confirmed as soon as the payment is verified, and we'll email you."
       >
-        {viewBooking('View your booking')}
+        {bookingLink('View your booking', 'account')}
       </PageMessage>
     )
   }

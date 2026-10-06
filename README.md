@@ -101,13 +101,13 @@ dotnet run --project src/Ghuri.Api -- seed
 - Creates the Super Admin from the `Seed:SuperAdmin` settings in
   `appsettings.Development.json` (name, email, phone), then exits - it
   does not start the web server.
-- The account has **no password**. Set one with **Forgot password**; in
-  development the reset link is written to the API's console. So no
-  password ever sits in a config file or in git. Until the frontend's login
-  page exists, do it with `backend/src/Ghuri.Api/Ghuri.Api.http` (steps
-  1–4 in that file: request link → copy token from the console → set
-  password → log in).
-- Safe to run again: if a Super Admin already exists, it does nothing.
+- The account has **no password**. Set one with **Forgot password** on the
+  login page; in development the reset email lands in smtp4dev (section 8).
+  So no password ever sits in a config file or in git.
+- Also creates the global **cancellation policy** (refund % by days before
+  the trip: 30+ days 100%, 15+ 50%, 7+ 25%, less 0%) if there is none.
+- Safe to run again: if a Super Admin or a global policy already exists,
+  it's left as it is.
 - The 5 roles (SuperAdmin, Manager, Sales, Accounts, Customer) are not
   created here - they come with the migrations in `database update` above.
 - Other environments: set `Seed__SuperAdmin__FullName`,
@@ -194,8 +194,8 @@ Open **http://localhost:5173**.
 | `/account` | any logged-in user |
 | `/admin` · `/admin/system` (API health) | staff only (SuperAdmin, Manager, Sales, Accounts) |
 
-In development, "Forgot password" emails are written to the **API's
-console** - copy the link from there into the browser.
+In development, every email (password reset, booking confirmation with
+its PDFs) goes to **smtp4dev** - see section 8.
 
 - `npm ci` installs exactly the versions in `package-lock.json` (first time,
   or after pulling changes to it).
@@ -267,6 +267,46 @@ Close and reopen the terminal, then check: `cloudflared --version`.
 - Through the tunnel, the API sees every visitor as Vite (127.0.0.1), so
   login rate limits are shared by everyone using it. That's fine for one
   developer; Nginx passes the real visitor IP in production.
+
+---
+
+## 8. See the emails (smtp4dev)
+
+In development the API sends real emails over SMTP - to **smtp4dev**, a
+fake mail server that keeps every email in a web inbox instead of
+delivering it. Nothing reaches a real mailbox. It runs in **Docker**
+(`docker-compose.yml` in the repository root), so Docker Desktop must be
+running.
+
+From the repository root (`F:\Ghuri`):
+```
+docker compose up -d
+```
+Open **http://localhost:5000**: every email the API sends shows up there,
+attachments (the e-voucher and invoice PDFs) included.
+
+| Command (in the repository root) | What it does |
+|---|---|
+| `docker compose up -d` | Start smtp4dev in the background (the first time it downloads the image) |
+| `docker compose ps` | Is it running? |
+| `docker compose logs -f smtp4dev` | Its log, live (Ctrl+C to stop watching) |
+| `docker compose down` | Stop it (the emails are kept) |
+| `docker compose down -v` | Stop it and delete the kept emails |
+
+- `restart: unless-stopped`: once started, it comes back by itself whenever
+  Docker Desktop starts - until you run `docker compose down`.
+- The API sends to `localhost:25` (`Email:Smtp` in
+  `appsettings.Development.json`); Docker passes it on to the container.
+- **"port is already allocated"**: something else uses port 25 or 5000 -
+  e.g. smtp4dev started as a dotnet tool earlier. Close that, then
+  `docker compose up -d` again.
+- **smtp4dev not running?** A password reset fails with an error, and the
+  booking confirmation email waits: the outbox job retries it, waiting
+  longer each time (10 s, 20 s, 40 s… 10 tries over ~3 hours). Start
+  smtp4dev and it goes out on the next try.
+- No smtp4dev at all? Set `"Sender": "Log"` under `Email` in
+  `appsettings.Development.json`: emails are then written to the API's
+  console (without the PDFs).
 
 ---
 

@@ -12,6 +12,9 @@ public interface IEmailSender
 
 /// <summary>
 /// One email. A record rather than separate parameters, so attachments
-/// (the Day 11 invoice PDF) can be added later without changing every caller.
+/// (the Day 11 invoice PDF) could be added without changing every caller.
 /// </summary>
-public sealed record EmailMessage(string To, string Subject, string HtmlBody);
+public sealed record EmailMessage(string To, string Subject, string HtmlBody, IReadOnlyList<EmailAttachment>? Attachments = null);
+
+/// <summary>A file sent with an email, e.g. ("Invoice-TB100001.pdf", "application/pdf", bytes).</summary>
+public sealed record EmailAttachment(string FileName, string ContentType, byte[] Content);

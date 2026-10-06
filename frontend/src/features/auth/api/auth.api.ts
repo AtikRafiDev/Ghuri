@@ -40,6 +40,11 @@ export const authApi = {
     const { data } = await http.get<Me>(`${base}/me`)
     return data
   },
+
+  /** currentPassword is only needed when the email changes. */
+  async updateMe(input: { fullName: string; email: string | null; currentPassword: string | null }): Promise<void> {
+    await http.put(`${base}/me`, input)
+  },
 }
 
 /**

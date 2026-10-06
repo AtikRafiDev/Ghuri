@@ -36,5 +36,13 @@ internal sealed class BookingRepository(AppDbContext db) : IBookingRepository
         return rows.SingleOrDefault();
     }
 
+    public async Task<Booking?> GetByBookingNoForUpdateAsync(string bookingNo, CancellationToken cancellationToken)
+    {
+        var rows = await db.Bookings
+            .FromSqlInterpolated($"SELECT * FROM [booking].[Bookings] WITH (UPDLOCK, ROWLOCK) WHERE [BookingNo] = {bookingNo}")
+            .ToListAsync(cancellationToken);
+        return rows.SingleOrDefault();
+    }
+
     public void Add(Booking booking) => db.Bookings.Add(booking);
 }

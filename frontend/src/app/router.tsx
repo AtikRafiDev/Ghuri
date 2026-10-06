@@ -73,6 +73,15 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     children: [
       { index: true, lazy: async () => ({ Component: (await import('@/features/account/pages/AccountPage')).AccountPage }) },
+      {
+        path: 'bookings',
+        lazy: async () => ({ Component: (await import('@/features/account/pages/MyBookingsPage')).MyBookingsPage }),
+      },
+      {
+        path: 'bookings/:bookingNo',
+        lazy: async () => ({ Component: (await import('@/features/account/pages/MyBookingPage')).MyBookingPage }),
+      },
+      { path: 'profile', lazy: async () => ({ Component: (await import('@/features/account/pages/ProfilePage')).ProfilePage }) },
     ],
   },
   {

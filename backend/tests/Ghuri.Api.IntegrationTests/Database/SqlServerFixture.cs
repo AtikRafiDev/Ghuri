@@ -62,6 +62,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
     /// <summary>The stand-in for SSLCommerz the test Api uses (never the real gateway).</summary>
     public FakePaymentGateway PaymentGateway => Services.GetRequiredService<FakePaymentGateway>();
 
+    public FakeEmailSender Emails => Services.GetRequiredService<FakeEmailSender>();
+
     public async ValueTask InitializeAsync()
     {
         _factory = new TestDatabaseApiFactory(_connectionString, _uploadsPath);
@@ -232,6 +234,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
                 // Never call the real SSLCommerz from a test.
                 services.AddSingleton<FakePaymentGateway>();
                 services.AddSingleton<IPaymentGateway>(sp => sp.GetRequiredService<FakePaymentGateway>());
+
+                // Emails are kept in a list for the test to read, never sent.
+                services.AddSingleton<FakeEmailSender>();
+                services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
             });
         }
     }
