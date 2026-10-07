@@ -30,12 +30,13 @@ import { destinationsQuery } from '@/features/catalog/api/catalog.api'
 import { cn } from '@/lib/utils'
 import { FormAlert } from '@/shared/components/FormAlert'
 import { FormField } from '@/shared/components/FormField'
-import { PageHeader } from '@/shared/components/PageHeader'
+import { PageHero } from '@/shared/components/PageHero'
 import { FieldMessage, TextField } from '@/shared/components/TextField'
 import { addDays, formatDate, todayInBangladesh } from '@/shared/lib/dates'
 import { notify } from '@/shared/lib/notify'
 import { applyServerErrors } from '@/shared/lib/serverErrors'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
+import { ratargulPhoto } from '@/shared/photos/photos'
 import { hotelLevels, tripLimits, tripsApi, transferModes, type HotelLevel, type TransferMode } from '../api/trips.api'
 import { planTripSchema, type PlanTripInput } from '../schemas/planTrip.schema'
 
@@ -54,13 +55,17 @@ const travellerCounts = [
   { name: 'infants', label: 'Infants', hint: 'Under 2', lowest: 0 },
 ] as const
 
+/** What happens after this form - three numbered steps on the hero photo. */
+const planSteps = ['Tell us the places', 'We send a price', 'Accept and pay online']
+
 /**
  * "Plan my trip" (17-day plan, Day 14): the customer lists the places they
  * want to see, in order, with the nights at each - the dates of every stop
  * are worked out live as they type. Staff then send a price (Day 13's queue).
+ * It opens with a photo hero (full-bleed route) showing the three steps ahead.
  */
 export function PlanTripPage() {
-  useDocumentMeta({ title: 'Plan my trip', description: 'Tell us where you want to go - we plan it and send you a price.' })
+  useDocumentMeta({ title: 'Plan my trip' })
   const navigate = useNavigate()
   const destinations = useQuery(destinationsQuery(false))
   const [formError, setFormError] = useState<string | null>(null)
@@ -116,13 +121,31 @@ export function PlanTripPage() {
   const destinationName = (id: string) => destinations.data?.find((d) => d.id === id)?.name
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
+    <div>
+      <PageHero
+        photo={ratargulPhoto}
+        eyebrow="Custom trip"
         title="Plan my trip"
-        description="Add the places you want to visit, in order. We plan the hotels and transport and send you a price - usually within 24 hours."
-      />
+        text="Add the places you want to visit, in order. We plan the hotels and transport and send you a price - usually within 24 hours."
+      >
+        <ol className="flex flex-wrap gap-2">
+          {planSteps.map((label, i) => (
+            <li
+              key={label}
+              className="inline-flex h-9 items-center gap-2.5 rounded-full bg-white/10 pr-4 pl-1.5 text-sm font-semibold ring-1 ring-white/20 backdrop-blur-md"
+            >
+              <span className="flex size-6 items-center justify-center rounded-full bg-sun-500 text-xs font-extrabold text-forest-950">{i + 1}</span>
+              {label}
+            </li>
+          ))}
+        </ol>
+      </PageHero>
 
-      <form onSubmit={onSubmit} noValidate className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-8">
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="mx-auto grid max-w-6xl items-start gap-6 px-4 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-8"
+      >
         <div className="grid gap-6">
           {formError && <FormAlert kind="error">{formError}</FormAlert>}
 

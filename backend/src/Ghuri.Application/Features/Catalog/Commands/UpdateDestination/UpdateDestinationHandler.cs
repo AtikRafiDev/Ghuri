@@ -29,7 +29,7 @@ internal sealed class UpdateDestinationHandler(IDestinationRepository destinatio
         // Core sees these changes when TransactionBehavior commits.
         destination.Update(
             command.CountryId, command.Name, slug, command.Summary,
-            command.IsFeatured, command.SortOrder, command.SeoTitle, command.SeoDescription);
+            command.IsFeatured, command.SortOrder);
         destination.SetImages(imageFileIds);
 
         return Result.Success();

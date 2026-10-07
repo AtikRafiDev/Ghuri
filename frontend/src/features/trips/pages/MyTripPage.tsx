@@ -93,6 +93,7 @@ function TripDetails({ trip }: { trip: Trip }) {
   return (
     <div className="grid gap-6">
       <PageHeader
+        variant="display"
         eyebrow={
           <Button asChild variant="ghost" size="sm" className="-ml-3">
             <Link to="/account/trips">

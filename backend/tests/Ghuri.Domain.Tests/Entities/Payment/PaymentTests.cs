@@ -24,7 +24,7 @@ public class PaymentTests
         var package = TourPackage.Create(
             "PKG1001",
             new TourPackageDetails(Guid.NewGuid(), "Beach Escape", Slug.Create("Beach Escape"), "Summary", null,
-                TourType.Group, [], [], null, null, false, null, null),
+                TourType.Group, [], [], null, null, false),
             PackagePricing.FlexibleStay(2, 7, 8_000, 3_000, 3));
         package.SetImages([Guid.NewGuid()]);
         package.SetItinerary([new ItineraryDayDetails("Day 1", "Plan"), new ItineraryDayDetails("Day 2", "Plan")]);

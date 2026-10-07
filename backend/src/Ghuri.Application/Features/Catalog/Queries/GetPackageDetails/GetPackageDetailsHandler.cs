@@ -71,8 +71,6 @@ internal sealed class GetPackageDetailsHandler(IReadDbContext db, IFileStorage s
             ImageUrls: package.Images.Select(i => storage.GetPublicUrl(storageKeys[i.FileId])).ToList(),
             Itinerary: package.ItineraryDays
                 .Select(d => new PublicItineraryDayDto(d.DayNo, d.Title, d.Description, d.Meals, d.Accommodation))
-                .ToList(),
-            SeoTitle: package.SeoTitle ?? package.Title,
-            SeoDescription: package.SeoDescription ?? package.Summary);
+                .ToList());
     }
 }

@@ -23,6 +23,8 @@ export function MyBookingsPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        variant="display"
+        eyebrow="Your trips"
         title="My bookings"
         description={count > 0 ? `${count} booking${count === 1 ? '' : 's'}, newest first - open one for its documents or to cancel.` : 'Every trip you book shows up here.'}
         actions={

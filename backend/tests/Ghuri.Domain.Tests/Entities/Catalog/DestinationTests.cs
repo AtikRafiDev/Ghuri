@@ -87,11 +87,9 @@ public class DestinationTests
     {
         var destination = NewDestination();
 
-        destination.Update(19, "  Sylhet  ", Slug.Create("Sylhet"), "   ", false, 0, "", " SEO ");
+        destination.Update(19, "  Sylhet  ", Slug.Create("Sylhet"), "   ", false, 0);
 
         Assert.Equal("Sylhet", destination.Name);
         Assert.Null(destination.Summary);
-        Assert.Null(destination.SeoTitle);
-        Assert.Equal("SEO", destination.SeoDescription);
     }
 }

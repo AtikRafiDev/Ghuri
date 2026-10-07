@@ -64,7 +64,12 @@ function ProfileForm({ user }: { user: Me }) {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="My profile" description="Your name and email. Your mobile number is how you log in." />
+      <PageHeader
+        variant="display"
+        eyebrow="Account settings"
+        title="My profile"
+        description="Your name and email. Your mobile number is how you log in."
+      />
 
       <form onSubmit={onSubmit} noValidate className="grid gap-6 rounded-3xl bg-card p-5 shadow-card ring-1 ring-ink-200/80 sm:p-6">
         <header className="grid gap-0.5">

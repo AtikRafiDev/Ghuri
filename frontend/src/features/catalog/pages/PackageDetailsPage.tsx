@@ -1,31 +1,30 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  ArrowDownIcon,
   CalendarDaysIcon,
   CheckIcon,
   ChevronLeftIcon,
   CircleCheckIcon,
   CircleXIcon,
-  CloudOffIcon,
-  LuggageIcon,
-  MapPinIcon,
   MoonIcon,
   SparklesIcon,
   UserIcon,
   UsersIcon,
   XIcon,
-  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CategoryIcon } from '@/features/admin/categories/components/CategoryIcon'
 import { cn } from '@/lib/utils'
 import { toAppError } from '@/shared/api/problem'
+import { PageHero } from '@/shared/components/PageHero'
 import { describeDuration, formatTaka } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/lib/useDocumentMeta'
+import { Reveal } from '@/shared/motion/Reveal'
+import { useScrollTriggerRefresh } from '@/shared/motion/useScrollTriggerRefresh'
 import { departuresQuery, packageDetailsQuery, type PackageDetails } from '../api/catalog.api'
 import { BookingPanel } from '../components/BookingPanel'
 import { PackageGallery } from '../components/PackageGallery'
@@ -33,38 +32,43 @@ import { PackageItinerary } from '../components/PackageItinerary'
 
 const tourTypeLabels: Record<PackageDetails['tourType'], string> = { 1: 'Group tour', 2: 'Private tour', 3: 'Custom tour' }
 
+/** The glass pills on the hero photo - the trip facts, the category links and "All packages". */
+const heroChip =
+  'inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur-md transition-colors [&_svg]:size-4 [&_svg]:text-sun-300'
+
 /**
  * The public package page, /packages/:slug (17-day plan, Day 7): photos,
  * itinerary, what's included, and the booking box - a departure picker
  * for fixed packages, check-in date + nights for flexible stays, both with
  * a live price.
+ *
+ * It opens with the package's own cover photo as a big hero (full-bleed
+ * route) - title, trip facts and the starting price on top - and every
+ * section below rises in as it scrolls into view. Loading and error states
+ * keep a dark hero too: the see-through header's light text needs it.
  */
 export function PackageDetailsPage() {
   const { slug = '' } = useParams()
   const { data: pkg, isPending, isError, error, refetch } = useQuery(packageDetailsQuery(slug))
 
-  useDocumentMeta(
-    pkg
-      ? { title: pkg.seoTitle, description: pkg.seoDescription, image: pkg.imageUrls[0] }
-      : { title: isError ? 'Package not found' : 'Tour package' },
-  )
+  useDocumentMeta({ title: pkg ? pkg.title : isError ? 'Package not found' : 'Tour package' })
 
   if (isPending) return <PackageDetailsSkeleton />
 
   if (isError) {
     // 404 = never existed, or a draft/archived package - to a customer, both are "not available".
     return toAppError(error).status === 404 ? (
-      <Message icon={LuggageIcon} title="This package isn’t available" text="It may have been removed or the link may be wrong.">
-        <Button asChild>
+      <PageHero eyebrow="Tour package" title="This package isn’t available" text="It may have been removed or the link may be wrong.">
+        <Button asChild variant="accent" size="lg">
           <Link to="/packages">See all packages</Link>
         </Button>
-      </Message>
+      </PageHero>
     ) : (
-      <Message icon={CloudOffIcon} title="This package couldn’t be loaded" text={toAppError(error).message}>
-        <Button variant="outline" onClick={() => refetch()}>
+      <PageHero eyebrow="Tour package" title="This package couldn’t be loaded" text={toAppError(error).message}>
+        <Button size="lg" variant="outline" onClick={() => refetch()}>
           Try again
         </Button>
-      </Message>
+      </PageHero>
     )
   }
 
@@ -73,6 +77,8 @@ export function PackageDetailsPage() {
 
 function PackageView({ pkg }: { pkg: PackageDetails }) {
   const isFlexible = pkg.pricingMode === 2
+  const root = useRef<HTMLElement>(null)
+  useScrollTriggerRefresh(root)
   const bookingRef = useRef<HTMLElement>(null)
   const bookingInView = useHasReached(bookingRef)
 
@@ -84,72 +90,90 @@ function PackageView({ pkg }: { pkg: PackageDetails }) {
     : openDates.length > 0
       ? Math.min(...openDates.map((d) => d.adultPrice))
       : null
+  const goToBooking = () => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })
 
   return (
-    <article className="grid gap-8">
-      <header className="grid animate-fade-up gap-4">
-        <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit">
-          <Link to="/packages">
+    <article ref={root}>
+      <PageHero
+        size="lg"
+        imageUrl={pkg.imageUrls[0]}
+        top={
+          <Link to="/packages" className={cn(heroChip, 'hover:bg-white/20')}>
             <ChevronLeftIcon />
             All packages
           </Link>
-        </Button>
-
-        <div className="grid gap-3">
-          <Link
-            to={`/packages?destination=${encodeURIComponent(pkg.destinationSlug)}`}
-            className="flex w-fit items-center gap-1.5 text-sm font-semibold text-forest-600 underline-offset-4 hover:text-forest-800 hover:underline"
-          >
-            <MapPinIcon className="size-4" />
+        }
+        eyebrow={
+          <Link to={`/packages?destination=${encodeURIComponent(pkg.destinationSlug)}`} className="underline-offset-4 hover:text-white hover:underline">
             {pkg.destinationName}, {pkg.countryName}
           </Link>
-          <h1 className="text-3xl leading-tight font-bold text-ink-900 sm:text-4xl">{pkg.title}</h1>
-          {/* Every badge is the same 24px pill, so the row reads as one even line however many there are. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">
+        }
+        title={pkg.title}
+        text={pkg.summary}
+      >
+        <div className="grid gap-6">
+          {/* Every chip is the same 32px glass pill, so the row reads as one even line however many there are. */}
+          <ul className="flex flex-wrap items-center gap-2">
+            <li className={heroChip}>
               {isFlexible ? <MoonIcon /> : <CalendarDaysIcon />}
               {describeDuration(pkg)}
-            </Badge>
-            <Badge variant="secondary">
+            </li>
+            <li className={heroChip}>
               {pkg.tourType === 2 ? <UserIcon /> : <UsersIcon />}
               {tourTypeLabels[pkg.tourType]}
-            </Badge>
+            </li>
             {isFlexible && (
-              <Badge variant="warning">
+              <li className={cn(heroChip, 'bg-sun-500 text-forest-950 ring-0 [&_svg]:text-forest-950')}>
                 <SparklesIcon />
                 Pick your own dates
-              </Badge>
+              </li>
             )}
-            {pkg.minAge !== null && <Badge variant="outline">Age {pkg.minAge}+</Badge>}
+            {pkg.minAge !== null && <li className={heroChip}>Age {pkg.minAge}+</li>}
             {pkg.categories.map((c) => (
-              <Badge key={c.slug} variant="outline" asChild>
-                <Link to={`/packages?category=${encodeURIComponent(c.slug)}`}>
+              <li key={c.slug}>
+                <Link to={`/packages?category=${encodeURIComponent(c.slug)}`} className={cn(heroChip, 'hover:bg-white/20')}>
                   <CategoryIcon name={c.icon} />
                   {c.name}
                 </Link>
-              </Badge>
+              </li>
             ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            {priceFrom !== null && (
+              <p className="flex items-baseline gap-2">
+                <span className="text-xs font-bold tracking-wider text-forest-100/70 uppercase">From</span>
+                <span className="text-3xl leading-none font-extrabold tracking-tight">{formatTaka(priceFrom)}</span>
+                <span className="text-forest-100/80">/ person</span>
+              </p>
+            )}
+            <Button variant="accent" size="lg" onClick={goToBooking}>
+              {isFlexible ? 'Choose dates' : 'See dates'}
+              <ArrowDownIcon className="group-hover/button:translate-y-0.5" />
+            </Button>
           </div>
         </div>
-      </header>
+      </PageHero>
 
       {/* Two columns on a laptop (content | booking box). On a phone the box comes after the content. */}
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
-        <div className="grid gap-10">
+      <div className="mx-auto grid max-w-6xl gap-12 px-4 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
+        <div className="grid gap-14">
           <PackageGallery images={pkg.imageUrls} title={pkg.title} />
 
-          <Section title="About this trip">
-            <p className="leading-relaxed whitespace-pre-line text-ink-600">{pkg.description ?? pkg.summary}</p>
-          </Section>
+          {/* The summary is already in the hero - only a longer description earns its own section. */}
+          {pkg.description && (
+            <Section eyebrow="Overview" title="About this trip">
+              <p className="text-lg leading-relaxed whitespace-pre-line text-ink-600">{pkg.description}</p>
+            </Section>
+          )}
 
           {pkg.itinerary.length > 0 && (
-            <Section title="Itinerary" aside={`${pkg.itinerary.length} day${pkg.itinerary.length === 1 ? '' : 's'}`}>
+            <Section eyebrow="Day by day" title="Itinerary" aside={`${pkg.itinerary.length} day${pkg.itinerary.length === 1 ? '' : 's'}`}>
               <PackageItinerary days={pkg.itinerary} />
             </Section>
           )}
 
           {(pkg.inclusions.length > 0 || pkg.exclusions.length > 0) && (
-            <Section title="What’s included">
+            <Section eyebrow="Good to know" title="What’s included">
               {/*
                 One card, two columns. items-start + identical column markup: both headings sit on the same
                 line and both lists start at the same height with the same row spacing, whatever their lengths.
@@ -162,7 +186,7 @@ function PackageView({ pkg }: { pkg: PackageDetails }) {
           )}
 
           {pkg.termsAndPolicy && (
-            <Section title="Terms & policy">
+            <Section eyebrow="Before you book" title="Terms & policy">
               <p className="rounded-2xl bg-ink-100/60 p-4 text-sm leading-relaxed whitespace-pre-line text-ink-600 ring-1 ring-ink-200/70 ring-inset sm:p-5">
                 {pkg.termsAndPolicy}
               </p>
@@ -208,7 +232,7 @@ function PackageView({ pkg }: { pkg: PackageDetails }) {
                   <span className="text-sm font-semibold text-ink-700">{describeDuration(pkg)}</span>
                 )}
               </div>
-              <Button onClick={() => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Button onClick={goToBooking}>
                 {isFlexible ? 'Choose dates' : 'See dates'}
               </Button>
             </div>
@@ -238,15 +262,26 @@ function useHasReached(ref: RefObject<HTMLElement | null>): boolean {
   return reached
 }
 
-/** A content block: its title (with an optional quiet note on the right, e.g. "3 days"), then the content. */
-function Section({ title, aside, children }: { title: string; aside?: string; children: ReactNode }) {
+/**
+ * A content block in the home page's style: a small eyebrow, the title (with an optional quiet note on
+ * the right, e.g. "3 days"), then the content. Heading and content rise in as they scroll into view.
+ */
+function Section({ eyebrow, title, aside, children }: { eyebrow: string; title: string; aside?: string; children: ReactNode }) {
   return (
-    <section className="grid gap-4">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-xl font-bold text-ink-900 sm:text-2xl">{title}</h2>
-        {aside && <span className="text-sm font-medium text-ink-500">{aside}</span>}
-      </div>
-      {children}
+    <section>
+      <Reveal y={32} className="grid gap-5">
+        <div className="grid gap-2">
+          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-forest-600 uppercase">
+            <span aria-hidden className="h-px w-8 bg-forest-500" />
+            {eyebrow}
+          </p>
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-2xl leading-tight font-extrabold tracking-tight text-ink-900 sm:text-3xl">{title}</h2>
+            {aside && <span className="text-sm font-medium text-ink-500">{aside}</span>}
+          </div>
+        </div>
+        {children}
+      </Reveal>
     </section>
   )
 }
@@ -294,39 +329,27 @@ function IncludeList({ items, included }: { items: string[]; included: boolean }
 }
 
 /**
- * "Not available" / "couldn't be loaded" in place of the whole page. Same look as EmptyState (icon in a
- * soft halo), but its title is the page's h1 - it's the only heading on the page.
+ * The page's shape while it loads, so nothing jumps when the content arrives: a dark hero the size of the
+ * real one (the see-through header's light text needs it) with pale bars where the title and facts go.
  */
-function Message({ icon: Icon, title, text, children }: { icon: LucideIcon; title: string; text: string; children: ReactNode }) {
-  return (
-    <section className="mx-auto grid max-w-md animate-fade-up justify-items-center gap-3 py-16 text-center">
-      <span className="flex size-16 items-center justify-center rounded-2xl bg-forest-50 text-forest-600 ring-8 ring-forest-50/50">
-        <Icon className="size-7" />
-      </span>
-      <h1 className="mt-3 text-2xl font-bold text-ink-900">{title}</h1>
-      <p className="text-ink-500">{text}</p>
-      <div className="mt-3 flex flex-wrap justify-center gap-2">{children}</div>
-    </section>
-  )
-}
-
-/** The page's shape while it loads, so nothing jumps when the content arrives. */
 function PackageDetailsSkeleton() {
+  const bar = 'animate-pulse rounded-full bg-white/10'
   return (
-    <div className="grid gap-8" aria-busy="true" aria-label="Loading package">
-      <div className="grid gap-4">
-        <Skeleton className="h-9 w-32 rounded-lg" />
-        <div className="grid gap-3">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-10 w-3/4" />
+    <div aria-busy="true" aria-label="Loading package">
+      <div className="brand-surface relative -mt-[calc(4rem+1px)] flex min-h-[78svh] bg-forest-950">
+        <div className="mx-auto grid w-full max-w-6xl content-end gap-5 px-4 pt-28 pb-12 sm:pt-32 sm:pb-16">
+          <div className={cn(bar, 'h-8 w-36')} />
+          <div className={cn(bar, 'h-3 w-48')} />
+          <div className={cn(bar, 'h-12 w-full max-w-2xl rounded-2xl sm:h-16')} />
+          <div className={cn(bar, 'h-5 w-full max-w-xl')} />
           <div className="flex gap-2">
-            <Skeleton className="h-6 w-32 rounded-full" />
-            <Skeleton className="h-6 w-24 rounded-full" />
-            <Skeleton className="h-6 w-20 rounded-full" />
+            <div className={cn(bar, 'h-8 w-32')} />
+            <div className={cn(bar, 'h-8 w-24')} />
+            <div className={cn(bar, 'h-8 w-20')} />
           </div>
         </div>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_23rem]">
+      <div className="mx-auto grid max-w-6xl gap-12 px-4 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="grid gap-4">
           <Skeleton className="aspect-[16/9] w-full rounded-3xl" />
           <Skeleton className="h-4 w-full" />

@@ -119,6 +119,7 @@ function AcceptForm({ trip }: { trip: Trip }) {
     <div className="grid gap-6">
       <CheckoutSteps current={1} className="max-w-md" />
       <PageHeader
+        variant="display"
         eyebrow={
           <Button asChild variant="ghost" size="sm" className="-ml-3">
             <Link to={tripPath}>

@@ -804,14 +804,6 @@ namespace Ghuri.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("SeoDescription")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("SeoTitle")
-                        .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)");
-
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -1083,14 +1075,6 @@ namespace Ghuri.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<string>("SeoDescription")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("SeoTitle")
-                        .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)");
-
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(220)
@@ -1259,14 +1243,6 @@ namespace Ghuri.Infrastructure.Migrations
                     b.Property<DateTime?>("PublishedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("SeoDescription")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("SeoTitle")
-                        .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)");
-
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(220)
@@ -1373,14 +1349,6 @@ namespace Ghuri.Infrastructure.Migrations
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("bit");
-
-                    b.Property<string>("SeoDescription")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("SeoTitle")
-                        .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)");
 
                     b.Property<string>("Slug")
                         .IsRequired()

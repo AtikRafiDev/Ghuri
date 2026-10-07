@@ -143,7 +143,7 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "countryId": {{bangladeshId}}, "name": "Mohastangarh", "slug": "", "summary": "The oldest city of Bengal.", "imageFileIds": [],
-  "isFeatured": false, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
+  "isFeatured": false, "sortOrder": 500 }
 
 ### Edit it (the whole form is sent every time)
 PUT {{host}}/api/v1/admin/destinations/{{newDestination.response.body.$.id}}
@@ -151,7 +151,7 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "countryId": {{bangladeshId}}, "name": "Mahasthangarh", "slug": "mahasthangarh", "summary": "Ancient Pundranagar, near Bogura.",
-  "imageFileIds": [], "isFeatured": true, "sortOrder": 500, "seoTitle": null, "seoDescription": null }
+  "imageFileIds": [], "isFeatured": true, "sortOrder": 500 }
 
 ### Delete it (soft delete; 409 if packages use it)
 DELETE {{host}}/api/v1/admin/destinations/{{newDestination.response.body.$.id}}
@@ -192,7 +192,7 @@ Content-Type: application/json
 { "destinationId": "{{anyDestination.response.body.$[0].id}}", "title": "Beach Escape 3 Days", "slug": null,
   "summary": "Three days by the sea with hotel and breakfast.", "description": null, "tourType": 1,
   "categoryIds": ["{{anyCategory.response.body.$[0].id}}"], "inclusions": ["Hotel stay", "Breakfast"], "exclusions": ["Air fare"],
-  "termsAndPolicy": null, "minAge": null, "isFeatured": false, "seoTitle": null, "seoDescription": null,
+  "termsAndPolicy": null, "minAge": null, "isFeatured": false,
   "pricingMode": 1, "durationDays": 3, "durationNights": 2,
   "minNights": null, "maxNights": null, "basePrice": null, "extraNightPrice": null, "minLeadDays": null }
 
@@ -207,7 +207,6 @@ Content-Type: application/json
   "summary": "Pick your dates and how many nights.", "description": null, "tourType": 2,
   "categoryIds": [], "inclusions": ["Sea-view room"], "exclusions": [],
   "termsAndPolicy": "Subject to hotel confirmation within 24 hours.", "minAge": null, "isFeatured": true,
-  "seoTitle": null, "seoDescription": null,
   "pricingMode": 2, "durationDays": null, "durationNights": null,
   "minNights": 2, "maxNights": 7, "basePrice": 8000, "extraNightPrice": 3000, "minLeadDays": 3 }
 

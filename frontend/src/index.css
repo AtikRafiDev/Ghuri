@@ -104,6 +104,8 @@
     --animate-shake: shake 0.45s ease-in-out;
     --animate-float: float 6s ease-in-out infinite;
     --animate-shimmer: shimmer 1.6s linear infinite;
+    --animate-marquee: marquee 50s linear infinite;
+    --animate-ken-burns: ken-burns 10s ease-out forwards;
 
     @keyframes fade-up {
         from { opacity: 0; transform: translateY(14px); }
@@ -130,6 +132,16 @@
         from { background-position: 200% 0; }
         to { background-position: -200% 0; }
     }
+    /* A photo slowly settling from a little zoomed-in (the hero slideshow; named after the documentary maker). */
+    @keyframes ken-burns {
+        from { transform: scale(1.12); }
+        to { transform: none; }
+    }
+    /* An endless strip: the content is written out twice, so sliding by half lands exactly where it started. */
+    @keyframes marquee {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+    }
     /* An SVG stroke drawing itself: give the path stroke-dasharray/offset = its length. */
     @keyframes draw {
         to { stroke-dashoffset: 0; }
@@ -149,12 +161,6 @@
     @keyframes toast-progress {
         from { transform: scaleX(1); }
         to { transform: scaleX(0); }
-    }
-    /* The paper plane on the login panel, gliding along its offset-path. */
-    @keyframes fly {
-        0% { offset-distance: 0%; opacity: 0; }
-        12%, 82% { opacity: 1; }
-        100% { offset-distance: 100%; opacity: 0; }
     }
     /* Chart bars growing from their baseline. */
     @keyframes grow-y {
@@ -270,8 +276,14 @@
  * For a solid green fill use bg-primary (it stays a deep green in both
  * themes); bg-forest-700 is "green ink" and turns light here.
  * Switched by the "dark" class on <html> (shared/theme/theme.ts).
+ *
+ * .on-photo borrows the same steps for ONE region that sits on a dark
+ * photo - the header over the home page's hero - so its text turns light
+ * in either theme. It is not "dark mode": dark: classes (the theme
+ * toggle's sun/moon) only react to the real .dark on <html>.
  */
-.dark {
+.dark,
+.on-photo {
     color-scheme: dark;
     --color-ink-50: #0b1310;
     --color-ink-100: #141f1a;
@@ -307,12 +319,35 @@
 }
 
 /*
+ * .on-photo sits INSIDE the page, but the semantic tokens below are worked
+ * out where they're declared (on <html>). Re-declaring them here makes them
+ * pick up the dark steps above - the same trick as .brand-surface next.
+ */
+.on-photo {
+    --background: var(--color-ink-50);
+    --foreground: var(--color-ink-900);
+    --card-foreground: var(--color-ink-900);
+    --popover-foreground: var(--color-ink-900);
+    --secondary: var(--color-forest-100);
+    --secondary-foreground: var(--color-forest-800);
+    --muted: var(--color-ink-100);
+    --muted-foreground: var(--color-ink-500);
+    --accent: var(--color-forest-50);
+    --accent-foreground: var(--color-forest-800);
+    --destructive: var(--color-clay-600);
+    --warning-foreground: var(--color-sun-700);
+    --border: var(--color-ink-200);
+    --input: var(--color-ink-300);
+}
+
+/*
  * Brand surfaces - the deep green hero, footer, dashboard cards, login
  * panel... - are painted in brand colours and look exactly the same in both
  * themes: inside them every step gets its light-theme value back.
  * (Same hex as the @theme block at the top.)
  */
-.dark .brand-surface {
+.dark .brand-surface,
+.on-photo .brand-surface {
     color-scheme: light;
     --color-ink-50: #f4f6f2;
     --color-ink-100: #edf1ee;
@@ -433,6 +468,24 @@
     .bg-topo {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1.2'%3E%3Cpath d='M-20 120c80-40 150 30 230 0s140-90 230-50 120 60 180 30'/%3E%3Cpath d='M-20 160c80-40 150 30 230 0s140-90 230-50 120 60 180 30'/%3E%3Cpath d='M-20 200c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cpath d='M-20 320c70 30 140-40 220-10s150 80 230 40 110-50 190-20'/%3E%3Cpath d='M-20 360c70 30 140-40 220-10s150 80 230 40 110-50 190-20'/%3E%3Cpath d='M-20 400c80 20 150-30 230 0s140 70 220 30 120-40 190-10'/%3E%3Cpath d='M-20 520c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cpath d='M-20 560c90-30 160 40 240 10s130-80 220-40 120 50 180 20'/%3E%3Cellipse cx='470' cy='250' rx='60' ry='34'/%3E%3Cellipse cx='470' cy='250' rx='36' ry='18'/%3E%3Cellipse cx='120' cy='460' rx='54' ry='28'/%3E%3C/g%3E%3C/svg%3E");
         background-size: 600px 600px;
+    }
+
+    /*
+     * The faint world map behind the website's pages (shared/components/WorldMapBackdrop).
+     * The SVG is a MASK, not a picture: its lines let the element's background colour show
+     * through, so one file works in both themes. "cover": it always fills the whole screen,
+     * edge to edge (the map itself is cropped so land reaches every side). On a tall phone
+     * screen only a slice fits - the one with South Asia, home.
+     */
+    .bg-world-map {
+        -webkit-mask: url('./shared/assets/world-map.svg') no-repeat 50% 50% / cover;
+        mask: url('./shared/assets/world-map.svg') no-repeat 50% 50% / cover;
+    }
+    @media (max-width: 767px) {
+        .bg-world-map {
+            -webkit-mask-position: 72% 50%;
+            mask-position: 72% 50%;
+        }
     }
 
     /*

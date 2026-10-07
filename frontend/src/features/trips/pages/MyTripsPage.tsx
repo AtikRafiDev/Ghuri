@@ -41,7 +41,13 @@ export function MyTripsPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="My trips" description="Custom trips you've asked us to plan - open one to see its quote and progress." actions={planButton} />
+      <PageHeader
+        variant="display"
+        eyebrow="Custom trips"
+        title="My trips"
+        description="Custom trips you've asked us to plan - open one to see its quote and progress."
+        actions={planButton}
+      />
 
       {trips.data.length === 0 ? (
         <EmptyState icon={RouteIcon} title="No custom trips yet" text="Tell us where you want to go - we plan it and send you a price.">

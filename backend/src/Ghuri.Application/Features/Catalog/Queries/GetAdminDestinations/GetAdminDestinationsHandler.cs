@@ -37,7 +37,7 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
             .Select(r => new
             {
                 r.d.Id, r.d.Name, r.d.Slug, r.d.Summary, r.d.CountryId, r.CountryName, r.IsoCode,
-                r.d.IsFeatured, r.d.SortOrder, r.d.SeoTitle, r.d.SeoDescription,
+                r.d.IsFeatured, r.d.SortOrder,
                 // The whole gallery, in order - the edit dialog opens from
                 // this row. Loaded for this page's rows only.
                 Images = photos.Where(p => p.DestinationId == r.d.Id).OrderBy(p => p.SortOrder)
@@ -51,6 +51,6 @@ internal sealed class GetAdminDestinationsHandler(IReadDbContext db, IFileStorag
             r.Id, r.Name, r.Slug.Value, r.Summary, r.CountryId, r.CountryName, r.IsoCode,
             IsInternational: r.IsoCode != HomeCountry.IsoCode,
             Images: r.Images.Select(i => new DestinationImageDto(i.FileId, storage.GetPublicUrl(i.StorageKey))).ToList(),
-            r.IsFeatured, r.SortOrder, r.SeoTitle, r.SeoDescription, r.PackageCount));
+            r.IsFeatured, r.SortOrder, r.PackageCount));
     }
 }

@@ -29,7 +29,7 @@ public class DepartureHandlerTests
     private static TourPackage NewPackage(string title, PackagePricing pricing) => TourPackage.Create(
         "PKG1001",
         new TourPackageDetails(Guid.NewGuid(), title, Slug.Create(title), "Summary", null, TourType.Group,
-            [], [], null, null, false, null, null),
+            [], [], null, null, false),
         pricing);
 
     private static CreateDepartureCommand Command(Guid packageId, DateOnly start, decimal adultPrice = 12_000) =>

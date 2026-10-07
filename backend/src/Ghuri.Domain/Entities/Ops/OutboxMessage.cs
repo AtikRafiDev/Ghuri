@@ -5,10 +5,15 @@ namespace Ghuri.Domain.Entities.Ops;
 /// <summary>
 /// A domain event waiting to be dispatched (blueprint: ops.OutboxMessages).
 /// Saved in the SAME transaction as the data change that raised it (the
-/// "transactional outbox" pattern) - written by the SaveChanges
-/// interceptor, read and processed by the OutboxDispatcher background job.
-/// Neither is built yet; this is just the table's shape.
+/// "transactional outbox" pattern) - written by OutboxInterceptor right
+/// before SaveChanges, then read every few seconds by OutboxDispatcherJob,
+/// which runs the event's handlers (e.g. BookingConfirmed → the voucher email).
 /// </summary>
+/// <remarks>
+/// Holds the event, never the email itself: PayloadJson is just ids, and the
+/// handler builds the message when it runs. That's also why secrets (e.g. a
+/// password-reset token) never go through here - they'd sit in plain text.
+/// </remarks>
 public sealed class OutboxMessage : BaseEntity
 {
     /// <summary>The event's .NET type name, e.g. "BookingConfirmed" - used to pick a deserializer when dispatching.</summary>

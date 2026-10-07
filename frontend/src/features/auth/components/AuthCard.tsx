@@ -1,6 +1,8 @@
-import { LockIcon, SendIcon, ShieldCheckIcon, TimerIcon } from 'lucide-react'
+import { LockIcon, ShieldCheckIcon, TimerIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { BrandMark } from '@/shared/components/BrandMark'
+import { site } from '@/shared/config/site'
+import { Photo } from '@/shared/photos/Photo'
+import { sajekPhoto } from '@/shared/photos/photos'
 
 const promises = [
   { icon: LockIcon, text: 'Secure online payment by SSLCommerz' },
@@ -10,8 +12,14 @@ const promises = [
 
 /**
  * The frame every auth page sits in - one look for login, register, forgot
- * and reset. On a wide screen a green brand panel sits beside the form
- * (a paper plane flies its dashed route); on a phone it's just the form.
+ * and reset, in the home page's style: a full-screen photo (clouds over
+ * Sajek Valley) that slides up under the see-through header (full-bleed
+ * route), with the form in a card on top. On a wide screen the promises sit
+ * beside it on the photo; on a phone it's just the card.
+ *
+ * Only the photo side is a brand surface (always light text). The card
+ * follows the theme like any other card, so the form is dark in dark mode.
+ * All motion is CSS, so it stands still with "reduce motion" on (index.css).
  */
 export function AuthCard({
   title,
@@ -25,74 +33,60 @@ export function AuthCard({
   children: ReactNode
 }) {
   return (
-    <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] bg-card shadow-lift ring-1 ring-ink-200/80 lg:grid-cols-[1fr_1.05fr]">
-      <BrandPanel />
-      <div className="grid content-center gap-7 px-6 py-10 sm:px-12 sm:py-14">
-        <header className="grid animate-fade-up gap-2">
-          <h1 className="text-2xl font-bold text-ink-900 sm:text-3xl">{title}</h1>
-          {description && <p className="text-ink-500">{description}</p>}
-        </header>
-        <div className="animate-[fade-up_0.6s_var(--ease-out-expo)_0.08s_backwards]">{children}</div>
-        {footer && <footer className="animate-[fade-up_0.6s_var(--ease-out-expo)_0.16s_backwards] border-t pt-6 text-center text-sm text-ink-500">{footer}</footer>}
+    // -mt: slides up under the sticky header (64px + its 1px border).
+    <section className="relative isolate -mt-[calc(4rem+1px)] flex min-h-svh flex-col overflow-hidden bg-forest-950">
+      <div aria-hidden className="absolute inset-0 -z-10">
+        <Photo photo={sajekPhoto} fetchPriority="high" className="animate-ken-burns" />
       </div>
-    </div>
-  )
-}
+      {/* Shades: darker at the bottom and on the left (behind the promises), and under the header. */}
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-forest-950/90 via-forest-950/40 to-forest-950/30" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-forest-950/80 via-forest-950/30 to-transparent" />
 
-function BrandPanel() {
-  return (
-    <aside className="brand-surface relative isolate hidden overflow-hidden bg-gradient-to-br from-forest-700 via-forest-800 to-forest-950 p-10 text-white lg:grid lg:content-between">
-      <div aria-hidden className="bg-topo absolute inset-0 -z-10" />
-      <div aria-hidden className="absolute -top-20 -right-16 -z-10 size-64 rounded-full bg-sun-500/20 blur-3xl" />
-      <div aria-hidden className="absolute -bottom-24 -left-10 -z-10 size-72 rounded-full bg-forest-400/20 blur-3xl" />
+      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-4 pt-28 pb-10 sm:pt-32 lg:grid-cols-[1fr_29rem] lg:gap-16">
+        <Pitch />
 
-      <div className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
-        <BrandMark className="size-9" />
-        Ghuri
-      </div>
-
-      <FlightPath />
-
-      <div className="grid gap-6">
-        <div className="grid gap-2">
-          <h2 className="text-3xl leading-tight font-bold">
-            Your next trip is
-            <br />
-            <span className="text-sun-300">one step away.</span>
-          </h2>
-          <p className="max-w-sm text-forest-100/75">Hand-picked hotels, local guides and every transfer arranged - you just pack the bag.</p>
+        <div className="grid animate-[fade-up_0.7s_var(--ease-out-expo)_0.1s_backwards] gap-7 rounded-[2rem] bg-card px-6 py-9 shadow-pop ring-1 ring-ink-200/80 sm:px-10 sm:py-11">
+          <header className="grid gap-2">
+            <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-forest-600 uppercase">
+              <span aria-hidden className="h-px w-8 bg-forest-500" />
+              {site.name}
+            </p>
+            <h1 className="text-3xl leading-tight font-extrabold tracking-tight text-ink-900">{title}</h1>
+            {description && <p className="text-ink-500">{description}</p>}
+          </header>
+          <div>{children}</div>
+          {footer && <footer className="border-t pt-6 text-center text-sm text-ink-500">{footer}</footer>}
         </div>
-        <ul className="stagger grid gap-3 text-sm">
-          {promises.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-3">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
-                <Icon className="size-4 text-sun-300" />
-              </span>
-              {text}
-            </li>
-          ))}
-        </ul>
       </div>
-    </aside>
+    </section>
   )
 }
 
-// In CSS pixels: offset-path (the plane's track) uses the same coordinates as the drawn route, so the box keeps a fixed size.
-const route = 'M 16 140 C 80 36, 150 184, 226 82 S 330 26, 364 62'
-
-/** A dashed flight route between two pins, with a paper plane gliding along it (CSS offset-path). */
-function FlightPath() {
+/** The left side on a laptop: the headline and the three promises, straight on the photo. */
+function Pitch() {
   return (
-    <div aria-hidden className="relative my-6 h-[180px] w-[380px] max-w-full">
-      <svg width="380" height="180" className="absolute inset-0 overflow-visible">
-        <path d={route} fill="none" stroke="white" strokeOpacity="0.35" strokeWidth="2" strokeDasharray="6 8" strokeLinecap="round" />
-        <circle cx="16" cy="140" r="13" className="origin-center animate-[ring-ping_2s_ease-out_infinite] fill-sun-500/40 [transform-box:fill-box]" />
-        <circle cx="16" cy="140" r="7" className="fill-sun-500" />
-        <circle cx="364" cy="62" r="7" className="fill-white" />
-      </svg>
-      <div className="absolute top-0 left-0" style={{ offsetPath: `path('${route}')`, offsetRotate: 'auto', animation: 'fly 6s ease-in-out infinite' }}>
-        <SendIcon className="size-6 rotate-45 fill-white/20 text-white drop-shadow-lg" />
+    <div className="brand-surface hidden content-center gap-8 text-white lg:grid">
+      <div className="grid animate-fade-up gap-5">
+        <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-sun-300 uppercase">
+          <span aria-hidden className="h-px w-8 bg-sun-300" />
+          {site.tagline}
+        </p>
+        <h2 className="text-5xl leading-[1.04] font-extrabold tracking-tight xl:text-6xl">
+          Your next trip is
+          <span className="block text-sun-300">one step away.</span>
+        </h2>
+        <p className="max-w-md text-lg text-forest-50/85">Hand-picked hotels, local guides and every transfer arranged - you just pack the bag.</p>
       </div>
+      <ul className="stagger grid max-w-md gap-3">
+        {promises.map(({ icon: Icon, text }) => (
+          <li key={text} className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 pr-5 text-sm font-semibold ring-1 ring-white/15 backdrop-blur-md">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sun-500 text-forest-950">
+              <Icon className="size-4" />
+            </span>
+            {text}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

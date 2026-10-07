@@ -311,9 +311,7 @@ internal sealed class DemoDataSeeder(
             {
                 destination = Destination.Create(
                     country.Id, demo.Name, slug, demo.Summary,
-                    isFeatured: demo.IsFeatured, sortOrder: (i + 1) * 10,
-                    seoTitle: $"{demo.Name} Tour Packages | Ghuri",
-                    seoDescription: demo.Summary.Length <= 160 ? demo.Summary : demo.Summary[..157] + "...");
+                    isFeatured: demo.IsFeatured, sortOrder: (i + 1) * 10);
                 destination.SetImages(await GetPhotosAsync(demo, country.Name, allowPostcards: true, nowUtc, cancellationToken));
                 db.Destinations.Add(destination);
                 added++;

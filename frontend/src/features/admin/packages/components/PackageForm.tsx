@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDaysIcon, FileTextIcon, ListChecksIcon, LockIcon, MoonIcon, SearchIcon, WalletIcon, type LucideIcon } from 'lucide-react'
+import { CalendarDaysIcon, FileTextIcon, ListChecksIcon, LockIcon, MoonIcon, StarIcon, WalletIcon, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router'
@@ -268,7 +268,7 @@ export function PackageForm({ pkg }: { pkg?: AdminPackage }) {
       </FormSection>
 
       {/* 4. Where it shows */}
-      <FormSection icon={SearchIcon} title="Display and SEO" description="Where it's promoted, and how its page shows up on Google.">
+      <FormSection icon={StarIcon} title="Display" description="Where it's promoted on the website.">
         <Controller
           control={form.control}
           name="isFeatured"
@@ -285,16 +285,6 @@ export function PackageForm({ pkg }: { pkg?: AdminPackage }) {
             </label>
           )}
         />
-        <TextField
-          label="SEO title"
-          placeholder={title ? `${title} | Ghuri` : undefined}
-          error={errors.seoTitle?.message}
-          hint="The blue link text on Google. Empty = the title."
-          {...form.register('seoTitle')}
-        />
-        <FormField label="SEO description" htmlFor="seoDescription" error={errors.seoDescription?.message} hint="The grey text under the link on Google.">
-          <Textarea id="seoDescription" rows={2} aria-invalid={errors.seoDescription ? true : undefined} {...form.register('seoDescription')} />
-        </FormField>
       </FormSection>
 
       {/* Floats at the bottom of the screen while the long form scrolls, so Save is always one click away. */}

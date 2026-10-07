@@ -62,8 +62,6 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
     public bool IsFeatured { get; private set; }
     public decimal AvgRating { get; private set; }
     public int ReviewCount { get; private set; }
-    public string? SeoTitle { get; private set; }
-    public string? SeoDescription { get; private set; }
 
     /// <summary>When the package FIRST went live - re-publishing after an archive keeps the original date.</summary>
     public DateTime? PublishedAtUtc { get; private set; }
@@ -129,8 +127,6 @@ public sealed class TourPackage : AggregateRoot, IAuditable, ISoftDeletable
         TermsAndPolicy = Clean(details.TermsAndPolicy);
         MinAge = details.MinAge;
         IsFeatured = details.IsFeatured;
-        SeoTitle = Clean(details.SeoTitle);
-        SeoDescription = Clean(details.SeoDescription);
     }
 
     /// <summary>

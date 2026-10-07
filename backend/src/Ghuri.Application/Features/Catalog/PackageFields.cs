@@ -34,8 +34,6 @@ public interface IPackageFields
     string? TermsAndPolicy { get; }
     int? MinAge { get; }
     bool IsFeatured { get; }
-    string? SeoTitle { get; }
-    string? SeoDescription { get; }
 
     PricingMode PricingMode { get; }
     int? DurationDays { get; }
@@ -85,8 +83,6 @@ internal sealed class PackageFieldsValidator : AbstractValidator<IPackageFields>
 
         RuleFor(x => x.TermsAndPolicy).MaximumLength(LongTextLength);
         RuleFor(x => x.MinAge).InclusiveBetween(0, 100);
-        RuleFor(x => x.SeoTitle).MaximumLength(70);
-        RuleFor(x => x.SeoDescription).MaximumLength(160);
 
         RuleFor(x => x.PricingMode).IsInEnum().WithMessage("Choose Fixed departures or Flexible stay.");
 
@@ -133,9 +129,7 @@ internal static class PackageFieldsMapping
         fields.Exclusions ?? [],
         fields.TermsAndPolicy,
         (byte?)fields.MinAge,
-        fields.IsFeatured,
-        fields.SeoTitle,
-        fields.SeoDescription);
+        fields.IsFeatured);
 
     /// <summary>The validator has already made sure the needed fields are filled, so the "!" can't fail.</summary>
     public static PackagePricing ToPricing(this IPackageFields fields) =>

@@ -30,7 +30,7 @@ public class PackageHandlerTests
     private CreatePackageCommand FixedCommand(string title = "Cox's Bazar 3 Days") => new(
         _coxsBazar, title, Slug: null, Summary: "Sea and sand.", Description: null, TourType.Group,
         CategoryIds: [_beach], Inclusions: ["Hotel"], Exclusions: [], TermsAndPolicy: null, MinAge: null,
-        IsFeatured: false, SeoTitle: null, SeoDescription: null,
+        IsFeatured: false,
         PricingMode.FixedDepartures, DurationDays: 3, DurationNights: 2,
         MinNights: null, MaxNights: null, BasePrice: null, ExtraNightPrice: null, MinLeadDays: null);
 
@@ -48,7 +48,7 @@ public class PackageHandlerTests
 
     private static UpdatePackageCommand ToUpdate(Guid id, CreatePackageCommand c) => new(
         id, c.DestinationId, c.Title, c.Slug, c.Summary, c.Description, c.TourType, c.CategoryIds, c.Inclusions,
-        c.Exclusions, c.TermsAndPolicy, c.MinAge, c.IsFeatured, c.SeoTitle, c.SeoDescription, c.PricingMode,
+        c.Exclusions, c.TermsAndPolicy, c.MinAge, c.IsFeatured, c.PricingMode,
         c.DurationDays, c.DurationNights, c.MinNights, c.MaxNights, c.BasePrice, c.ExtraNightPrice, c.MinLeadDays);
 
     private Task<Result<Guid>> CreateAsync(CreatePackageCommand command) =>

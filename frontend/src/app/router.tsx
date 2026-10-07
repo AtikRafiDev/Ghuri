@@ -4,6 +4,7 @@ import { RequireAuth } from '@/features/auth/components/RequireAuth'
 import { RequireRole } from '@/features/auth/components/RequireRole'
 import { AccountLayout } from './layouts/AccountLayout'
 import { AdminLayout } from './layouts/AdminLayout'
+import type { PublicRouteHandle } from './layouts/fullBleed'
 import { PublicLayout } from './layouts/PublicLayout'
 import { NotFoundPage } from './NotFoundPage'
 import { RouteErrorPage } from './RouteErrorPage'
@@ -11,18 +12,28 @@ import { RouteErrorPage } from './RouteErrorPage'
 // Every page is LAZY: its code is downloaded only when first visited
 // (blueprint 13.2: "route-level code splitting - admin bundles never load
 // on the public site"). A customer's phone never downloads admin screens.
+
+// Edge to edge, starting under the header: for the pages that open with a photo hero (layouts/fullBleed.ts).
+const fullBleed = { fullBleed: true } satisfies PublicRouteHandle
+
 export const router = createBrowserRouter([
   {
     element: <PublicLayout />,
     errorElement: <RouteErrorPage />,
     children: [
-      { index: true, lazy: async () => ({ Component: (await import('@/features/home/pages/HomePage')).HomePage }) },
+      {
+        index: true,
+        handle: fullBleed,
+        lazy: async () => ({ Component: (await import('@/features/home/pages/HomePage')).HomePage }),
+      },
       {
         path: 'packages',
+        handle: fullBleed,
         lazy: async () => ({ Component: (await import('@/features/catalog/pages/PackagesPage')).PackagesPage }),
       },
       {
         path: 'packages/:slug',
+        handle: fullBleed,
         lazy: async () => ({ Component: (await import('@/features/catalog/pages/PackageDetailsPage')).PackageDetailsPage }),
       },
       {
@@ -47,6 +58,7 @@ export const router = createBrowserRouter([
         // The custom trip builder (Day 14). Login first: the request belongs to an account,
         // and the quote is emailed to it. A visitor comes back here after logging in.
         path: 'plan-trip',
+        handle: fullBleed,
         element: (
           <RequireAuth>
             <Outlet />
@@ -60,23 +72,33 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('@/features/booking/pages/PaymentResultPage')).PaymentResultPage }),
       },
       // Information pages (Day 16) - the footer links them; SSLCommerz asks for terms, privacy and refund policy before going live.
-      { path: 'about', lazy: async () => ({ Component: (await import('@/features/pages/pages/AboutPage')).AboutPage }) },
-      { path: 'faq', lazy: async () => ({ Component: (await import('@/features/pages/pages/FaqPage')).FaqPage }) },
-      { path: 'terms', lazy: async () => ({ Component: (await import('@/features/pages/pages/TermsPage')).TermsPage }) },
-      { path: 'privacy', lazy: async () => ({ Component: (await import('@/features/pages/pages/PrivacyPage')).PrivacyPage }) },
+      { path: 'about', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/pages/pages/AboutPage')).AboutPage }) },
+      { path: 'faq', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/pages/pages/FaqPage')).FaqPage }) },
+      { path: 'terms', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/pages/pages/TermsPage')).TermsPage }) },
+      { path: 'privacy', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/pages/pages/PrivacyPage')).PrivacyPage }) },
       {
         path: 'refund-policy',
+        handle: fullBleed,
         lazy: async () => ({ Component: (await import('@/features/pages/pages/RefundPolicyPage')).RefundPolicyPage }),
       },
-      { path: 'login', lazy: async () => ({ Component: (await import('@/features/auth/pages/LoginPage')).LoginPage }) },
-      { path: 'register', lazy: async () => ({ Component: (await import('@/features/auth/pages/RegisterPage')).RegisterPage }) },
+      {
+        // The photographers of the site's own photos - their licences ask for the credit (shared/photos).
+        path: 'photo-credits',
+        handle: fullBleed,
+        lazy: async () => ({ Component: (await import('@/features/pages/pages/PhotoCreditsPage')).PhotoCreditsPage }),
+      },
+      // The sign-in pages sit on a full-screen photo (auth/components/AuthCard).
+      { path: 'login', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/auth/pages/LoginPage')).LoginPage }) },
+      { path: 'register', handle: fullBleed, lazy: async () => ({ Component: (await import('@/features/auth/pages/RegisterPage')).RegisterPage }) },
       {
         path: 'forgot-password',
+        handle: fullBleed,
         lazy: async () => ({ Component: (await import('@/features/auth/pages/ForgotPasswordPage')).ForgotPasswordPage }),
       },
       {
         // The address the reset EMAIL links to (API setting Auth:PasswordResetUrl).
         path: 'reset-password',
+        handle: fullBleed,
         lazy: async () => ({ Component: (await import('@/features/auth/pages/ResetPasswordPage')).ResetPasswordPage }),
       },
       { path: '*', element: <NotFoundPage /> },

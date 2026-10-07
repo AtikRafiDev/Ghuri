@@ -1,4 +1,4 @@
-import { ChevronDownIcon, CircleHelpIcon, MessageCircleIcon } from 'lucide-react'
+import { ChevronDownIcon, CircleHelpIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { site, whatsAppLink } from '@/shared/config/site'
@@ -87,18 +87,6 @@ export function FaqPage() {
             <p className="animate-fade-in pr-12 pb-5 text-ink-600">{a}</p>
           </details>
         ))}
-      </div>
-      <div className="mt-2 flex items-center gap-4 rounded-2xl bg-forest-50 p-4 ring-1 ring-forest-100 sm:p-5">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-card text-forest-600 shadow-soft">
-          <MessageCircleIcon className="size-5" />
-        </span>
-        <p className="text-ink-700">
-          Still have a question? Call {site.phone} or{' '}
-          <a href={whatsAppLink()} target="_blank" rel="noopener noreferrer">
-            chat with us on WhatsApp
-          </a>
-          .
-        </p>
       </div>
     </StaticPage>
   )

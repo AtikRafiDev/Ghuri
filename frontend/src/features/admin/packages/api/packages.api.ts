@@ -52,8 +52,6 @@ export type PackageRequest = {
   termsAndPolicy: string | null
   minAge: number | null
   isFeatured: boolean
-  seoTitle: string | null
-  seoDescription: string | null
   pricingMode: PricingMode
   // Fixed departures:
   durationDays: number | null

@@ -124,7 +124,12 @@ function PaymentStep({ booking }: { booking: MyBooking }) {
   return (
     <div className="grid gap-6">
       <CheckoutSteps current={2} className="max-w-md" />
-      <PageHeader title="Pay for your booking" description="Your seats are reserved. Check the details, then pay before the timer runs out to confirm the trip." />
+      <PageHeader
+        variant="display"
+        eyebrow="Book your trip"
+        title="Pay for your booking"
+        description="Your seats are reserved. Check the details, then pay before the timer runs out to confirm the trip."
+      />
 
       {/* Laptop: details | pay card. Phone: the timer and the Pay button first. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-8">

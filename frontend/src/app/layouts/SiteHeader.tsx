@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { BrandLink } from '@/shared/components/BrandMark'
 import { UserAvatar } from '@/shared/components/UserAvatar'
 import { ThemeToggle } from '@/shared/theme/ThemeToggle'
+import { useFullBleed } from './fullBleed'
 
 const navLinks = [
   { to: '/packages', label: 'Packages', icon: LuggageIcon },
@@ -49,12 +50,16 @@ const accountLinks = [
  * The top bar on every public and account page. Sticky and frosted: it
  * gains a hairline and shadow once the page scrolls under it. On a phone the
  * links fold into a slide-in menu.
+ *
+ * On a full-bleed page (the home page's photo hero) it starts see-through,
+ * with light text (.on-photo, index.css), and turns frosted on the first scroll.
  */
 export function SiteHeader() {
   const { status, user, hasAnyRole, logout } = useAuth()
   const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
   const scrolled = useScrolled()
+  const overPhoto = useFullBleed() && !scrolled
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -70,12 +75,16 @@ export function SiteHeader() {
     <header
       className={cn(
         'sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 print:hidden',
-        scrolled ? 'border-ink-200/80 bg-card/80 shadow-soft backdrop-blur-xl' : 'border-transparent bg-ink-50/60 backdrop-blur-md',
+        overPhoto
+          ? 'on-photo border-transparent bg-transparent'
+          : scrolled
+            ? 'border-ink-200/80 bg-card/80 shadow-soft backdrop-blur-xl'
+            : 'border-transparent bg-ink-50/60 backdrop-blur-md',
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-8">
-          <BrandLink />
+          <BrandLink tone={overPhoto ? 'light' : 'dark'} />
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => (
               <NavLink

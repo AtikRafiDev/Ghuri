@@ -10,8 +10,7 @@ namespace Ghuri.Application.Features.Catalog.Queries.GetPackageDetails;
 /// <remarks>
 /// Flexible stays: MinNights..MaxNights, BasePrice (covers MinNights) and
 /// ExtraNightPrice are per adult; EarliestStartDate = today + MinLeadDays,
-/// for the date picker. SeoTitle/SeoDescription fall back to the title and
-/// summary, so the page always has meta tags.
+/// for the date picker.
 /// </remarks>
 public sealed record PackageDetailsDto(
     Guid Id,
@@ -38,9 +37,7 @@ public sealed record PackageDetailsDto(
     DateOnly? EarliestStartDate,
     string Currency,
     IReadOnlyList<string> ImageUrls,
-    IReadOnlyList<PublicItineraryDayDto> Itinerary,
-    string SeoTitle,
-    string SeoDescription);
+    IReadOnlyList<PublicItineraryDayDto> Itinerary);
 
 public sealed record PackageCategoryDto(string Name, string Slug, string? Icon);
 

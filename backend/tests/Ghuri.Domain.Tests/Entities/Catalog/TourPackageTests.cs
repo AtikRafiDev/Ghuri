@@ -21,11 +21,9 @@ public class TourPackageTests
         TourType: TourType.Group,
         Inclusions: ["Hotel stay", "  ", " Breakfast "],
         Exclusions: [],
-        TermsAndPolicy: null,
+        TermsAndPolicy: "",
         MinAge: null,
-        IsFeatured: false,
-        SeoTitle: "",
-        SeoDescription: null);
+        IsFeatured: false);
 
     private static readonly PackagePricing ThreeDays = PackagePricing.FixedDepartures(3, 2);
     private static readonly PackagePricing TwoToSevenNights = PackagePricing.FlexibleStay(2, 7, 8000, 3000, 3);
@@ -52,7 +50,7 @@ public class TourPackageTests
 
         Assert.Equal(PackageStatus.Draft, package.Status);
         Assert.Equal(["Hotel stay", "Breakfast"], package.Inclusions); // blank row dropped, spaces trimmed
-        Assert.Null(package.SeoTitle);                                 // "" stored as NULL
+        Assert.Null(package.TermsAndPolicy);                           // "" stored as NULL
         Assert.Equal(0, package.PriceFrom);
     }
 

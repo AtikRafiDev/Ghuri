@@ -20,10 +20,10 @@ public class DestinationHandlerTests
     }
 
     private static CreateDestinationCommand CreateCommand(IReadOnlyList<Guid> imageFileIds, string name = "Sylhet") =>
-        new(Bangladesh, name, Slug: null, Summary: null, imageFileIds, IsFeatured: false, SortOrder: 0, SeoTitle: null, SeoDescription: null);
+        new(Bangladesh, name, Slug: null, Summary: null, imageFileIds, IsFeatured: false, SortOrder: 0);
 
     private static UpdateDestinationCommand UpdateCommand(Guid id, IReadOnlyList<Guid> imageFileIds) =>
-        new(id, Bangladesh, "Sylhet", Slug: null, Summary: null, imageFileIds, IsFeatured: false, SortOrder: 0, SeoTitle: null, SeoDescription: null);
+        new(id, Bangladesh, "Sylhet", Slug: null, Summary: null, imageFileIds, IsFeatured: false, SortOrder: 0);
 
     private Task<Ghuri.Application.Common.Result<Guid>> CreateAsync(CreateDestinationCommand command) =>
         new CreateDestinationHandler(_destinations, _files).Handle(command, TestContext.Current.CancellationToken).AsTask();

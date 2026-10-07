@@ -27,8 +27,6 @@ public sealed record AdminPackageDto(
     string? TermsAndPolicy,
     int? MinAge,
     bool IsFeatured,
-    string? SeoTitle,
-    string? SeoDescription,
     PricingMode PricingMode,
     int DurationDays,
     int DurationNights,

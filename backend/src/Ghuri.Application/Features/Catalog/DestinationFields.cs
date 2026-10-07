@@ -19,8 +19,6 @@ public interface IDestinationFields
 
     bool IsFeatured { get; }
     int SortOrder { get; }
-    string? SeoTitle { get; }
-    string? SeoDescription { get; }
 }
 
 /// <summary>Lengths match the catalog.Destinations columns, so the database never has to truncate or refuse.</summary>
@@ -43,8 +41,5 @@ internal sealed class DestinationFieldsValidator : AbstractValidator<IDestinatio
             .WithMessage("A photo id is missing.");
 
         RuleFor(x => x.SortOrder).InclusiveBetween(0, 100_000);
-        // Google shows about this much of a title / description in results.
-        RuleFor(x => x.SeoTitle).MaximumLength(70);
-        RuleFor(x => x.SeoDescription).MaximumLength(160);
     }
 }

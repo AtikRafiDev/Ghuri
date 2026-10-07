@@ -25,7 +25,7 @@ internal sealed class CreateDestinationHandler(IDestinationRepository destinatio
 
         var destination = Destination.Create(
             command.CountryId, command.Name, slug, command.Summary,
-            command.IsFeatured, command.SortOrder, command.SeoTitle, command.SeoDescription);
+            command.IsFeatured, command.SortOrder);
         destination.SetImages(imageFileIds);
         destinations.Add(destination);
 

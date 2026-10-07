@@ -19,6 +19,4 @@ public sealed record TourPackageDetails(
     IReadOnlyList<string> Exclusions,
     string? TermsAndPolicy,
     byte? MinAge,
-    bool IsFeatured,
-    string? SeoTitle,
-    string? SeoDescription);
+    bool IsFeatured);

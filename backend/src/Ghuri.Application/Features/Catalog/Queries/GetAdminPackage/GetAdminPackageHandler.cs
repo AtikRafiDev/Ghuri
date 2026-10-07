@@ -50,8 +50,6 @@ internal sealed class GetAdminPackageHandler(IReadDbContext db, IFileStorage sto
             package.TermsAndPolicy,
             package.MinAge,
             package.IsFeatured,
-            package.SeoTitle,
-            package.SeoDescription,
             package.PricingMode,
             package.DurationDays,
             package.DurationNights,

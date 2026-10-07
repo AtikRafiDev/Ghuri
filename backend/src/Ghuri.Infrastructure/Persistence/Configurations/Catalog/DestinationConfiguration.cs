@@ -46,7 +46,5 @@ internal sealed class DestinationConfiguration : IEntityTypeConfiguration<Destin
         builder.HasIndex(d => d.IsFeatured);
 
         builder.Property(d => d.SortOrder).IsRequired();
-        builder.Property(d => d.SeoTitle).HasMaxLength(70);
-        builder.Property(d => d.SeoDescription).HasMaxLength(160);
     }
 }

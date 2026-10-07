@@ -187,8 +187,7 @@ internal sealed class DemoPackageSeeder(
             var package = TourPackage.Create(
                 await packages.NextPackageCodeAsync(cancellationToken),
                 new TourPackageDetails(destinationId, demo.Title, slug, demo.Summary, demo.Description, demo.TourType,
-                    demo.Inclusions, demo.Exclusions, TermsAndPolicy: null, MinAge: null, demo.IsFeatured,
-                    SeoTitle: $"{demo.Title} | Ghuri", SeoDescription: demo.Summary.Length <= 160 ? demo.Summary : demo.Summary[..157] + "..."),
+                    demo.Inclusions, demo.Exclusions, TermsAndPolicy: null, MinAge: null, demo.IsFeatured),
                 demo.Pricing);
 
             package.SetCategories(demo.Categories

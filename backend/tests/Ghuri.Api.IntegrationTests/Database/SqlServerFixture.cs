@@ -107,7 +107,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         var package = TourPackage.Create(
             $"T{unique}",
             new TourPackageDetails(_destinationId, $"Seat test {unique}", Slug.Create($"seat-test-{unique}"), "Summary", null,
-                TourType.Group, [], [], null, null, false, null, null),
+                TourType.Group, [], [], null, null, false),
             PackagePricing.FixedDepartures(3, 2));
         var departure = Departure.Create(package.Id, new DateOnly(2030, 1, 1), 3, 10_000, 8_000, 0, null, totalSeats, 2);
         if (closed)

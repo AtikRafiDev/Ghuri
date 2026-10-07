@@ -16,7 +16,7 @@ site goes public. Work top to bottom; most items are settings, not code.
 ## Secrets and settings (production server)
 
 - [ ] **JWT signing key**: a NEW key, only as the environment variable `Jwt__SigningKey`. The development key is in Git (`appsettings.Development.json`) - never use it anywhere else; moving it back to user-secrets is recommended.
-- [ ] `Site__PublicUrl` = the real address, e.g. `https://www.ghuri.com` (links in emails, the sitemap). The API refuses to start without it.
+- [ ] `Site__PublicUrl` = the real address, e.g. `https://www.ghuri.com` (links in emails). The API refuses to start without it.
 - [ ] `Agency__BookingsEmail` = the shared inbox for new custom-trip requests.
 - [ ] `Auth__PasswordResetUrl` = `https://www.ghuri.com/reset-password`.
 - [ ] Email: `Email__Sender=Smtp` and the real mail server (`Email__Smtp__Host`, `Port`, `Security`, `UserName`, `Password`), `Email__FromAddress`.
@@ -26,7 +26,7 @@ site goes public. Work top to bottom; most items are settings, not code.
 ## Server (Nginx in front of the API)
 
 - [ ] HTTPS certificate; redirect http → https.
-- [ ] Nginx forwards `/api`, `/health`, `/files`, **`/sitemap.xml`** and **`/robots.txt`** to the API; everything else serves the React build (`npm run build` → `dist/`), with unknown paths falling back to `index.html`.
+- [ ] Nginx forwards `/api`, `/health` and `/files` to the API; everything else serves the React build (`npm run build` → `dist/`), with unknown paths falling back to `index.html`.
 - [ ] Nginx sends `X-Forwarded-For` and `X-Forwarded-Proto`. The API trusts these only from the same machine; if Nginx runs in a **separate container**, add its network to `KnownNetworks` (Program.cs, `UseForwardedHeaders`) or every visitor shares one rate limit.
 - [ ] Security headers for the website's own files (the API already sends its own): `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`.
   - `script-src 'self'` is enough: the theme picker is a file (`/theme-init.js`), not inline code.

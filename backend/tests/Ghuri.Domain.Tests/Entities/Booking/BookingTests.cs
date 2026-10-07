@@ -23,7 +23,7 @@ public class BookingTests
         var package = TourPackage.Create(
             "PKG1001",
             new TourPackageDetails(Guid.NewGuid(), "Beach Escape", Slug.Create("Beach Escape"), "Summary", null,
-                TourType.Group, [], [], null, null, false, null, null),
+                TourType.Group, [], [], null, null, false),
             pricing);
         package.SetImages([Guid.NewGuid()]);
         package.SetItinerary(Enumerable.Range(1, itineraryDays).Select(n => new ItineraryDayDetails($"Day {n}", "Plan")).ToArray());
@@ -110,7 +110,7 @@ public class BookingTests
         var draft = TourPackage.Create(
             "PKG2002",
             new TourPackageDetails(Guid.NewGuid(), "Draft", Slug.Create("Draft"), "Summary", null,
-                TourType.Group, [], [], null, null, false, null, null),
+                TourType.Group, [], [], null, null, false),
             PackagePricing.FixedDepartures(3, 2));
         var departure = Departure.Create(draft.Id, Dec20, 3, 12_000, 9_000, 1_000, null, 5, 2);
 

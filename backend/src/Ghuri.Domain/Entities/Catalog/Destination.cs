@@ -15,8 +15,6 @@ public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
     public string? Summary { get; private set; }
     public bool IsFeatured { get; private set; }
     public int SortOrder { get; private set; }
-    public string? SeoTitle { get; private set; }
-    public string? SeoDescription { get; private set; }
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
@@ -32,17 +30,17 @@ public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
 
     public static Destination Create(
         short countryId, string name, Slug slug, string? summary = null,
-        bool isFeatured = false, int sortOrder = 0, string? seoTitle = null, string? seoDescription = null)
+        bool isFeatured = false, int sortOrder = 0)
     {
         var destination = new Destination();
-        destination.Update(countryId, name, slug, summary, isFeatured, sortOrder, seoTitle, seoDescription);
+        destination.Update(countryId, name, slug, summary, isFeatured, sortOrder);
         return destination;
     }
 
     /// <summary>Replaces every editable text/display field at once - the admin form always sends the whole destination.</summary>
     public void Update(
         short countryId, string name, Slug slug, string? summary,
-        bool isFeatured, int sortOrder, string? seoTitle, string? seoDescription)
+        bool isFeatured, int sortOrder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(slug);
@@ -53,8 +51,6 @@ public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
         Summary = Clean(summary);
         IsFeatured = isFeatured;
         SortOrder = sortOrder;
-        SeoTitle = Clean(seoTitle);
-        SeoDescription = Clean(seoDescription);
     }
 
     /// <summary>

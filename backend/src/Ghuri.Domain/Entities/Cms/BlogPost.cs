@@ -21,8 +21,6 @@ public sealed class BlogPost : AggregateRoot, IAuditable, ISoftDeletable
 
     public bool IsPublished { get; private set; }
     public DateTime? PublishedAtUtc { get; private set; }
-    public string? SeoTitle { get; private set; }
-    public string? SeoDescription { get; private set; }
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }

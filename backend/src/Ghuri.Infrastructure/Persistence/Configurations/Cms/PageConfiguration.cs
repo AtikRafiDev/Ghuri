@@ -25,8 +25,6 @@ internal sealed class PageConfiguration : IEntityTypeConfiguration<Page>
         builder.Property(p => p.Title).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Content).IsRequired(); // NVARCHAR(MAX)
 
-        builder.Property(p => p.SeoTitle).HasMaxLength(70);
-        builder.Property(p => p.SeoDescription).HasMaxLength(160);
         builder.Property(p => p.IsPublished).IsRequired();
     }
 }

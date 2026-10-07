@@ -134,7 +134,12 @@ function CheckoutForm({ selection, quote }: { selection: BookingSelection; quote
   return (
     <div className="grid gap-6">
       <CheckoutSteps current={1} className="max-w-md" />
-      <PageHeader title="Traveller details" description="Who's going, and how we reach you about the trip. Nothing is charged on this step." />
+      <PageHeader
+        variant="display"
+        eyebrow="Book your trip"
+        title="Traveller details"
+        description="Who's going, and how we reach you about the trip. Nothing is charged on this step."
+      />
 
       {/* Laptop: form | summary. Phone: summary first, so the customer sees what they're booking. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-8">

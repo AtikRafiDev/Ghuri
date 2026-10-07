@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 import { RouteProgress } from '@/shared/components/RouteProgress'
 import { UserAvatar } from '@/shared/components/UserAvatar'
+import { WorldMapBackdrop } from '@/shared/components/WorldMapBackdrop'
 import { SiteFooter } from './SiteFooter'
 import { SiteHeader } from './SiteHeader'
 
@@ -21,6 +22,7 @@ export function AccountLayout() {
 
   return (
     <div className="flex min-h-svh flex-col">
+      <WorldMapBackdrop />
       <ScrollRestoration />
       <RouteProgress />
       <SiteHeader />

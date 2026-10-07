@@ -10,6 +10,4 @@ public sealed record CreateDestinationCommand(
     string? Summary,
     IReadOnlyList<Guid> ImageFileIds,
     bool IsFeatured,
-    int SortOrder,
-    string? SeoTitle,
-    string? SeoDescription) : ICommand<Guid>, IDestinationFields;
+    int SortOrder) : ICommand<Guid>, IDestinationFields;

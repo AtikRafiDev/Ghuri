@@ -85,8 +85,6 @@ export type PackageDetails = {
   /** Cover image first. */
   imageUrls: string[]
   itinerary: ItineraryDay[]
-  seoTitle: string
-  seoDescription: string
 }
 
 /** One itinerary day. meals: "B,L,D" flags - breakfast, lunch, dinner included. */

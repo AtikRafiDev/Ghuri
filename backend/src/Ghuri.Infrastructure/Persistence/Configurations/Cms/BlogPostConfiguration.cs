@@ -42,7 +42,5 @@ internal sealed class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
         builder.Property(p => p.PublishedAtUtc);
         builder.HasIndex(p => new { p.IsPublished, p.PublishedAtUtc });
 
-        builder.Property(p => p.SeoTitle).HasMaxLength(70);
-        builder.Property(p => p.SeoDescription).HasMaxLength(160);
     }
 }

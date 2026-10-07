@@ -17,8 +17,6 @@ public sealed record AdminDestinationDto(
     IReadOnlyList<DestinationImageDto> Images,
     bool IsFeatured,
     int SortOrder,
-    string? SeoTitle,
-    string? SeoDescription,
     int PackageCount);
 
 /// <remarks>FileId is what the form sends back when saving; Url is for showing it.</remarks>

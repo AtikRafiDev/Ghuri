@@ -83,7 +83,7 @@ internal static class BookingTestData
         return TourPackage.Create(
             $"T{Unique()}",
             new TourPackageDetails(destination.Id, "Beach Escape", Slug.Create($"beach-escape-{Unique()}"), "Summary", null,
-                TourType.Group, [], [], null, null, false, null, null),
+                TourType.Group, [], [], null, null, false),
             pricing);
     }
 

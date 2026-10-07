@@ -15,7 +15,7 @@ public class PriceCalculatorTests
     private static TourPackage Package(PackagePricing pricing) => TourPackage.Create(
         "PKG1001",
         new TourPackageDetails(Guid.NewGuid(), "Beach Escape", Slug.Create("Beach Escape"), "Summary", null,
-            TourType.Group, [], [], null, null, false, null, null),
+            TourType.Group, [], [], null, null, false),
         pricing);
 
     private static readonly TourPackage Fixed = Package(PackagePricing.FixedDepartures(3, 2));

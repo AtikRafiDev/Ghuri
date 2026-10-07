@@ -2,12 +2,13 @@ import { ArrowRightIcon, CompassIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { site } from '@/shared/config/site'
+import { coxsBazarPhoto } from '@/shared/photos/photos'
 import { StaticPage } from '../components/StaticPage'
 
 /** /about - a draft frame; the agency's own story, team and licence numbers come from the client. */
 export function AboutPage() {
   return (
-    <StaticPage title={`About ${site.name}`} description={`${site.name} - ${site.tagline}.`} updated="6 October 2026" icon={CompassIcon} draft>
+    <StaticPage title={`About ${site.name}`} description={`${site.name} - ${site.tagline}.`} updated="6 October 2026" icon={CompassIcon} photo={coxsBazarPhoto} draft>
       <p className="text-lg leading-8 text-ink-700">
         {site.name} plans tours across Bangladesh and beyond - from a weekend at Cox's Bazar to a trip through several cities, planned
         around you.

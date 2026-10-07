@@ -18,8 +18,6 @@ export type AdminDestination = {
   images: { fileId: string; url: string }[]
   isFeatured: boolean
   sortOrder: number
-  seoTitle: string | null
-  seoDescription: string | null
   /** Above 0 = the API refuses to delete it. */
   packageCount: number
 }
@@ -38,8 +36,6 @@ export type DestinationRequest = {
   imageFileIds: string[]
   isFeatured: boolean
   sortOrder: number
-  seoTitle: string | null
-  seoDescription: string | null
 }
 
 /** Must match the API's Destination.MaxImages. */

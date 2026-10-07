@@ -37,7 +37,7 @@ public class PublicCatalogQueryTests(SqlServerFixture sql) : IClassFixture<SqlSe
         TourPackage.Create(
             $"T{Unique()}",
             new TourPackageDetails(destination.Id, title, Slug.Create($"{title}-{Unique()}"), "Summary", null,
-                TourType.Group, ["Hotel"], [], null, null, featured, null, null),
+                TourType.Group, ["Hotel"], [], null, null, featured),
             pricing);
 
     private static Departure Dep(
@@ -146,7 +146,6 @@ public class PublicCatalogQueryTests(SqlServerFixture sql) : IClassFixture<SqlSe
         Assert.Single(details.ImageUrls);
         Assert.Equal(3, details.Itinerary.Count);
         Assert.Equal(Today.AddDays(3), details.EarliestStartDate); // 3 lead days
-        Assert.Equal("Details", details.SeoTitle);                 // falls back to the title
     }
 
     [Fact]

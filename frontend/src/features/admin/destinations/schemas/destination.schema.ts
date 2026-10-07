@@ -21,8 +21,6 @@ export const destinationSchema = z
       .int('Enter a whole number.')
       .min(0, '0 or more.')
       .max(100_000, 'At most 100000.'),
-    seoTitle: z.string().trim().max(70, 'At most 70 characters - Google cuts the rest.'),
-    seoDescription: z.string().trim().max(160, 'At most 160 characters - Google cuts the rest.'),
   })
   .superRefine((values, ctx) => {
     const problem = slugProblem(values.slug, values.name, 160)

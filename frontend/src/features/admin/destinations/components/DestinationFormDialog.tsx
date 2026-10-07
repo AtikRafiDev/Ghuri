@@ -194,24 +194,6 @@ function DestinationForm({ destination, onDone }: { destination?: AdminDestinati
         />
       </FormField>
 
-      {/* How it shows on Google - optional, so it sits last, under a quiet heading. */}
-      <div className="grid gap-5 border-t border-ink-200 pt-5">
-        <div className="grid gap-0.5">
-          <h3 className="text-sm font-bold text-ink-900">Search engines</h3>
-          <p className="text-[0.8125rem] text-ink-500">Optional - how the destination's page shows up on Google.</p>
-        </div>
-        <TextField
-          label="SEO title"
-          placeholder={name ? `${name} Tour Packages | Ghuri` : undefined}
-          error={errors.seoTitle?.message}
-          hint="The blue link text on Google. Empty = the name."
-          {...form.register('seoTitle')}
-        />
-        <FormField label="SEO description" htmlFor="seoDescription" error={errors.seoDescription?.message} hint="The grey text under the link on Google.">
-          <Textarea id="seoDescription" rows={2} aria-invalid={errors.seoDescription ? true : undefined} {...form.register('seoDescription')} />
-        </FormField>
-      </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={isSubmitting}>
           Cancel
@@ -234,8 +216,6 @@ function toFormValues(d?: AdminDestination): DestinationInput {
     images: d?.images.map((image) => ({ id: image.fileId, url: image.url })) ?? [],
     isFeatured: d?.isFeatured ?? false,
     sortOrder: d?.sortOrder ?? 0,
-    seoTitle: d?.seoTitle ?? '',
-    seoDescription: d?.seoDescription ?? '',
   }
 }
 
@@ -249,7 +229,5 @@ function toRequest(values: DestinationInput): DestinationRequest {
     imageFileIds: values.images.map((image) => image.id),
     isFeatured: values.isFeatured,
     sortOrder: values.sortOrder,
-    seoTitle: values.seoTitle || null,
-    seoDescription: values.seoDescription || null,
   }
 }

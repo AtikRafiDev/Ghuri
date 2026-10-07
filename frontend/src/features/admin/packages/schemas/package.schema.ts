@@ -31,8 +31,6 @@ export const packageSchema = z
     termsAndPolicy: z.string().trim().max(20_000, 'At most 20000 characters.'),
     minAge: z.string().trim(),
     isFeatured: z.boolean(),
-    seoTitle: z.string().trim().max(70, 'At most 70 characters - Google cuts the rest.'),
-    seoDescription: z.string().trim().max(160, 'At most 160 characters - Google cuts the rest.'),
 
     pricingMode: z.enum(['fixed', 'flexible']),
     durationDays: z.string().trim(),
@@ -127,8 +125,6 @@ export function toFormValues(p?: AdminPackage): PackageInput {
     termsAndPolicy: p?.termsAndPolicy ?? '',
     minAge: text(p?.minAge),
     isFeatured: p?.isFeatured ?? false,
-    seoTitle: p?.seoTitle ?? '',
-    seoDescription: p?.seoDescription ?? '',
     pricingMode: isFlexible ? 'flexible' : 'fixed',
     // A flexible package's duration is worked out by the API - don't show it as typed values.
     durationDays: isFlexible ? '' : text(p?.durationDays),
@@ -160,8 +156,6 @@ export function toRequest(v: PackageInput): PackageRequest {
     termsAndPolicy: v.termsAndPolicy || null,
     minAge: numberOrNull(v.minAge),
     isFeatured: v.isFeatured,
-    seoTitle: v.seoTitle || null,
-    seoDescription: v.seoDescription || null,
     pricingMode: fixed ? PricingMode.FixedDepartures : PricingMode.FlexibleStay,
     durationDays: fixed ? numberOrNull(v.durationDays) : null,
     durationNights: fixed ? numberOrNull(v.durationNights) : null,

@@ -91,8 +91,6 @@ internal sealed class TourPackageConfiguration : IEntityTypeConfiguration<TourPa
         builder.Property(p => p.AvgRating).HasColumnType("decimal(3,2)").IsRequired();
         builder.Property(p => p.ReviewCount).IsRequired();
 
-        builder.Property(p => p.SeoTitle).HasMaxLength(70);
-        builder.Property(p => p.SeoDescription).HasMaxLength(160);
         builder.Property(p => p.PublishedAtUtc);
 
         // Optimistic concurrency: SQL Server auto-updates this on every

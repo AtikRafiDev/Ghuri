@@ -40,6 +40,8 @@ export function AccountPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        variant="display"
+        eyebrow="Overview"
         title="My account"
         description="Your trips and details at a glance."
         actions={

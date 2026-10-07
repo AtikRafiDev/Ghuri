@@ -11,6 +11,4 @@ public sealed record UpdateDestinationCommand(
     string? Summary,
     IReadOnlyList<Guid> ImageFileIds,
     bool IsFeatured,
-    int SortOrder,
-    string? SeoTitle,
-    string? SeoDescription) : ICommand, IDestinationFields;
+    int SortOrder) : ICommand, IDestinationFields;

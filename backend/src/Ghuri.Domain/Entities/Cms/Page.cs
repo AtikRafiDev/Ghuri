@@ -12,8 +12,6 @@ public sealed class Page : AggregateRoot, IAuditable, ISoftDeletable
     /// <summary>Sanitized HTML - the sanitizing itself is Infrastructure's IHtmlSanitizer, applied before this is ever set (Day 13 work).</summary>
     public string Content { get; private set; } = string.Empty;
 
-    public string? SeoTitle { get; private set; }
-    public string? SeoDescription { get; private set; }
     public bool IsPublished { get; private set; }
 
     public bool IsDeleted { get; private set; }

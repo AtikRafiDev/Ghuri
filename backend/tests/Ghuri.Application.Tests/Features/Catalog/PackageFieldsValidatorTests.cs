@@ -8,7 +8,7 @@ public class PackageFieldsValidatorTests
     private static readonly CreatePackageCommand Fixed = new(
         Guid.NewGuid(), "Cox's Bazar 3 Days", Slug: null, Summary: "Sea and sand.", Description: null, TourType.Group,
         CategoryIds: [], Inclusions: [], Exclusions: [], TermsAndPolicy: null, MinAge: null,
-        IsFeatured: false, SeoTitle: null, SeoDescription: null,
+        IsFeatured: false,
         PricingMode.FixedDepartures, DurationDays: 3, DurationNights: 2,
         MinNights: null, MaxNights: null, BasePrice: null, ExtraNightPrice: null, MinLeadDays: null);
 

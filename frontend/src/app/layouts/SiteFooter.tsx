@@ -82,7 +82,11 @@ export function SiteFooter() {
 
         <div className="flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-forest-100/60 sm:flex-row">
           <span>
-            © {new Date().getFullYear()} {site.name}. All rights reserved.
+            © {new Date().getFullYear()} {site.name}. All rights reserved. ·{' '}
+            {/* The site's photos are credited there, not on each photo (shared/photos). */}
+            <Link to="/photo-credits" className="underline-offset-4 transition-colors hover:text-white hover:underline">
+              Photo credits
+            </Link>
           </span>
           <span className="flex items-center gap-1.5">
             <LockIcon className="size-3.5 text-forest-400" />

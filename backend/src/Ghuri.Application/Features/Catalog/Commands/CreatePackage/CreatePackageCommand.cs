@@ -17,8 +17,6 @@ public sealed record CreatePackageCommand(
     string? TermsAndPolicy,
     int? MinAge,
     bool IsFeatured,
-    string? SeoTitle,
-    string? SeoDescription,
     PricingMode PricingMode,
     int? DurationDays,
     int? DurationNights,
