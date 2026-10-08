@@ -88,8 +88,8 @@ public class AdminOperationsTests : IClassFixture<SqlServerFixture>
         // ...and the voucher email is queued, exactly like after SSLCommerz (the event carries the booking's id).
         await using var scope = _sql.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var bookingId = (await db.Bookings.SingleAsync(b => b.BookingNo == booked.BookingNo)).Id.ToString();
-        Assert.True(await db.OutboxMessages.AnyAsync(m => m.Type == typeof(Domain.Entities.Booking.BookingConfirmed).FullName && m.PayloadJson.Contains(bookingId)));
+        var bookingId = (await db.Bookings.SingleAsync(b => b.BookingNo == booked.BookingNo, TestContext.Current.CancellationToken)).Id.ToString();
+        Assert.True(await db.OutboxMessages.AnyAsync(m => m.Type == typeof(Domain.Entities.Booking.BookingConfirmed).FullName && m.PayloadJson.Contains(bookingId), TestContext.Current.CancellationToken));
     }
 
     [Fact]

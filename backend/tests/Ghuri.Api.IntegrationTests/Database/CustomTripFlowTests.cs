@@ -153,7 +153,7 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
 
         await using var scope = _sql.Services.CreateAsyncScope();
         var sms = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Notifications.AsNoTracking()
-            .SingleAsync(n => n.UserId == customer.Id && n.TemplateCode == "CUSTOM_TRIP_QUOTED");
+            .SingleAsync(n => n.UserId == customer.Id && n.TemplateCode == "CUSTOM_TRIP_QUOTED", TestContext.Current.CancellationToken);
         Assert.Equal((NotificationChannel.Sms, NotificationStatus.Queued, customer.PhoneNumber.Value), (sms.Channel, sms.Status, sms.Destination));
         Assert.Contains("Tk 62,000", sms.Body);
         Assert.True(sms.Body.Length <= 160 + 60, $"SMS too long: {sms.Body.Length}"); // the link makes it 2 SMS at most
@@ -226,7 +226,7 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().CustomTrips
                 .Where(t => t.TripNo == tripNo)
-                .ExecuteUpdateAsync(set => set.SetProperty(t => t.QuoteExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+                .ExecuteUpdateAsync(set => set.SetProperty(t => t.QuoteExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
         }
         await job.RunOnceAsync(TestContext.Current.CancellationToken);
         await job.RunOnceAsync(TestContext.Current.CancellationToken); // twice changes nothing
@@ -366,7 +366,7 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
             // Still "Quoted" - the hourly job hasn't run - but past the deadline.
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().CustomTrips
                 .Where(t => t.TripNo == tripNo)
-                .ExecuteUpdateAsync(set => set.SetProperty(t => t.QuoteExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+                .ExecuteUpdateAsync(set => set.SetProperty(t => t.QuoteExpiresAtUtc, DateTime.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
         }
 
         var result = await _sql.SendCommandAsync(Accept(tripNo), customer.Id);
@@ -447,11 +447,11 @@ public class CustomTripFlowTests : IClassFixture<SqlServerFixture>
         await using (var scope = _sql.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            if (!await db.CancellationPolicies.AnyAsync(p => p.PackageId == null))
+            if (!await db.CancellationPolicies.AnyAsync(p => p.PackageId == null, TestContext.Current.CancellationToken))
             {
                 db.CancellationPolicies.AddRange(
                     Domain.Entities.Booking.CancellationPolicy.Create(null, 30, 100), Domain.Entities.Booking.CancellationPolicy.Create(null, 0, 0));
-                await db.SaveChangesAsync();
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
             }
         }
         var (customer, tripNo) = await QuotedAsync(); // starts in 30 days → 100% back

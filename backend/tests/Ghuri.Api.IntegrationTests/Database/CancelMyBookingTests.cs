@@ -148,9 +148,9 @@ public class CancelMyBookingTests : IClassFixture<SqlServerFixture>
         await using (var scope = _sql.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var packageId = await db.TourPackages.Where(p => p.Slug == Domain.ValueObjects.Slug.Create(slug)).Select(p => p.Id).SingleAsync();
+            var packageId = await db.TourPackages.Where(p => p.Slug == Domain.ValueObjects.Slug.Create(slug)).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
             db.CancellationPolicies.Add(CancellationPolicy.Create(packageId, 0, 80)); // generous: 80% whenever
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
         var booked = await PaidAsync(Book(slug, startDate: Today.AddDays(5), nights: 4)); // globally that would be 0%
 
@@ -192,7 +192,7 @@ public class CancelMyBookingTests : IClassFixture<SqlServerFixture>
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Bookings
                 .Where(b => b.BookingNo == booked.BookingNo)
-                .ExecuteUpdateAsync(set => set.SetProperty(b => b.StartDate, Today)); // "today is the first day"
+                .ExecuteUpdateAsync(set => set.SetProperty(b => b.StartDate, Today), TestContext.Current.CancellationToken); // "today is the first day"
         }
 
         var result = await _sql.SendCommandAsync(new CancelMyBookingCommand(booked.BookingNo, null), booked.Customer);

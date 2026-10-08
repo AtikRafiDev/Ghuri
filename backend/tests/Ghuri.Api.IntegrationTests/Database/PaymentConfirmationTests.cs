@@ -300,7 +300,7 @@ public class PaymentConfirmationTests : IClassFixture<SqlServerFixture>
         // Day 12: the system asked for the refund itself - it's in the staff's list, for the whole 2nd payment.
         await using var scope = _sql.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var refund = await db.Refunds.AsNoTracking().SingleAsync(r => r.PaymentId == secondState.Payment.Id);
+        var refund = await db.Refunds.AsNoTracking().SingleAsync(r => r.PaymentId == secondState.Payment.Id, TestContext.Current.CancellationToken);
         Assert.Equal((paying.Amount, 100m, RefundStatus.Requested, (Guid?)null), (refund.Amount, refund.RefundPercent, refund.Status, refund.RequestedBy));
     }
 

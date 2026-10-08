@@ -13,7 +13,10 @@ internal static class DestinationSortOrder
     /// (DisplayOrder.MakeRoom) - saved together with the destination itself.
     /// Call it after every check has passed, so a refused save moves nothing.
     /// </summary>
+    /// <param name="destinations">Where the other destinations' sort orders are read from.</param>
+    /// <param name="requested">The sort order typed in the form; null = after the last one.</param>
     /// <param name="destinationId">The destination being edited; null when it's a new one.</param>
+    /// <param name="cancellationToken">Cancels the database reads.</param>
     public static async Task<int> PlaceAsync(
         IDestinationRepository destinations,
         int? requested,
