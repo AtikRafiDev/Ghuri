@@ -14,6 +14,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin/categories")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ManageCatalogue)]
 public sealed class AdminCategoriesController(ISender sender) : ControllerBase
 {
     [HttpGet]

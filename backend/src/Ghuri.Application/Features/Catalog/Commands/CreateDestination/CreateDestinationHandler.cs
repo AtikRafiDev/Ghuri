@@ -23,9 +23,12 @@ internal sealed class CreateDestinationHandler(IDestinationRepository destinatio
         if (await destinations.SlugExistsAsync(slug, exceptId: null, cancellationToken))
             return CatalogErrors.DestinationSlugTaken;
 
+        // Last, after every check: a refused save must not move other destinations.
+        var sortOrder = await DestinationSortOrder.PlaceAsync(destinations, command.SortOrder, destinationId: null, cancellationToken);
+
         var destination = Destination.Create(
             command.CountryId, command.Name, slug, command.Summary,
-            command.IsFeatured, command.SortOrder);
+            command.IsFeatured, sortOrder);
         destination.SetImages(imageFileIds);
         destinations.Add(destination);
 

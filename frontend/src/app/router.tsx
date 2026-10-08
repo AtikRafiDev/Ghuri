@@ -1,5 +1,5 @@
 import { createBrowserRouter, Outlet } from 'react-router'
-import { staffManagerRoles, staffRoles } from '@/features/auth/auth.types'
+import { bookingDeskRoles, catalogueRoles, staffManagerRoles, staffRoles, systemHealthRoles } from '@/features/auth/auth.types'
 import { RequireAuth } from '@/features/auth/components/RequireAuth'
 import { RequireRole } from '@/features/auth/components/RequireRole'
 import { AccountLayout } from './layouts/AccountLayout'
@@ -145,55 +145,38 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     children: [
       {
+        // Super Admin only (dashboardRoles). AdminLayout sends everyone else on
+        // to the first page of their menu - so /admin is every staff member's "home".
         index: true,
         lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminDashboardPage')).AdminDashboardPage }),
       },
       {
-        path: 'destinations',
-        lazy: async () => ({
-          Component: (await import('@/features/admin/destinations/pages/AdminDestinationsPage')).AdminDestinationsPage,
-        }),
+        // Bookings, payments, refunds: Super Admin, Manager, Accounts - the API's ViewBookings policy.
+        element: (
+          <RequireRole roles={bookingDeskRoles} redirectTo="/admin">
+            <Outlet />
+          </RequireRole>
+        ),
+        children: [
+          {
+            path: 'bookings',
+            lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingsPage')).AdminBookingsPage }),
+          },
+          {
+            path: 'bookings/:bookingNo',
+            lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingPage')).AdminBookingPage }),
+          },
+          {
+            path: 'payments',
+            lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminPaymentsPage')).AdminPaymentsPage }),
+          },
+          {
+            path: 'refunds',
+            lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminRefundsPage')).AdminRefundsPage }),
+          },
+        ],
       },
-      {
-        path: 'packages',
-        lazy: async () => ({ Component: (await import('@/features/admin/packages/pages/AdminPackagesPage')).AdminPackagesPage }),
-      },
-      {
-        // "new" is listed before ":packageId", but React Router ranks a fixed
-        // segment above a parameter anyway - /admin/packages/new never reaches the edit route.
-        path: 'packages/new',
-        lazy: async () => ({
-          Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
-        }),
-      },
-      {
-        path: 'packages/:packageId',
-        lazy: async () => ({
-          Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
-        }),
-      },
-      {
-        path: 'categories',
-        lazy: async () => ({
-          Component: (await import('@/features/admin/categories/pages/AdminCategoriesPage')).AdminCategoriesPage,
-        }),
-      },
-      {
-        path: 'bookings',
-        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingsPage')).AdminBookingsPage }),
-      },
-      {
-        path: 'bookings/:bookingNo',
-        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminBookingPage')).AdminBookingPage }),
-      },
-      {
-        path: 'payments',
-        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminPaymentsPage')).AdminPaymentsPage }),
-      },
-      {
-        path: 'refunds',
-        lazy: async () => ({ Component: (await import('@/features/admin/operations/pages/AdminRefundsPage')).AdminRefundsPage }),
-      },
+      // Custom trips: every staff member (only Sales, Manager and Super Admin may quote - the page checks).
       {
         path: 'custom-trips',
         lazy: async () => ({ Component: (await import('@/features/admin/customTrips/pages/AdminCustomTripsPage')).AdminCustomTripsPage }),
@@ -204,16 +187,64 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('@/features/admin/customTrips/pages/AdminCustomTripPage')).AdminCustomTripPage }),
       },
       {
-        // Super Admin only - the same as the API's ManageStaff policy. Other staff are sent home.
+        // The catalogue: Super Admin, Manager, Sales - the API's ManageCatalogue policy.
+        element: (
+          <RequireRole roles={catalogueRoles} redirectTo="/admin">
+            <Outlet />
+          </RequireRole>
+        ),
+        children: [
+          {
+            path: 'destinations',
+            lazy: async () => ({
+              Component: (await import('@/features/admin/destinations/pages/AdminDestinationsPage')).AdminDestinationsPage,
+            }),
+          },
+          {
+            path: 'packages',
+            lazy: async () => ({ Component: (await import('@/features/admin/packages/pages/AdminPackagesPage')).AdminPackagesPage }),
+          },
+          {
+            // "new" is listed before ":packageId", but React Router ranks a fixed
+            // segment above a parameter anyway - /admin/packages/new never reaches the edit route.
+            path: 'packages/new',
+            lazy: async () => ({
+              Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
+            }),
+          },
+          {
+            path: 'packages/:packageId',
+            lazy: async () => ({
+              Component: (await import('@/features/admin/packages/pages/AdminPackageEditPage')).AdminPackageEditPage,
+            }),
+          },
+          {
+            path: 'categories',
+            lazy: async () => ({
+              Component: (await import('@/features/admin/categories/pages/AdminCategoriesPage')).AdminCategoriesPage,
+            }),
+          },
+        ],
+      },
+      {
+        // Super Admin only - the same as the API's ManageStaff policy. Other staff go back to their admin home.
         path: 'staff',
         element: (
-          <RequireRole roles={staffManagerRoles}>
+          <RequireRole roles={staffManagerRoles} redirectTo="/admin">
             <Outlet />
           </RequireRole>
         ),
         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/admin/staff/pages/AdminStaffPage')).AdminStaffPage }) }],
       },
-      { path: 'system', lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) },
+      {
+        path: 'system',
+        element: (
+          <RequireRole roles={systemHealthRoles} redirectTo="/admin">
+            <Outlet />
+          </RequireRole>
+        ),
+        children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/health/HealthStatus')).HealthStatus }) }],
+      },
     ],
   },
 ])

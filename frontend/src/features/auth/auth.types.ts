@@ -7,6 +7,21 @@ export const staffRoles: readonly Role[] = ['SuperAdmin', 'Manager', 'Sales', 'A
 /** Who may open Admin → Staff and create staff accounts - the same as the API's "ManageStaff" policy. */
 export const staffManagerRoles: readonly Role[] = ['SuperAdmin']
 
+// Which admin sections each role sees (decided 2026-10-08). Custom trips are
+// open to every staff member (staffRoles); the rest, each the same list as an API policy:
+
+/** Admin → Dashboard - the API's "ViewDashboard" policy. */
+export const dashboardRoles: readonly Role[] = ['SuperAdmin']
+
+/** Admin → Bookings, Payments, Refunds - the API's "ViewBookings" policy. */
+export const bookingDeskRoles: readonly Role[] = ['SuperAdmin', 'Manager', 'Accounts']
+
+/** Admin → Packages, Destinations, Categories - the API's "ManageCatalogue" policy. */
+export const catalogueRoles: readonly Role[] = ['SuperAdmin', 'Manager', 'Sales']
+
+/** Admin → System health. No API policy: /health is public (load balancers call it). */
+export const systemHealthRoles: readonly Role[] = ['SuperAdmin', 'Manager']
+
 /** GET /api/v1/auth/me (backend: MeDto). */
 export type Me = {
   id: string

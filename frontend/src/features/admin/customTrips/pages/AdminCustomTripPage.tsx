@@ -18,6 +18,7 @@ import { Link, useParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { bookingDeskRoles } from '@/features/auth/auth.types'
 import { useAuth } from '@/features/auth/useAuth'
 import { hotelLevels, quoteLineLabels, transferLabel, type TransferMode } from '@/features/trips/api/trips.api'
 import { TripStatusBadge } from '@/features/trips/components/TripStatusBadge'
@@ -94,6 +95,7 @@ function Details({ data }: { data: AdminTrip }) {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [reason, setReason] = useState('')
   const canQuote = hasAnyRole(quoteRoles) && (trip.status === 1 || trip.status === 2 || trip.status === 6)
+  const canOpenBooking = hasAnyRole(bookingDeskRoles) // Sales sees the booking number, but can't open bookings
   const route = trip.legs.map((l) => l.destinationName).join(' → ')
   const hotel = hotelLevels.find((h) => h.value === trip.hotelLevel)
 
@@ -114,9 +116,13 @@ function Details({ data }: { data: AdminTrip }) {
       {trip.booking && (
         <FormAlert kind="success">
           Accepted - booking{' '}
-          <Link to={`/admin/bookings/${encodeURIComponent(trip.booking.bookingNo)}`} className="font-mono font-semibold underline underline-offset-4">
-            {trip.booking.bookingNo}
-          </Link>{' '}
+          {canOpenBooking ? (
+            <Link to={`/admin/bookings/${encodeURIComponent(trip.booking.bookingNo)}`} className="font-mono font-semibold underline underline-offset-4">
+              {trip.booking.bookingNo}
+            </Link>
+          ) : (
+            <span className="font-mono font-semibold">{trip.booking.bookingNo}</span>
+          )}{' '}
           {trip.booking.status === 1 ? 'is waiting for payment.' : 'is paid.'}
         </FormAlert>
       )}

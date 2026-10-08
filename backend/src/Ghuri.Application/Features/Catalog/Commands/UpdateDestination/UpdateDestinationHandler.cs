@@ -25,11 +25,14 @@ internal sealed class UpdateDestinationHandler(IDestinationRepository destinatio
         if (await destinations.SlugExistsAsync(slug, exceptId: destination.Id, cancellationToken))
             return CatalogErrors.DestinationSlugTaken;
 
-        // No "save" call: the destination was loaded with tracking, so EF
-        // Core sees these changes when TransactionBehavior commits.
+        // Last, after every check: a refused save must not move other destinations.
+        var sortOrder = await DestinationSortOrder.PlaceAsync(destinations, command.SortOrder, destination.Id, cancellationToken);
+
+        // No "save" call: the destination - and any it moved along - were
+        // loaded with tracking, so EF Core sees the changes when TransactionBehavior commits.
         destination.Update(
             command.CountryId, command.Name, slug, command.Summary,
-            command.IsFeatured, command.SortOrder);
+            command.IsFeatured, sortOrder);
         destination.SetImages(imageFileIds);
 
         return Result.Success();

@@ -21,7 +21,10 @@ public static class Policies
     /// </summary>
     public const string ManageMoney = nameof(ManageMoney);
 
-    /// <summary>Cancel a booking for the agency (SuperAdmin, Manager, Sales - the people who talk to customers).</summary>
+    /// <summary>
+    /// Cancel a booking for the agency. SuperAdmin and Manager (2026-10-08:
+    /// Sales no longer sees bookings, and Accounts handles money, not customers' trips).
+    /// </summary>
     public const string CancelBookings = nameof(CancelBookings);
 
     /// <summary>Quote or reject a custom trip (Day 13) - the same customer-facing people as CancelBookings.</summary>
@@ -32,6 +35,18 @@ public static class Policies
     /// Super Admin only: whoever can hand out roles can give themselves any power.
     /// </summary>
     public const string ManageStaff = nameof(ManageStaff);
+
+    // Which admin sections each role may open (decided 2026-10-08). Each one
+    // sits on top of AdminArea; custom trips stay open to every staff member.
+
+    /// <summary>The admin dashboard (sales figures, every booking at a glance): Super Admin only.</summary>
+    public const string ViewDashboard = nameof(ViewDashboard);
+
+    /// <summary>The bookings, payments and refunds lists: SuperAdmin, Manager, Accounts - never Sales.</summary>
+    public const string ViewBookings = nameof(ViewBookings);
+
+    /// <summary>Packages, departures, destinations, categories and their photos: SuperAdmin, Manager, Sales - never Accounts.</summary>
+    public const string ManageCatalogue = nameof(ManageCatalogue);
 
     public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services)
     {
@@ -45,10 +60,15 @@ public static class Policies
             .AddPolicy(ManageMoney, policy => policy.RequireRole(
                 nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Accounts)))
             .AddPolicy(CancelBookings, policy => policy.RequireRole(
-                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)))
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager)))
             .AddPolicy(QuoteTrips, policy => policy.RequireRole(
                 nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)))
-            .AddPolicy(ManageStaff, policy => policy.RequireRole(nameof(SystemRole.SuperAdmin)));
+            .AddPolicy(ManageStaff, policy => policy.RequireRole(nameof(SystemRole.SuperAdmin)))
+            .AddPolicy(ViewDashboard, policy => policy.RequireRole(nameof(SystemRole.SuperAdmin)))
+            .AddPolicy(ViewBookings, policy => policy.RequireRole(
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Accounts)))
+            .AddPolicy(ManageCatalogue, policy => policy.RequireRole(
+                nameof(SystemRole.SuperAdmin), nameof(SystemRole.Manager), nameof(SystemRole.Sales)));
 
         return services;
     }

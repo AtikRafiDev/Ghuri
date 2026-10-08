@@ -4,7 +4,7 @@ using Ghuri.Domain.ValueObjects;
 namespace Ghuri.Domain.Entities.Catalog;
 
 /// <summary>Places tours go to - Cox's Bazar, Sylhet, Bali... (blueprint: catalog.Destinations [A][S]).</summary>
-public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
+public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable, ISortable
 {
     /// <summary>Enough for a good gallery; keeps the page light on a phone.</summary>
     public const int MaxImages = 10;
@@ -14,6 +14,7 @@ public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
     public Slug Slug { get; private set; } = null!;
     public string? Summary { get; private set; }
     public bool IsFeatured { get; private set; }
+    /// <summary>Lower comes first. Unique among destinations - kept so by DisplayOrder, not by the database.</summary>
     public int SortOrder { get; private set; }
 
     public bool IsDeleted { get; private set; }
@@ -77,6 +78,9 @@ public sealed class Destination : AggregateRoot, IAuditable, ISoftDeletable
                 existing.MoveTo(position);
         }
     }
+
+    /// <summary>Another destination took this one's number (DisplayOrder.MakeRoom).</summary>
+    public void MoveTo(int sortOrder) => SortOrder = sortOrder;
 
     public void MarkDeleted(DateTime nowUtc)
     {

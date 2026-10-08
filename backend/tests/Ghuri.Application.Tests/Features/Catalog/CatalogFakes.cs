@@ -31,6 +31,13 @@ internal sealed class FakeDestinationRepository : IDestinationRepository
     public Task<bool> IsUsedByPackagesAsync(Guid destinationId, CancellationToken cancellationToken) =>
         Task.FromResult(false);
 
+    public Task<IReadOnlyList<Destination>> GetFromSortOrderAsync(int sortOrder, Guid? exceptId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Destination>>(
+            Destinations.Where(d => d.SortOrder >= sortOrder && d.Id != exceptId).OrderBy(d => d.SortOrder).ToList());
+
+    public Task<int?> GetLastSortOrderAsync(Guid? exceptId, CancellationToken cancellationToken) =>
+        Task.FromResult(Destinations.Where(d => d.Id != exceptId).Max(d => (int?)d.SortOrder));
+
     public void Add(Destination destination) => Destinations.Add(destination);
 }
 

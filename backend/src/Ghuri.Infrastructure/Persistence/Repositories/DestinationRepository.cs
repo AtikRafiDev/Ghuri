@@ -24,5 +24,15 @@ internal sealed class DestinationRepository(AppDbContext db) : IDestinationRepos
     public Task<bool> IsUsedByPackagesAsync(Guid destinationId, CancellationToken cancellationToken) =>
         db.TourPackages.AnyAsync(p => p.DestinationId == destinationId, cancellationToken);
 
+    public async Task<IReadOnlyList<Destination>> GetFromSortOrderAsync(int sortOrder, Guid? exceptId, CancellationToken cancellationToken) =>
+        await db.Destinations
+            .Where(d => d.SortOrder >= sortOrder && d.Id != exceptId)
+            .OrderBy(d => d.SortOrder)
+            .ToListAsync(cancellationToken);
+
+    // (int?) so an empty table gives null instead of throwing "sequence contains no elements".
+    public Task<int?> GetLastSortOrderAsync(Guid? exceptId, CancellationToken cancellationToken) =>
+        db.Destinations.Where(d => d.Id != exceptId).MaxAsync(d => (int?)d.SortOrder, cancellationToken);
+
     public void Add(Destination destination) => db.Destinations.Add(destination);
 }

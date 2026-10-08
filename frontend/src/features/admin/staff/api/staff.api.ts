@@ -10,10 +10,10 @@ export const staffRoleLabels: Record<StaffRole, string> = { 1: 'Super Admin', 2:
 
 /** What each role may do in the admin panel - the same split as the API's policies. */
 export const staffRoleHints: Record<StaffRole, string> = {
-  1: 'Everything, including staff accounts.',
-  2: 'Everything in the admin panel except staff accounts.',
-  3: 'Catalogue and bookings: cancel bookings, quote custom trips. No money actions.',
-  4: 'Catalogue and money: record payments, complete refunds. No cancelling or quoting.',
+  1: 'Everything, including the dashboard and staff accounts.',
+  2: 'Everything except the dashboard and staff accounts.',
+  3: 'Catalogue and custom trips: edit packages, quote trips. No bookings or money.',
+  4: 'Bookings, payments, refunds, custom trips: record payments, complete refunds. No catalogue, cancelling or quoting.',
 }
 
 /** The API's UserStatus: 1 Active, 3 Disabled (2 Locked is unused). */

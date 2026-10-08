@@ -11,6 +11,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin/dashboard")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ViewDashboard)]
 public sealed class AdminDashboardController(ISender sender) : ControllerBase
 {
     /// <summary>Today's bookings, revenue (today / this month), pending payments, refunds to process, upcoming trips.</summary>

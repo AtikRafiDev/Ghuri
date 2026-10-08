@@ -35,7 +35,8 @@ export type DestinationRequest = {
   /** Ids of already-uploaded files, in display order - the first is the cover. */
   imageFileIds: string[]
   isFeatured: boolean
-  sortOrder: number
+  /** null = after the last destination. A number in use moves that destination (and any right behind it) along by one. */
+  sortOrder: number | null
 }
 
 /** Must match the API's Destination.MaxImages. */

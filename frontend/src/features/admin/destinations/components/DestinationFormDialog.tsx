@@ -148,9 +148,11 @@ function DestinationForm({ destination, onDone }: { destination?: AdminDestinati
           label="Sort order"
           type="number"
           min={0}
-          hint="Lower numbers come first."
+          placeholder="Empty = at the end"
+          hint="Lower numbers come first. Each number is used once: pick a taken one and that destination moves down a place."
           error={errors.sortOrder?.message}
-          {...form.register('sortOrder', { valueAsNumber: true })}
+          // An empty box is null ("put it at the end"), not 0 or NaN.
+          {...form.register('sortOrder', { setValueAs: (v: string | number | null) => (v === '' || v === null ? null : Number(v)) })}
         />
       </div>
 
@@ -215,7 +217,7 @@ function toFormValues(d?: AdminDestination): DestinationInput {
     summary: d?.summary ?? '',
     images: d?.images.map((image) => ({ id: image.fileId, url: image.url })) ?? [],
     isFeatured: d?.isFeatured ?? false,
-    sortOrder: d?.sortOrder ?? 0,
+    sortOrder: d?.sortOrder ?? null, // a new destination: empty = at the end
   }
 }
 

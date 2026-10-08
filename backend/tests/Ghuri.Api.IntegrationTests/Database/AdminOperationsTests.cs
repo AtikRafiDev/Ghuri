@@ -373,15 +373,49 @@ public class AdminOperationsTests : IClassFixture<SqlServerFixture>
     }
 
     [Theory]
-    [InlineData(SystemRole.Sales, HttpStatusCode.OK)]
+    [InlineData(SystemRole.Manager, HttpStatusCode.OK)]
+    [InlineData(SystemRole.Sales, HttpStatusCode.Forbidden)]    // Sales no longer sees bookings at all
     [InlineData(SystemRole.Accounts, HttpStatusCode.Forbidden)] // Accounts handles money, not customers' trips
-    public async Task OnlyCustomerFacingRoles_CanCancel(SystemRole role, HttpStatusCode expected)
+    public async Task OnlySuperAdminAndManager_CanCancel(SystemRole role, HttpStatusCode expected)
     {
         var booked = await PendingAsync();
         var client = await ClientAsAsync(role);
 
         var response = await client.PostAsJsonAsync(
             $"/api/v1/admin/bookings/{booked.BookingNo}/cancel", new { reason = "Customer phoned" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    // Which admin sections each role may open (decided 2026-10-08):
+    // dashboard → Super Admin · bookings, payments, refunds → not Sales ·
+    // catalogue → not Accounts · custom trips → every staff member.
+    [Theory]
+    [InlineData("dashboard", SystemRole.SuperAdmin, HttpStatusCode.OK)]
+    [InlineData("dashboard", SystemRole.Manager, HttpStatusCode.Forbidden)]
+    [InlineData("dashboard", SystemRole.Sales, HttpStatusCode.Forbidden)]
+    [InlineData("dashboard", SystemRole.Accounts, HttpStatusCode.Forbidden)]
+    [InlineData("bookings", SystemRole.Manager, HttpStatusCode.OK)]
+    [InlineData("bookings", SystemRole.Accounts, HttpStatusCode.OK)]
+    [InlineData("bookings", SystemRole.Sales, HttpStatusCode.Forbidden)]
+    [InlineData("payments", SystemRole.Accounts, HttpStatusCode.OK)]
+    [InlineData("payments", SystemRole.Sales, HttpStatusCode.Forbidden)]
+    [InlineData("refunds", SystemRole.Accounts, HttpStatusCode.OK)]
+    [InlineData("refunds", SystemRole.Sales, HttpStatusCode.Forbidden)]
+    [InlineData("packages", SystemRole.Manager, HttpStatusCode.OK)]
+    [InlineData("packages", SystemRole.Sales, HttpStatusCode.OK)]
+    [InlineData("packages", SystemRole.Accounts, HttpStatusCode.Forbidden)]
+    [InlineData("destinations", SystemRole.Sales, HttpStatusCode.OK)]
+    [InlineData("destinations", SystemRole.Accounts, HttpStatusCode.Forbidden)]
+    [InlineData("categories", SystemRole.Sales, HttpStatusCode.OK)]
+    [InlineData("categories", SystemRole.Accounts, HttpStatusCode.Forbidden)]
+    [InlineData("custom-trips", SystemRole.Sales, HttpStatusCode.OK)]
+    [InlineData("custom-trips", SystemRole.Accounts, HttpStatusCode.OK)]
+    public async Task EachRole_OpensOnlyItsOwnSections(string section, SystemRole role, HttpStatusCode expected)
+    {
+        var client = await ClientAsAsync(role);
+
+        var response = await client.GetAsync($"/api/v1/admin/{section}", TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, response.StatusCode);
     }

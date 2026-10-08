@@ -289,4 +289,4 @@ export const dashboardQuery = queryOptions({ queryKey: operationsKeys.dashboard(
 
 /** The roles that may move money / cancel - the same as the API's ManageMoney and CancelBookings policies. */
 export const moneyRoles = ['SuperAdmin', 'Manager', 'Accounts'] as const
-export const cancelRoles = ['SuperAdmin', 'Manager', 'Sales'] as const
+export const cancelRoles = ['SuperAdmin', 'Manager'] as const

@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useMatch, useNavigate } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, ScrollRestoration, useLocation, useMatch, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -47,7 +47,14 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { staffManagerRoles, type Role } from '@/features/auth/auth.types'
+import {
+  bookingDeskRoles,
+  catalogueRoles,
+  dashboardRoles,
+  staffManagerRoles,
+  systemHealthRoles,
+  type Role,
+} from '@/features/auth/auth.types'
 import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/shared/components/BrandMark'
@@ -58,31 +65,31 @@ import { ThemeToggle } from '@/shared/theme/ThemeToggle'
 /** roles: only these may see the entry (the page itself checks too). Absent = every staff member. */
 type MenuItem = { to: string; label: string; icon: LucideIcon; end?: boolean; roles?: readonly Role[] }
 
-// The admin menu, in groups.
+// The admin menu, in groups. The roles match the router's guards (app/router.tsx).
 const adminMenu: { label: string; items: MenuItem[] }[] = [
-  { label: 'Overview', items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboardIcon, end: true }] },
+  { label: 'Overview', items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboardIcon, end: true, roles: dashboardRoles }] },
   {
     label: 'Operations',
     items: [
-      { to: '/admin/bookings', label: 'Bookings', icon: CalendarCheckIcon },
+      { to: '/admin/bookings', label: 'Bookings', icon: CalendarCheckIcon, roles: bookingDeskRoles },
       { to: '/admin/custom-trips', label: 'Custom trips', icon: RouteIcon },
-      { to: '/admin/payments', label: 'Payments', icon: CreditCardIcon },
-      { to: '/admin/refunds', label: 'Refunds', icon: Undo2Icon },
+      { to: '/admin/payments', label: 'Payments', icon: CreditCardIcon, roles: bookingDeskRoles },
+      { to: '/admin/refunds', label: 'Refunds', icon: Undo2Icon, roles: bookingDeskRoles },
     ],
   },
   {
     label: 'Catalogue',
     items: [
-      { to: '/admin/packages', label: 'Packages', icon: PackageIcon },
-      { to: '/admin/destinations', label: 'Destinations', icon: MapPinIcon },
-      { to: '/admin/categories', label: 'Categories', icon: TagsIcon },
+      { to: '/admin/packages', label: 'Packages', icon: PackageIcon, roles: catalogueRoles },
+      { to: '/admin/destinations', label: 'Destinations', icon: MapPinIcon, roles: catalogueRoles },
+      { to: '/admin/categories', label: 'Categories', icon: TagsIcon, roles: catalogueRoles },
     ],
   },
   {
     label: 'System',
     items: [
       { to: '/admin/staff', label: 'Staff', icon: UsersIcon, roles: staffManagerRoles },
-      { to: '/admin/system', label: 'System health', icon: ActivityIcon },
+      { to: '/admin/system', label: 'System health', icon: ActivityIcon, roles: systemHealthRoles },
     ],
   },
 ]
@@ -97,12 +104,21 @@ const roleLabels: Record<Role, string> = { SuperAdmin: 'Super Admin', Manager: '
 export function AdminLayout() {
   const { pathname } = useLocation()
   const { hasAnyRole } = useAuth()
+  const atDashboard = useMatch({ path: '/admin', end: true }) !== null
   const visibleMenu = adminMenu
     .map((group) => ({ ...group, items: group.items.filter((item) => !item.roles || hasAnyRole(item.roles)) }))
     .filter((group) => group.items.length > 0)
   const allItems = visibleMenu.flatMap((group) => group.items)
   const current = allItems.find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))
   const currentGroup = current && visibleMenu.find((group) => group.items.includes(current))
+
+  // /admin is the dashboard, which only the Super Admin sees. Everyone else
+  // (and every page that sends someone without access back to /admin) goes
+  // on to the first page of their own menu: Manager and Accounts → Bookings,
+  // Sales → Custom trips.
+  if (atDashboard && !hasAnyRole(dashboardRoles)) {
+    return <Navigate to={allItems[0]?.to ?? '/'} replace />
+  }
 
   return (
     <SidebarProvider>

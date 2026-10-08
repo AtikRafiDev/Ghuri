@@ -11,7 +11,8 @@ namespace Ghuri.Api.Controllers.Files;
 /// <summary>File uploads (blueprint section 11, "Shared: POST files (multipart)").</summary>
 [ApiController]
 [Route("api/v1/files")]
-[Authorize(Policy = Policies.AdminArea)] // only staff upload catalogue images for now
+[Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ManageCatalogue)] // only catalogue photos are uploaded for now
 public sealed class FilesController(ISender sender) : ControllerBase
 {
     // The 10 MB file itself plus room for the multipart wrapping around it.

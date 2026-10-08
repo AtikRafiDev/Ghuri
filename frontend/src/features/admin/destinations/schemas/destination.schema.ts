@@ -16,11 +16,13 @@ export const destinationSchema = z
       .array(z.object({ id: z.string(), url: z.string() }))
       .max(maxDestinationImages, `At most ${maxDestinationImages} photos.`),
     isFeatured: z.boolean(),
+    // null = an empty box: the API puts it after the last destination.
     sortOrder: z
       .number({ error: 'Enter a whole number.' })
       .int('Enter a whole number.')
       .min(0, '0 or more.')
-      .max(100_000, 'At most 100000.'),
+      .max(100_000, 'At most 100000.')
+      .nullable(),
   })
   .superRefine((values, ctx) => {
     const problem = slugProblem(values.slug, values.name, 160)

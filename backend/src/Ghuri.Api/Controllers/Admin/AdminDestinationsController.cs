@@ -15,6 +15,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin/destinations")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ManageCatalogue)]
 public sealed class AdminDestinationsController(ISender sender) : ControllerBase
 {
     /// <summary>Search / filter / page. ?search=&amp;countryId=&amp;scope=national|international&amp;page=1&amp;pageSize=20</summary>

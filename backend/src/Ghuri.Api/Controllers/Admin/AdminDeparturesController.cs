@@ -16,6 +16,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin/departures")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ManageCatalogue)]
 public sealed class AdminDeparturesController(ISender sender) : ControllerBase
 {
     /// <summary>Replace date, prices and seats. 409 if booked seats would be lost or moved.</summary>

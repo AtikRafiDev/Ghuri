@@ -18,6 +18,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ViewBookings)]
 public sealed class AdminPaymentsController(ISender sender) : ControllerBase
 {
     /// <summary>

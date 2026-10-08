@@ -29,6 +29,7 @@ namespace Ghuri.Api.Controllers.Admin;
 [ApiController]
 [Route("api/v1/admin/packages")]
 [Authorize(Policy = Policies.AdminArea)]
+[Authorize(Policy = Policies.ManageCatalogue)]
 public sealed class AdminPackagesController(ISender sender) : ControllerBase
 {
     /// <summary>Search / filter / page, newest first. ?search=&amp;destinationId=&amp;status=1|2|3&amp;pricingMode=1|2&amp;page=1&amp;pageSize=20</summary>

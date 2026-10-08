@@ -18,7 +18,9 @@ public interface IDestinationFields
     IReadOnlyList<Guid> ImageFileIds { get; }
 
     bool IsFeatured { get; }
-    int SortOrder { get; }
+
+    /// <summary>Lower comes first. Null = after the last destination. A number already in use moves that destination (and any right behind it) along by one.</summary>
+    int? SortOrder { get; }
 }
 
 /// <summary>Lengths match the catalog.Destinations columns, so the database never has to truncate or refuse.</summary>
@@ -40,6 +42,6 @@ internal sealed class DestinationFieldsValidator : AbstractValidator<IDestinatio
             .Must(ids => ids is null || !ids.Contains(Guid.Empty))
             .WithMessage("A photo id is missing.");
 
-        RuleFor(x => x.SortOrder).InclusiveBetween(0, 100_000);
+        RuleFor(x => x.SortOrder).InclusiveBetween(0, 100_000); // null passes: "put it at the end"
     }
 }

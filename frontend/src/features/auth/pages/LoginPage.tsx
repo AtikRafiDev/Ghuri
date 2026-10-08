@@ -22,13 +22,14 @@ export function LoginPage() {
   const { status, user, login } = useAuth()
   const queryClient = useQueryClient()
   const location = useLocation()
-  // Set by RequireAuth: the page the user wanted before being sent here.
-  const from = (location.state as { from?: string } | null)?.from
+  // from: set by RequireAuth - the page the user wanted before being sent here.
+  // email: set by ResetPasswordPage - the account that just got its new password.
+  const { from, email } = (location.state as { from?: string; email?: string } | null) ?? {}
   const [formError, setFormError] = useState<string | null>(null)
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { phoneOrEmail: '', password: '' },
+    defaultValues: { phoneOrEmail: email ?? '', password: '' },
   })
   const { errors, isSubmitting } = form.formState
 
@@ -69,13 +70,14 @@ export function LoginPage() {
         <TextField
           label="Phone or email"
           autoComplete="username"
-          autoFocus
+          autoFocus={!email}
           error={errors.phoneOrEmail?.message}
           {...form.register('phoneOrEmail')}
         />
         <PasswordField
           label="Password"
           autoComplete="current-password"
+          autoFocus={!!email}
           error={errors.password?.message}
           labelAside={
             <Link to="/forgot-password" className="text-[0.8125rem] leading-none font-semibold text-forest-700 underline-offset-4 transition-colors hover:text-forest-800 hover:underline">

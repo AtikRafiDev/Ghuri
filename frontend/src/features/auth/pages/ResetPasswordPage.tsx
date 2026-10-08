@@ -1,25 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowRightIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { FormAlert } from '@/shared/components/FormAlert'
-import { SuccessBurst } from '@/shared/components/SuccessBurst'
+import { notify } from '@/shared/lib/notify'
 import { applyServerErrors } from '@/shared/lib/serverErrors'
 import { authApi } from '../api/auth.api'
 import { AuthCard } from '../components/AuthCard'
 import { resetPasswordSchema, type ResetPasswordInput } from '../schemas/password.schema'
 import { PasswordField } from '@/shared/components/PasswordField'
 import { authLinkClass } from '../components/authLink'
+import { useAuth } from '../useAuth'
 
-/** Opened from the email link: /reset-password?email=...&token=... */
+/** Opened from the email link: /reset-password?email=...&token=... (a forgotten password, or a new staff member's welcome link). */
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const email = searchParams.get('email') ?? ''
   const token = searchParams.get('token') ?? ''
-  const [done, setDone] = useState(false)
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
 
   const form = useForm<ResetPasswordInput>({
@@ -44,32 +45,20 @@ export function ResetPasswordPage() {
     )
   }
 
-  if (done) {
-    return (
-      <AuthCard title="Password changed">
-        <div className="grid gap-5">
-          <div role="status" className="grid justify-items-center gap-4 rounded-3xl bg-forest-50/60 px-6 py-8 text-center ring-1 ring-forest-100 ring-inset">
-            <SuccessBurst size={72} />
-            <p className="max-w-sm animate-[fade-up_0.6s_var(--ease-out-expo)_0.9s_backwards] text-sm text-ink-600">
-              Your new password is set. For your safety, every device that was logged in has been logged out.
-            </p>
-          </div>
-          <Button asChild size="lg">
-            <Link to="/login">
-              Log in
-              <ArrowRightIcon className="group-hover/button:translate-x-0.5" />
-            </Link>
-          </Button>
-        </div>
-      </AuthCard>
-    )
-  }
-
   const onSubmit = form.handleSubmit(async ({ newPassword }) => {
     setFormError(null)
     try {
       await authApi.resetPassword({ email, token, newPassword })
-      setDone(true)
+      // Whoever is logged in on THIS browser - e.g. the Super Admin who sent
+      // the welcome link and opened it here - is not the person who just set
+      // this password. End that session, or /login would see "already logged
+      // in" and carry on as them. (The API ends it by its cookie alone; with
+      // no one logged in this does nothing. If the API can't be reached, the
+      // local logout still happens - and the password IS saved, so no error.)
+      await logout().catch(() => undefined)
+      // The toast outlives the redirect.
+      notify.success('Password saved. Log in with your new password.')
+      navigate('/login', { replace: true, state: { email } })
     } catch (error) {
       setFormError(applyServerErrors(form, error))
     }
