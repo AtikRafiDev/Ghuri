@@ -4,8 +4,9 @@ Please try each step below and tick it when it works as described. If something
 doesn't, write it in the **Problems found** table at the end: what you did, what
 you expected, and what happened (a screenshot helps).
 
-- **Website:** http://localhost:5173 (on the developer's PC)
-- **Test emails:** every email the website sends appears at http://localhost:5000. Nothing reaches a real inbox.
+- **Website:** the `https://….ngrok-free.dev` address the developer gives you (it works from your own PC). The first time, ngrok shows a "You are about to visit…" page: click **Visit Site**.
+- **Test emails:** every email the website sends is caught on the developer's PC. Nothing reaches a real inbox. Ask the developer to show you the email (password reset link, booking confirmation, quote).
+- **"Too many attempts"** on login/register/forgot password: the site allows 5 tries a minute, shared by everyone in the office. Wait a minute; it's not a bug.
 - **Test payments:** SSLCommerz **sandbox**. Use its test cards / test bKash; no real money moves.
 - **Accounts:** a customer account (register one) and a staff account (ask the developer).
 

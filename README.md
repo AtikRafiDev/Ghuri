@@ -313,6 +313,140 @@ attachments (the e-voucher and invoice PDFs) included.
 
 ---
 
+## 9. Share with the QA team (ngrok)
+
+Testers on **other PCs** open the website through **ngrok**. The API, the
+database and smtp4dev keep running on this PC. Only the website gets a
+public address, and the website already forwards `/api` to the API, the
+same way as in section 7.
+
+```
+Tester's PC ──https──► your-name.ngrok-free.dev ──► ngrok (this PC)
+SSLCommerz ───────────┘                              └─► built website :4173 ──/api──► API :5176
+```
+
+ngrok's free plan gives your account **one fixed address** (shown as
+`your-name.ngrok-free.dev` here; yours may end in `.ngrok-free.app`).
+Unlike the Cloudflare tunnel in section 7, it stays the same every time,
+so the one-time settings below are made once. Use one tunnel or the
+other: both use the same `CallbackBaseUrl` / `IpnUrl` settings.
+
+### Why testers get the built website, not `npm run dev`
+
+- **The free plan's monthly limit is shared by the whole team:** 20,000
+  requests and 1 GB. `npm run dev` sends each of the ~210 source files
+  separately, so the first page load alone is 200+ requests. The built
+  website (`npm run build`) loads about 11 files.
+- **Testers get a fixed version.** You keep coding on `npm run dev` at
+  `localhost:5173`. Testers see your changes only when you build again.
+  (The API and the database are shared: restarting the API interrupts
+  testers for a few seconds, and everyone's bookings are in one database.)
+
+### One-time
+
+1. **Find your address:** run `ngrok http 4173` once. The `Forwarding`
+   line shows `https://<your-name>.ngrok-free.dev -> http://localhost:4173`.
+   Press Ctrl+C.
+2. **Tell the API that address** (replace the example with yours, in all four):
+   ```
+   cd backend
+   dotnet user-secrets set "Site:PublicUrl" "https://your-name.ngrok-free.dev" --project src/Ghuri.Api
+   dotnet user-secrets set "Auth:PasswordResetUrl" "https://your-name.ngrok-free.dev/reset-password" --project src/Ghuri.Api
+   dotnet user-secrets set "PaymentGateway:SslCommerz:CallbackBaseUrl" "https://your-name.ngrok-free.dev" --project src/Ghuri.Api
+   dotnet user-secrets set "PaymentGateway:SslCommerz:IpnUrl" "https://your-name.ngrok-free.dev/api/v1/payments/sslcommerz/ipn" --project src/Ghuri.Api
+   ```
+
+   | Setting | What uses it |
+   |---|---|
+   | `Site:PublicUrl` | Links in custom-trip emails (the quote, "See your request", the staff's admin-panel link) |
+   | `Auth:PasswordResetUrl` | The link in "reset your password" and staff-invite emails |
+   | `SslCommerz:CallbackBaseUrl` | Where SSLCommerz sends the tester's browser after paying |
+   | `SslCommerz:IpnUrl` | Where SSLCommerz's server says "payment done" |
+
+   Testers can't open `localhost` links: on their PC, `localhost` is
+   their own machine.
+3. **Your own JWT signing key.** The repository is public, so the key in
+   `appsettings.Development.json` can be read by anyone. Once the API is
+   reachable from the internet, someone could use that key to sign their
+   own Super Admin login. Run the key step in section 5 ("One-time:
+   create your JWT signing key"). User-secrets take priority over
+   `appsettings.Development.json`. Everyone has to log in again once.
+4. **Restart the API.** Settings are read only at start.
+
+Check: `dotnet user-secrets list --project src/Ghuri.Api` shows five settings.
+
+### Every time
+
+1. Start the API (section 5) and smtp4dev (section 8) as usual.
+2. Build the website and serve the build:
+   ```
+   cd frontend
+   npm run build
+   npm run preview
+   ```
+   It shows `Local: http://localhost:4173/`. Leave it open. (If it says
+   4174, something else is using 4173 and ngrok would point at the wrong
+   port. Close that, then try again.)
+3. In another terminal:
+   ```
+   ngrok http 4173
+   ```
+   Leave it open. Ctrl+C here stops the sharing.
+4. Give the testers the `https://…ngrok-free.dev` address.
+
+**A new version for the testers:** Ctrl+C the preview, then `npm run build`
+and `npm run preview` again. The address stays the same. A backend change:
+restart the API.
+
+### Before the first tester: one test payment
+
+Open the **ngrok address** yourself (not localhost), book something and
+pay in the SSLCommerz sandbox. After paying, SSLCommerz sends the browser
+back to us with a form submission from **its own** site, and ngrok's
+warning page (below) might get in the way. You should land on "Payment
+received". If you see ngrok's warning page instead, the payment is still
+confirmed: SSLCommerz's server-to-server message never gets the warning
+page, so **My bookings** shows Confirmed. But testers would see the
+warning page after every payment, and that needs a fix before they start.
+
+### What testers will notice (not bugs)
+
+- **ngrok's warning page** ("You are about to visit…") on the first visit:
+  click **Visit Site**. The browser then skips it for 7 days. Paid ngrok
+  plans don't show it.
+- **Emails** land in smtp4dev on **this** PC (`http://localhost:5000`),
+  which testers can't open. Show them on your screen.
+- **"Too many attempts"** on login, register or forgot-password: those
+  allow 5 tries a minute per internet address. Testers in one office share
+  one address, so they share those 5. Wait a minute and try again.
+
+### Limits of the free plan
+
+- **20,000 requests and 1 GB a month** for everyone together. The demo
+  photos alone are about 100 MB. Each tester's first look through the
+  catalogue downloads them, and a private/incognito window downloads them
+  again. ngrok's dashboard (dashboard.ngrok.com) shows how much is used.
+- If the team runs out: the **Hobbyist** plan (US$10 a month) has 100,000
+  requests and 5 GB, and no warning page. Or switch to section 7's
+  Cloudflare tunnel (no monthly limit, but a new address each time and
+  the four settings again).
+
+### Back to plain localhost
+
+The four address settings stay in place, so next time skip straight to
+"Every time". While they're set, emails and payments started on
+`localhost:5173` also link to and return to the ngrok address. To undo:
+```
+cd backend
+dotnet user-secrets remove "Site:PublicUrl" --project src/Ghuri.Api
+dotnet user-secrets remove "Auth:PasswordResetUrl" --project src/Ghuri.Api
+dotnet user-secrets remove "PaymentGateway:SslCommerz:CallbackBaseUrl" --project src/Ghuri.Api
+dotnet user-secrets remove "PaymentGateway:SslCommerz:IpnUrl" --project src/Ghuri.Api
+```
+Keep the JWT key: it's better than the one in Git anyway.
+
+---
+
 ## Everyday commands (reference)
 
 ### Git

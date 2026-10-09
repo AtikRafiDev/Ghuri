@@ -41,7 +41,10 @@ export default defineConfig({
     // Vite answers only requests addressed to localhost unless told
     // otherwise. ".trycloudflare.com" = any Cloudflare quick-tunnel address
     // (README "Public address"): the tunnel lets SSLCommerz reach this PC.
-    allowedHosts: ['.trycloudflare.com'],
+    // ".ngrok-free.app" / ".ngrok-free.dev" = ngrok's free addresses (README
+    // "Share with the QA team"). `npm run preview` reuses this list and the
+    // proxy below, so the built site works through the tunnel the same way.
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok-free.dev'],
     // Dev proxy: the browser only ever talks to Vite (localhost:5173), and
     // Vite forwards these paths to the API server-to-server. To the browser
     // everything is ONE origin, so no CORS setup is needed - and the
