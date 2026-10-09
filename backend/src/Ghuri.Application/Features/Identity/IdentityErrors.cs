@@ -43,6 +43,11 @@ public static class IdentityErrors
     public static readonly Error ResetLinkInvalid =
         Error.Failure("reset_link_invalid", "This reset link is invalid or has expired. Please request a new one.") with { CommitChanges = true };
 
+    // A good reset link, but the "new" password is the one the account
+    // already has. The link isn't used up, so the user just picks another.
+    public static readonly Error NewPasswordSameAsOld =
+        Error.Failure("new_password_same_as_old", "The new password must be different from your current password.");
+
     // Registration.
     public static readonly Error PhoneTaken =
         Error.Conflict("phone_taken", "This phone number is already registered.");

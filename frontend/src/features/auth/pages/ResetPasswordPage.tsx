@@ -60,7 +60,7 @@ export function ResetPasswordPage() {
       notify.success('Password saved. Log in with your new password.')
       navigate('/login', { replace: true, state: { email } })
     } catch (error) {
-      setFormError(applyServerErrors(form, error))
+      setFormError(applyServerErrors(form, error, { new_password_same_as_old: 'newPassword' }))
     }
   })
 

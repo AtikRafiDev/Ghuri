@@ -14,9 +14,9 @@ public class PasswordResetTests
         await new ForgotPasswordHandler(_context.Users, _context.Otps, _context.PasswordLinks, _context.Settings, _context.Clock)
             .Handle(new ForgotPasswordCommand(email), TestContext.Current.CancellationToken);
 
-    private async Task<Result> ResetAsync(string email, string token) =>
+    private async Task<Result> ResetAsync(string email, string token, string newPassword = NewPassword) =>
         await new ResetPasswordHandler(_context.Users, _context.Otps, _context.RefreshTokens, _context.Tokens, _context.Passwords, _context.Clock)
-            .Handle(new ResetPasswordCommand(email, token, NewPassword), TestContext.Current.CancellationToken);
+            .Handle(new ResetPasswordCommand(email, token, newPassword), TestContext.Current.CancellationToken);
 
     /// <summary>Asks for a link and returns the token that was put in the email.</summary>
     private async Task<string> RequestLinkAsync(string email = "rahim@example.com")
@@ -74,6 +74,22 @@ public class PasswordResetTests
 
         var secondUse = await ResetAsync("rahim@example.com", token);
         Assert.Equal("reset_link_invalid", secondUse.Error.Code); // works once only
+    }
+
+    [Fact]
+    public async Task Reset_ToTheCurrentPassword_IsRefused_AndTheLinkStillWorks()
+    {
+        var user = _context.AddCustomer();
+        var token = await RequestLinkAsync();
+
+        var same = await ResetAsync("rahim@example.com", token, IdentityTestContext.Password);
+
+        Assert.Equal("new_password_same_as_old", same.Error.Code);
+        Assert.Null(Assert.Single(_context.Otps.Codes).ConsumedAtUtc); // not used up
+
+        var retry = await ResetAsync("rahim@example.com", token); // a different password, same link
+        Assert.True(retry.IsSuccess);
+        Assert.True(_context.Passwords.Verify(user.PasswordHash!, NewPassword));
     }
 
     [Fact]

@@ -88,10 +88,6 @@ internal static class EmailLayout
                 </td>
               </tr>
             </table>
-            <p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#5f7168;">
-              Button not working? Copy this link into your browser:<br>
-              <a href="{href}" target="_blank" style="color:#1f6f51;word-break:break-all;">{href}</a>
-            </p>
             """;
     }
 }

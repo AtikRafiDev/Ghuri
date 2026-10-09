@@ -36,6 +36,13 @@ internal sealed class ResetPasswordHandler(
             return IdentityErrors.ResetLinkInvalid;
         }
 
+        // Re-using the old password defeats the point of a reset - someone
+        // else may know it. Checked only AFTER the token, so without a valid
+        // link nobody can use this to test passwords. (A new staff member
+        // has no password yet - nothing to compare.)
+        if (user.PasswordHash is not null && passwords.Verify(user.PasswordHash, command.NewPassword))
+            return IdentityErrors.NewPasswordSameAsOld;
+
         code.Consume(nowUtc);                                 // the link never works again
         user.SetPassword(passwords.Hash(command.NewPassword)); // also clears any lock
 

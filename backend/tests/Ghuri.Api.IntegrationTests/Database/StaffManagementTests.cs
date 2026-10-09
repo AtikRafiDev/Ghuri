@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Ghuri.Application.Abstractions.Ports;
+using Ghuri.Application.Features.Identity.Commands.ForgotPassword;
 using Ghuri.Application.Features.Identity.Commands.Login;
 using Ghuri.Application.Features.Identity.Commands.RefreshSession;
 using Ghuri.Application.Features.Identity.Commands.ResetPassword;
@@ -85,6 +86,23 @@ public class StaffManagementTests(SqlServerFixture sql) : IClassFixture<SqlServe
         var login = await sql.SendCommandAsync(new LoginCommand(phone, Password), asUser: null);
 
         Assert.True(reset.IsSuccess, reset.Error.Message);
+        Assert.True(login.IsSuccess, login.Error.Message);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_RefusesTheCurrentPassword_ButTakesANewOne()
+    {
+        var (_, phone, email) = await CreateAsync();
+        await sql.SendCommandAsync(new ResetPasswordCommand(email, TokenEmailedTo(email), Password));
+        await sql.SendCommandAsync(new ForgotPasswordCommand(email), asUser: null);
+        var token = TokenEmailedTo(email);
+
+        var same = await sql.SendCommandAsync(new ResetPasswordCommand(email, token, Password), asUser: null);
+        var fresh = await sql.SendCommandAsync(new ResetPasswordCommand(email, token, "another-password"), asUser: null); // same link: not used up
+        var login = await sql.SendCommandAsync(new LoginCommand(phone, "another-password"), asUser: null);
+
+        Assert.Equal("new_password_same_as_old", same.Error.Code);
+        Assert.True(fresh.IsSuccess, fresh.Error.Message);
         Assert.True(login.IsSuccess, login.Error.Message);
     }
 
