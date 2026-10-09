@@ -29,10 +29,16 @@ public class GhuriApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jobs:Outbox:Enabled", "false"); // tests call OutboxDispatcherJob.RunOnceAsync themselves
         builder.UseSetting("Jobs:Outbox:RetryDelaySeconds", "0"); // ...and retry at once, without waiting
         builder.UseSetting("Jobs:QuoteExpiry:Enabled", "false");
+        builder.UseSetting("Jobs:RefundStatus:Enabled", "false"); // tests call RefundStatusJob.RunOnceAsync themselves
 
         // Development sends through smtp4dev - a test must never need a mail
         // server running. (SqlServerFixture goes further: a FakeEmailSender
         // that keeps every email for the test to read.)
         builder.UseSetting("Email:Sender", "Log");
+
+        // The test app reads the developer's user-secrets too (it runs as
+        // Development). Sharing with the QA team sets Site:PublicUrl to the
+        // ngrok address there (README section 9) - tests must not depend on that.
+        builder.UseSetting("Site:PublicUrl", "http://localhost:5173");
     }
 }

@@ -196,7 +196,7 @@ function Details({ booking: b }: { booking: AdminBooking }) {
               subtitle="Money owed back on this booking"
               flush
               aside={
-                b.refunds.some((r) => r.status === 1) && (
+                b.refunds.some((r) => r.status === 1 || r.status === 6) && ( // to process, or failed at SSLCommerz
                   <Button asChild variant="outline" size="sm">
                     <Link to={`/admin/refunds?q=${encodeURIComponent(b.bookingNo)}`}>
                       Process in Refunds

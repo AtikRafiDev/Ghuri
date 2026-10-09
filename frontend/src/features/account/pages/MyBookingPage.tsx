@@ -23,9 +23,9 @@ const refundLabels: Record<RefundStatus, string> = {
   1: "requested - our team will send it to you within a few working days",
   2: 'approved - on its way',
   3: 'not approved - please contact us',
-  4: 'being sent',
+  4: 'on its way back to the account you paid with - this can take a few working days',
   5: 'refunded',
-  6: 'failed - our team will contact you',
+  6: 'delayed - our team will send it another way and contact you',
 }
 
 const travellerTypes: Record<TravellerType, string> = { 1: 'Adult', 2: 'Child', 3: 'Infant' }

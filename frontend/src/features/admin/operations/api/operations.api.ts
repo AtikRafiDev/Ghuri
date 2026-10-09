@@ -39,9 +39,9 @@ export const refundStatusLabels: Record<RefundStatus, string> = {
   1: 'To process',
   2: 'Approved',
   3: 'Rejected',
-  4: 'Processing',
+  4: 'With SSLCommerz', // SSLCommerz is sending it back - only its answer completes it
   5: 'Refunded',
-  6: 'Failed',
+  6: 'Failed', // SSLCommerz refused or cancelled it - still owed, still to process
 }
 
 /** Backend: ManualPaymentMethod. */
@@ -170,6 +170,8 @@ export type AdminRefundListItem = {
   refundNo: string
   bookingNo: string
   paymentNo: string
+  /** 1 = SSLCommerz: it can send the money back itself. */
+  paymentProvider: PaymentProvider
   /** How the customer paid - send the money back the same way. */
   paymentMethod: string | null
   contactName: string
@@ -182,8 +184,10 @@ export type AdminRefundListItem = {
   /** null = requested by the system (a late or double payment). */
   requestedByName: string | null
   requestedAtUtc: string
+  /** The bKash / bank id staff typed, or SSLCommerz's refund id. */
   reference: string | null
   completedAtUtc: string | null
+  /** Why it was rejected, or why SSLCommerz refused or cancelled it. */
   rejectReason: string | null
 }
 
@@ -268,6 +272,17 @@ export const operationsApi = {
 
   async rejectRefund(refundNo: string, reason: string): Promise<void> {
     await http.post(`${base}/refunds/${enc(refundNo)}/reject`, { reason })
+  },
+
+  /** SSLCommerz sends it back the way the customer paid; the refund becomes "With SSLCommerz". */
+  async refundThroughSslCommerz(refundNo: string): Promise<void> {
+    await http.post(`${base}/refunds/${enc(refundNo)}/sslcommerz`)
+  },
+
+  /** "Check now": asks SSLCommerz how it's going. The API also checks by itself every 15 minutes. */
+  async checkSslCommerzRefund(refundNo: string): Promise<{ refundNo: string; status: RefundStatus }> {
+    const { data } = await http.post<{ refundNo: string; status: RefundStatus }>(`${base}/refunds/${enc(refundNo)}/sslcommerz/check`)
+    return data
   },
 
   async dashboard(): Promise<AdminDashboard> {

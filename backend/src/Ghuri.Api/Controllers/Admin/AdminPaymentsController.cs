@@ -1,7 +1,9 @@
 using Ghuri.Api.Authentication;
 using Ghuri.Api.ErrorHandling;
+using Ghuri.Application.Features.Payments.Commands.CheckGatewayRefund;
 using Ghuri.Application.Features.Payments.Commands.CompleteRefund;
 using Ghuri.Application.Features.Payments.Commands.RejectRefund;
+using Ghuri.Application.Features.Payments.Commands.StartGatewayRefund;
 using Ghuri.Application.Features.Payments.Queries.SearchPayments;
 using Ghuri.Application.Features.Payments.Queries.SearchRefunds;
 using Ghuri.Domain.Enums;
@@ -13,7 +15,7 @@ namespace Ghuri.Api.Controllers.Admin;
 
 /// <summary>
 /// Payments and refunds for staff (17-day plan, Day 12). Every staff member
-/// can look; marking a refund sent or rejecting it needs ManageMoney.
+/// can look; sending a refund (by hand or through SSLCommerz) or rejecting it needs ManageMoney.
 /// </summary>
 [ApiController]
 [Route("api/v1/admin")]
@@ -45,6 +47,22 @@ public sealed class AdminPaymentsController(ISender sender) : ControllerBase
     [Authorize(Policy = Policies.ManageMoney)]
     public async Task<IActionResult> Complete(string refundNo, CompleteRefundRequest request, CancellationToken cancellationToken) =>
         (await sender.Send(new CompleteRefundCommand(refundNo, request.Reference), cancellationToken)).ToActionResult();
+
+    /// <summary>
+    /// Send it back through SSLCommerz, the way the customer paid. 204 = SSLCommerz
+    /// accepted it (now Processing). 409 refund_not_online = paid by hand ·
+    /// 400 refund_refused = SSLCommerz said no (saved as Failed) · 400 refund_unconfirmed = no answer, try again.
+    /// </summary>
+    [HttpPost("refunds/{refundNo}/sslcommerz")]
+    [Authorize(Policy = Policies.ManageMoney)]
+    public async Task<IActionResult> SendThroughGateway(string refundNo, CancellationToken cancellationToken) =>
+        (await sender.Send(new StartGatewayRefundCommand(refundNo), cancellationToken)).ToActionResult();
+
+    /// <summary>"Check now": asks SSLCommerz how the refund is going → { refundNo, status }. The job does the same every 15 minutes.</summary>
+    [HttpPost("refunds/{refundNo}/sslcommerz/check")]
+    [Authorize(Policy = Policies.ManageMoney)]
+    public async Task<IActionResult> CheckGateway(string refundNo, CancellationToken cancellationToken) =>
+        (await sender.Send(new CheckGatewayRefundCommand(refundNo), cancellationToken)).ToActionResult();
 
     /// <summary>Not owed after all - body { "reason": "..." }.</summary>
     [HttpPost("refunds/{refundNo}/reject")]

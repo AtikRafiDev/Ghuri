@@ -26,6 +26,16 @@ public interface IPaymentGateway
     /// a network problem comes back as Unreachable.
     /// </summary>
     Task<PaymentValidationResult> ValidatePaymentAsync(string validationId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Asks the provider to send money of a succeeded payment back to the
+    /// customer, the way they paid (SSLCommerz: the refund API). Never throws:
+    /// no answer, or an answer we can't trust, comes back as Unconfirmed.
+    /// </summary>
+    Task<RefundStartResult> StartRefundAsync(RefundStartRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Asks the provider how a refund it accepted is going. Never throws: no answer is Unconfirmed.</summary>
+    Task<RefundStatusResult> GetRefundStatusAsync(string providerRefundId, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -83,4 +93,64 @@ public sealed record PaymentValidationResult(
     public static PaymentValidationResult Invalid(string reason) => new(PaymentValidationOutcome.Invalid, FailureReason: reason);
 
     public static PaymentValidationResult Unreachable(string reason) => new(PaymentValidationOutcome.Unreachable, FailureReason: reason);
+}
+
+/// <summary>
+/// One refund to send. RefundId is our RefundNo (RF1001): the provider keeps
+/// it with the refund, so asking twice for the same refund is recognised as
+/// the same one. ProviderTransactionId is the provider's id of the PAYMENT
+/// (SSLCommerz bank_tran_id). Reference is the booking number, for reconciliation.
+/// </summary>
+public sealed record RefundStartRequest(
+    string RefundId,
+    string ProviderTransactionId,
+    decimal Amount,
+    string Reason,
+    string Reference);
+
+/// <summary>
+/// Started = the provider accepted it and is sending the money ·
+/// Refused = it said no, nothing was sent · Unconfirmed = no answer, or one
+/// we can't act on (nothing is recorded; ask again later).
+/// </summary>
+public enum RefundStartOutcome
+{
+    Started = 1,
+    Refused = 2,
+    Unconfirmed = 3
+}
+
+/// <summary>When Started: the provider's id for this refund (SSLCommerz refund_ref_id). Otherwise: why not, in words staff can read.</summary>
+public sealed record RefundStartResult(RefundStartOutcome Outcome, string? ProviderRefundId = null, string? FailureReason = null)
+{
+    public static RefundStartResult Started(string providerRefundId) => new(RefundStartOutcome.Started, providerRefundId);
+
+    public static RefundStartResult Refused(string reason) => new(RefundStartOutcome.Refused, FailureReason: reason);
+
+    public static RefundStartResult Unconfirmed(string reason) => new(RefundStartOutcome.Unconfirmed, FailureReason: reason);
+}
+
+/// <summary>
+/// Refunded = the money is back with the customer · Processing = still on its
+/// way · Failed = the provider cancelled it, the money was NOT sent ·
+/// Unconfirmed = no answer, or one we can't act on (ask again later).
+/// </summary>
+public enum RefundStatusOutcome
+{
+    Refunded = 1,
+    Processing = 2,
+    Failed = 3,
+    Unconfirmed = 4
+}
+
+/// <summary>The provider's answer about one refund. FailureReason says why when Failed or Unconfirmed.</summary>
+public sealed record RefundStatusResult(RefundStatusOutcome Outcome, string? FailureReason = null)
+{
+    public static readonly RefundStatusResult Refunded = new(RefundStatusOutcome.Refunded);
+
+    public static readonly RefundStatusResult Processing = new(RefundStatusOutcome.Processing);
+
+    public static RefundStatusResult Failed(string reason) => new(RefundStatusOutcome.Failed, reason);
+
+    public static RefundStatusResult Unconfirmed(string reason) => new(RefundStatusOutcome.Unconfirmed, reason);
 }

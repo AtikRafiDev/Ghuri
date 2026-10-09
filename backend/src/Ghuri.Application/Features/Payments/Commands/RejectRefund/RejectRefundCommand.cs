@@ -41,6 +41,8 @@ internal sealed class RejectRefundHandler(
             return PaymentErrors.RefundNotFound;
         if (!refund.IsOpen)
             return PaymentErrors.RefundNotOpen;
+        if (refund.IsWithGateway)
+            return PaymentErrors.RefundInProgress; // SSLCommerz is sending it - it can't be called back from here
 
         refund.Reject(command.Reason, staffId, clock.GetUtcNow().UtcDateTime);
 

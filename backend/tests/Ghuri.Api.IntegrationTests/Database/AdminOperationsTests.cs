@@ -6,11 +6,13 @@ using Ghuri.Application.Features.Booking.Commands.CancelBookingByAgency;
 using Ghuri.Application.Features.Booking.Queries.GetBookingForAdmin;
 using Ghuri.Application.Features.Booking.Queries.SearchBookings;
 using Ghuri.Application.Features.Dashboard.Queries.GetAdminDashboard;
+using Ghuri.Application.Features.Payments.Commands.CheckGatewayRefund;
 using Ghuri.Application.Features.Payments.Commands.CompleteRefund;
 using Ghuri.Application.Features.Payments.Commands.HandleGatewayCallback;
 using Ghuri.Application.Features.Payments.Commands.InitiatePayment;
 using Ghuri.Application.Features.Payments.Commands.RecordManualPayment;
 using Ghuri.Application.Features.Payments.Commands.RejectRefund;
+using Ghuri.Application.Features.Payments.Commands.StartGatewayRefund;
 using Ghuri.Application.Features.Payments.Queries.SearchPayments;
 using Ghuri.Application.Features.Payments.Queries.SearchRefunds;
 using Ghuri.Domain.Entities.Iam;
@@ -28,7 +30,8 @@ namespace Ghuri.Api.IntegrationTests.Database;
 /// Staff running the day from the admin panel (17-day plan, Day 12), against
 /// real SQL Server. Money: a manual payment confirms once and only for the
 /// right amount; an agency cancellation refunds everything; a refund is
-/// marked as sent once; and only the right roles can do any of it.
+/// marked as sent once - by hand or through SSLCommerz, never both; and only
+/// the right roles can do any of it.
 /// </summary>
 public class AdminOperationsTests : IClassFixture<SqlServerFixture>
 {
@@ -278,6 +281,153 @@ public class AdminOperationsTests : IClassFixture<SqlServerFixture>
 
         var refund = Assert.Single(open.Items);
         Assert.Equal((booked.Total, paymentNo, (string?)null), (refund.Amount, refund.PaymentNo, refund.RequestedByName));
+    }
+
+    // ---------- Refunds through SSLCommerz ----------
+
+    private async Task<(Booked Booked, string RefundNo, Guid Staff)> RefundOwedOnlineAsync()
+    {
+        var booked = await PaidOnlineAsync();
+        var staff = await StaffAsync();
+        var refundNo = (await _sql.SendCommandAsync(new CancelBookingByAgencyCommand(booked.BookingNo, "Departure called off"), staff)).Value.RefundNo!;
+        return (booked, refundNo, staff);
+    }
+
+    [Fact]
+    public async Task ARefundThroughSslCommerz_IsProcessing_ThenTheJobCompletesIt_AndRefundsThePayment()
+    {
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+
+        var sent = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.True(sent.IsSuccess, sent.Error.Message);
+        var request = Assert.Single(_sql.PaymentGateway.RefundStarts);
+        Assert.Equal((refundNo, booked.Total, booked.BookingNo), (request.RefundId, request.Amount, request.Reference));
+        Assert.StartsWith("BANK-PAY", request.ProviderTransactionId); // the payment's bank_tran_id from the validation API
+        var view = await AdminViewAsync(booked.BookingNo);
+        Assert.Equal((RefundStatus.Processing, "REF-" + refundNo), (view.Refunds[0].Status, view.Refunds[0].Reference));
+        Assert.Equal(PaymentStatus.Succeeded, view.Payments[0].Status); // nothing is back yet
+        Assert.Contains((await _sql.SendAsync(new SearchRefundsQuery(OpenOnly: true, Search: booked.BookingNo))).Value.Items, r => r.RefundNo == refundNo);
+
+        _sql.PaymentGateway.RefundStatus = _ => RefundStatusResult.Refunded;
+        await _sql.Services.GetRequiredService<RefundStatusJob>().RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains("REF-" + refundNo, _sql.PaymentGateway.RefundChecks);
+        view = await AdminViewAsync(booked.BookingNo);
+        Assert.Equal(RefundStatus.Completed, view.Refunds[0].Status);
+        Assert.NotNull(view.Refunds[0].CompletedAtUtc);
+        Assert.Equal(PaymentStatus.Refunded, view.Payments[0].Status);
+        Assert.Empty((await _sql.SendAsync(new SearchRefundsQuery(OpenOnly: true, Search: booked.BookingNo))).Value.Items);
+    }
+
+    [Fact]
+    public async Task WhileSslCommerzSendsARefund_ItCantBeMarkedByHand_RejectedOrSentAgain()
+    {
+        // Money: any of these would pay the customer twice.
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+        await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        var byHand = await _sql.SendCommandAsync(new CompleteRefundCommand(refundNo, "BK-1"), staff);
+        var rejected = await _sql.SendCommandAsync(new RejectRefundCommand(refundNo, "Changed our minds"), staff);
+        var again = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.Equal(("refund_in_progress", "refund_in_progress", "refund_in_progress"), (byHand.Error.Code, rejected.Error.Code, again.Error.Code));
+        Assert.Single(_sql.PaymentGateway.RefundStarts);
+        Assert.Equal(RefundStatus.Processing, (await AdminViewAsync(booked.BookingNo)).Refunds[0].Status);
+    }
+
+    [Fact]
+    public async Task SslCommerzRefusing_SavesItAsFailed_WithTheReason_AndItCanStillBeSentByHand()
+    {
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+        _sql.PaymentGateway.RefundStart = _ => RefundStartResult.Refused("SSLCommerz refused the refund: Invalid bank tran id.");
+
+        var sent = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.Equal(("refund_refused", "SSLCommerz refused the refund: Invalid bank tran id."), (sent.Error.Code, sent.Error.Message));
+        var refund = (await AdminViewAsync(booked.BookingNo)).Refunds[0];
+        Assert.Equal((RefundStatus.Failed, "SSLCommerz refused the refund: Invalid bank tran id."), (refund.Status, refund.RejectReason));
+        Assert.Contains((await _sql.SendAsync(new SearchRefundsQuery(OpenOnly: true, Search: booked.BookingNo))).Value.Items, r => r.RefundNo == refundNo);
+
+        var byHand = await _sql.SendCommandAsync(new CompleteRefundCommand(refundNo, "BK-REF-9"), staff);
+
+        Assert.True(byHand.IsSuccess, byHand.Error.Message);
+        Assert.Equal(PaymentStatus.Refunded, (await AdminViewAsync(booked.BookingNo)).Payments[0].Status);
+    }
+
+    [Fact]
+    public async Task NoAnswerFromSslCommerz_ChangesNothing()
+    {
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+        _sql.PaymentGateway.RefundStart = _ => RefundStartResult.Unconfirmed("SSLCommerz could not be reached. Please try again in a moment.");
+
+        var sent = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.Equal("refund_unconfirmed", sent.Error.Code);
+        var refund = (await AdminViewAsync(booked.BookingNo)).Refunds[0];
+        Assert.Equal((RefundStatus.Requested, (string?)null), (refund.Status, refund.Reference));
+    }
+
+    [Fact]
+    public async Task SslCommerzCancellingARefund_PutsItBackOnTheList()
+    {
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+        await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+        _sql.PaymentGateway.RefundStatus = _ => RefundStatusResult.Failed("SSLCommerz cancelled the refund.");
+
+        var checkedNow = await _sql.SendCommandAsync(new CheckGatewayRefundCommand(refundNo), staff);
+
+        Assert.Equal(RefundStatus.Failed, checkedNow.Value.Status);
+        var view = await AdminViewAsync(booked.BookingNo);
+        Assert.Equal((RefundStatus.Failed, "SSLCommerz cancelled the refund."), (view.Refunds[0].Status, view.Refunds[0].RejectReason));
+        Assert.Equal(PaymentStatus.Succeeded, view.Payments[0].Status);
+
+        _sql.PaymentGateway.RefundStart = request => RefundStartResult.Started("REF-2-" + request.RefundId);
+        var sentAgain = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.True(sentAgain.IsSuccess, sentAgain.Error.Message);
+        var refund = (await AdminViewAsync(booked.BookingNo)).Refunds[0];
+        Assert.Equal((RefundStatus.Processing, "REF-2-" + refundNo, (string?)null), (refund.Status, refund.Reference, refund.RejectReason));
+    }
+
+    [Fact]
+    public async Task StillOnItsWay_ChangesNothing()
+    {
+        var (booked, refundNo, staff) = await RefundOwedOnlineAsync();
+        await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        var checkedNow = await _sql.SendCommandAsync(new CheckGatewayRefundCommand(refundNo), staff); // the fake's default: processing
+
+        Assert.Equal(RefundStatus.Processing, checkedNow.Value.Status);
+        Assert.Equal(PaymentStatus.Succeeded, (await AdminViewAsync(booked.BookingNo)).Payments[0].Status);
+    }
+
+    [Fact]
+    public async Task AManualPayment_CantBeRefundedThroughSslCommerz()
+    {
+        var booked = await PendingAsync();
+        var staff = await StaffAsync();
+        await _sql.SendCommandAsync(new RecordManualPaymentCommand(booked.BookingNo, booked.Total, ManualPaymentMethod.Cash, null), staff);
+        var refundNo = (await _sql.SendCommandAsync(new CancelBookingByAgencyCommand(booked.BookingNo, "Customer asked"), staff)).Value.RefundNo!;
+
+        var sent = await _sql.SendCommandAsync(new StartGatewayRefundCommand(refundNo), staff);
+
+        Assert.Equal("refund_not_online", sent.Error.Code);
+        Assert.Empty(_sql.PaymentGateway.RefundStarts);
+    }
+
+    [Theory]
+    [InlineData(SystemRole.Accounts, HttpStatusCode.NoContent)]
+    [InlineData(SystemRole.Manager, HttpStatusCode.NoContent)]
+    [InlineData(SystemRole.Sales, HttpStatusCode.Forbidden)] // Sales never touches money
+    public async Task OnlyMoneyRoles_CanSendARefundThroughSslCommerz(SystemRole role, HttpStatusCode expected)
+    {
+        var (_, refundNo, _) = await RefundOwedOnlineAsync();
+        var client = await ClientAsAsync(role);
+
+        var response = await client.PostAsync($"/api/v1/admin/refunds/{refundNo}/sslcommerz", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, response.StatusCode);
     }
 
     // ---------- Lists and dashboard ----------

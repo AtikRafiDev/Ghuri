@@ -78,8 +78,9 @@ internal sealed class GetAdminDashboardHandler(IReadDbContext db, TimeProvider c
 
         var pendingPayments = await db.Bookings.CountAsync(b => b.Status == BookingStatus.PendingPayment, cancellationToken);
 
-        var openRefunds = db.Refunds.Where(r =>
-            r.Status == RefundStatus.Requested || r.Status == RefundStatus.Approved || r.Status == RefundStatus.Processing);
+        var openRefunds = db.Refunds.Where(r => // = Refund.IsOpen: money still owed
+            r.Status == RefundStatus.Requested || r.Status == RefundStatus.Approved
+            || r.Status == RefundStatus.Processing || r.Status == RefundStatus.Failed);
         var refundsToProcess = await openRefunds.CountAsync(cancellationToken);
         var refundsToProcessAmount = await openRefunds.SumAsync(r => (decimal?)r.Amount, cancellationToken) ?? 0;
 

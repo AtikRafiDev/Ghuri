@@ -123,6 +123,15 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<QuoteExpiryJob>();
         services.AddHostedService(sp => sp.GetRequiredService<QuoteExpiryJob>());
+
+        // Refunds SSLCommerz is sending: done yet?
+        services.AddOptions<RefundStatusOptions>()
+            .BindConfiguration(RefundStatusOptions.SectionName)
+            .Validate(o => o.IntervalSeconds is >= 60 and <= 86400 && o.BatchSize is >= 1 and <= 1000,
+                "Jobs:RefundStatus: IntervalSeconds must be between 60 and 86400, BatchSize between 1 and 1000.")
+            .ValidateOnStart();
+        services.AddSingleton<RefundStatusJob>();
+        services.AddHostedService(sp => sp.GetRequiredService<RefundStatusJob>());
     }
 
     private static void AddFileStorage(this IServiceCollection services)
@@ -269,6 +278,9 @@ public static class DependencyInjection
                         "Email:FromAddress is required, e.g. bookings@ghuri.com.")
                     .Validate(o => !string.IsNullOrWhiteSpace(o.Smtp.Host) && o.Smtp.Port is > 0 and <= 65535,
                         "Email:Smtp:Host and Email:Smtp:Port are required, e.g. localhost and 25 for smtp4dev.")
+                    .Validate(o => string.IsNullOrWhiteSpace(o.Smtp.UserName) || !string.IsNullOrWhiteSpace(o.Smtp.Password),
+                        "Email:Smtp:UserName is set but Email:Smtp:Password is empty. Locally: dotnet user-secrets set " +
+                        "\"Email:Smtp:Password\" \"...\" (README section 8); a server: the Email__Smtp__Password environment variable.")
                     .ValidateOnStart();
                 services.AddSingleton<IEmailSender, SmtpEmailSender>();
                 break;

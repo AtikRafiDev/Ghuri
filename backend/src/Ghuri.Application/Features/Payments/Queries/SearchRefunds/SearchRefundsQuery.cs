@@ -9,20 +9,24 @@ namespace Ghuri.Application.Features.Payments.Queries.SearchRefunds;
 
 /// <summary>
 /// The admin refunds table (17-day plan, Day 12: "refunds to process").
-/// OpenOnly = still waiting for staff (Requested) - oldest first, so nobody
-/// waits longest; otherwise every refund, newest first.
+/// OpenOnly = money still owed (Requested, with SSLCommerz, or failed there) -
+/// oldest first, so nobody waits longest; otherwise every refund, newest first.
 /// </summary>
 public sealed record SearchRefundsQuery(bool OpenOnly, string? Search, int Page = 1, int PageSize = 20) : IQuery<Paged<AdminRefundListItemDto>>;
 
 /// <summary>
 /// One refund, with what staff need to send the money: how the customer
-/// paid (PaymentMethod - send bKash back to bKash) and their contact.
-/// RequestedByName null = the system (a late or double payment).
+/// paid (PaymentProvider - SSLCommerz can send it back itself; PaymentMethod -
+/// send bKash back to bKash) and their contact. RequestedByName null = the
+/// system (a late or double payment). Reference: the bKash / bank id staff
+/// typed, or SSLCommerz's refund id. RejectReason: why it was rejected, or
+/// why SSLCommerz refused or cancelled it.
 /// </summary>
 public sealed record AdminRefundListItemDto(
     string RefundNo,
     string BookingNo,
     string PaymentNo,
+    PaymentProvider PaymentProvider,
     string? PaymentMethod,
     string ContactName,
     string ContactPhone,
@@ -60,7 +64,8 @@ internal sealed class SearchRefundsHandler(IReadDbContext db) : IQueryHandler<Se
             select new { r, b, p, RequestedByName = u == null ? null : u.FullName, RequestedAtUtc = EF.Property<DateTime>(r, "CreatedAtUtc") };
 
         if (query.OpenOnly)
-            rows = rows.Where(x => x.r.Status == RefundStatus.Requested || x.r.Status == RefundStatus.Approved || x.r.Status == RefundStatus.Processing);
+            rows = rows.Where(x => x.r.Status == RefundStatus.Requested || x.r.Status == RefundStatus.Approved
+                                   || x.r.Status == RefundStatus.Processing || x.r.Status == RefundStatus.Failed); // = Refund.IsOpen
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim();
@@ -74,14 +79,14 @@ internal sealed class SearchRefundsHandler(IReadDbContext db) : IQueryHandler<Se
         var page = await rows
             .Select(x => new
             {
-                x.r.RefundNo, x.b.BookingNo, x.p.PaymentNo, PaymentMethod = x.p.Method, x.b.ContactName, x.b.ContactPhone,
+                x.r.RefundNo, x.b.BookingNo, x.p.PaymentNo, PaymentProvider = x.p.Provider, PaymentMethod = x.p.Method, x.b.ContactName, x.b.ContactPhone,
                 x.r.Amount, x.r.RefundPercent, x.p.Currency, x.r.Reason, x.r.Status, x.RequestedByName, x.RequestedAtUtc,
                 Reference = x.r.ProviderRefundId, x.r.CompletedAtUtc, RejectReason = x.r.FailureReason
             })
             .ToPagedAsync(query.Page, query.PageSize, cancellationToken);
 
         return page.Map(x => new AdminRefundListItemDto(
-            x.RefundNo, x.BookingNo, x.PaymentNo, x.PaymentMethod, x.ContactName, x.ContactPhone.Value,
+            x.RefundNo, x.BookingNo, x.PaymentNo, x.PaymentProvider, x.PaymentMethod, x.ContactName, x.ContactPhone.Value,
             x.Amount, x.RefundPercent, x.Currency, x.Reason, x.Status, x.RequestedByName, x.RequestedAtUtc,
             x.Reference, x.CompletedAtUtc, x.RejectReason));
     }

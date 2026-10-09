@@ -6,6 +6,7 @@ using Ghuri.Application.Features.Booking.Documents;
 using Ghuri.Application.Features.CustomTrips;
 using Ghuri.Application.Features.CustomTrips.Events;
 using Ghuri.Application.Features.Identity;
+using Ghuri.Application.Features.Payments;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -53,6 +54,7 @@ public static class DependencyInjection
         services.AddDomainEventHandlers();
         services.AddScoped<CancellationTerms>();
         services.AddScoped<BookingDocumentLoader>();
+        services.AddScoped<RefundSettlement>();
         services.AddCustomTripsFeature();
 
         return services;

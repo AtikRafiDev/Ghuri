@@ -7,8 +7,9 @@ namespace Ghuri.Api.IntegrationTests.Database;
 /// <summary>
 /// Stands in for SSLCommerz in the database tests - no internet, no sandbox.
 /// It records every request, and answers with whatever the test sets in
-/// Respond (by default: a made-up payment page for that transaction) and
-/// Validate (by default: "not a valid payment").
+/// Respond (by default: a made-up payment page for that transaction),
+/// Validate (by default: "not a valid payment"), RefundStart (by default:
+/// accepted, refund id "REF-" + RefundId) and RefundStatus (by default: still processing).
 /// </summary>
 public sealed class FakePaymentGateway : IPaymentGateway
 {
@@ -22,6 +23,18 @@ public sealed class FakePaymentGateway : IPaymentGateway
     public Func<PaymentSessionRequest, PaymentSessionResult> Respond { get; set; } = Accept;
 
     public Func<string, PaymentValidationResult> Validate { get; set; } = Refuse;
+
+    /// <summary>Every refund the app asked SSLCommerz to send, in order.</summary>
+    public ConcurrentQueue<RefundStartRequest> RefundStarts { get; } = new();
+
+    /// <summary>Every refund_ref_id the app asked about, in order.</summary>
+    public ConcurrentQueue<string> RefundChecks { get; } = new();
+
+    public Func<RefundStartRequest, RefundStartResult> RefundStart { get; set; } = AcceptRefund;
+
+    public Func<string, RefundStatusResult> RefundStatus { get; set; } = _ => RefundStatusResult.Processing;
+
+    public static RefundStartResult AcceptRefund(RefundStartRequest request) => RefundStartResult.Started("REF-" + request.RefundId);
 
     public static PaymentSessionResult Accept(PaymentSessionRequest request) =>
         PaymentSessionResult.Success($"https://sandbox.example/pay/{request.TransactionId}", $"session-{request.TransactionId}");
@@ -42,6 +55,10 @@ public sealed class FakePaymentGateway : IPaymentGateway
         Validations.Clear();
         Respond = Accept;
         Validate = Refuse;
+        RefundStarts.Clear();
+        RefundChecks.Clear();
+        RefundStart = AcceptRefund;
+        RefundStatus = _ => RefundStatusResult.Processing;
     }
 
     public Task<PaymentSessionResult> CreateSessionAsync(PaymentSessionRequest request, CancellationToken cancellationToken)
@@ -54,5 +71,17 @@ public sealed class FakePaymentGateway : IPaymentGateway
     {
         Validations.Enqueue(validationId);
         return Task.FromResult(Validate(validationId));
+    }
+
+    public Task<RefundStartResult> StartRefundAsync(RefundStartRequest request, CancellationToken cancellationToken)
+    {
+        RefundStarts.Enqueue(request);
+        return Task.FromResult(RefundStart(request));
+    }
+
+    public Task<RefundStatusResult> GetRefundStatusAsync(string providerRefundId, CancellationToken cancellationToken)
+    {
+        RefundChecks.Enqueue(providerRefundId);
+        return Task.FromResult(RefundStatus(providerRefundId));
     }
 }

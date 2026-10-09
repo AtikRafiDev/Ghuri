@@ -273,13 +273,14 @@ Close and reopen the terminal, then check: `cloudflared --version`.
 
 ---
 
-## 8. See the emails (smtp4dev)
+## 8. Emails: smtp4dev, or real inboxes (Gmail)
 
 In development the API sends real emails over SMTP - to **smtp4dev**, a
 fake mail server that keeps every email in a web inbox instead of
 delivering it. Nothing reaches a real mailbox. It runs in **Docker**
 (`docker-compose.yml` in the repository root), so Docker Desktop must be
-running.
+running. To deliver emails to the customer's **own** inbox instead, see
+"Send to real inboxes (Gmail)" below.
 
 From the repository root (`F:\Ghuri`):
 ```
@@ -310,6 +311,76 @@ attachments (the e-voucher and invoice PDFs) included.
 - No smtp4dev at all? Set `"Sender": "Log"` under `Email` in
   `appsettings.Development.json`: emails are then written to the API's
   console (without the PDFs).
+
+### Send to real inboxes (Gmail)
+
+smtp4dev keeps every email on this PC. To make emails (booking
+confirmations with their PDFs, password resets, custom-trip quotes) arrive
+in the customer's **real inbox** - Gmail, Yahoo, Outlook, anything - send
+them through a Gmail account instead. The code doesn't change, only the
+settings. They go in **user-secrets**, not in `appsettings`: an App Password
+is a real password, and this repository is public.
+
+**One-time: an App Password**
+
+1. Pick the Gmail account the site sends from. A new one just for the
+   site (e.g. `ghuri.bookings@gmail.com`) is better than your personal one.
+2. Turn on **2-Step Verification** for it: https://myaccount.google.com/security
+   (without it, Google doesn't offer App Passwords).
+3. Create an App Password: https://myaccount.google.com/apppasswords → name
+   it `Ghuri` → Google shows a 16-letter password **once**. Copy it.
+   (The spaces in it don't matter.)
+
+**Tell the API** (replace the address and password with yours):
+```
+cd backend
+dotnet user-secrets set "Email:FromAddress" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:Host" "smtp.gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:Port" "587" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:Security" "StartTls" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:UserName" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:Password" "abcdefghijklmnop" --project src/Ghuri.Api
+dotnet user-secrets set "Agency:BookingsEmail" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
+```
+Then **restart the API**. User-secrets win over `appsettings.Development.json`,
+so smtp4dev is simply not used any more (it can keep running).
+
+| Setting | Why |
+|---|---|
+| `Email:FromAddress` | Must be the Gmail address itself. Gmail replaces any other "From" with it anyway, and a mismatched "From" lands in spam. |
+| `Email:Smtp:Host` / `Port` / `Security` | Gmail's mail server: port 587, encrypted with STARTTLS. |
+| `Email:Smtp:UserName` / `Password` | The Gmail address and the **App Password**, not your normal Gmail password. |
+| `Agency:BookingsEmail` | Where staff alerts go (e.g. "new custom-trip request"). The default `bookings@ghuri.local` doesn't exist: with Gmail, every alert would bounce back. |
+
+**Test it:** log in with an account whose email is a real inbox of yours,
+then "Forgot password". The email should arrive within a minute (check
+spam the first time). The Gmail account's **Sent** folder shows everything
+the site sent.
+
+- **Accounts need real email addresses.** `@ghuri.local` addresses (the
+  seeded `admin@ghuri.local`, the demo data) don't exist. Gmail answers each
+  email to them with a "Delivery Status Notification (Failure)" in the
+  site's Gmail inbox. Testers should register with their own real email.
+- **Limit:** a free Gmail account sends to about **500 recipients a day**
+  (rolling 24 hours). Plenty for testing. For the real launch, use a
+  transactional email service with the site's own domain.
+- **"Username and Password not accepted" (535 5.7.8)** in the API log: the
+  App Password is wrong or was deleted, or 2-Step Verification was turned
+  off. Make a new App Password and set `Email:Smtp:Password` again.
+- **A user name without a password** stops the API at start, with a
+  message that says which setting is missing.
+- **Back to smtp4dev:**
+  ```
+  cd backend
+  dotnet user-secrets remove "Email:FromAddress" --project src/Ghuri.Api
+  dotnet user-secrets remove "Email:Smtp:Host" --project src/Ghuri.Api
+  dotnet user-secrets remove "Email:Smtp:Port" --project src/Ghuri.Api
+  dotnet user-secrets remove "Email:Smtp:Security" --project src/Ghuri.Api
+  dotnet user-secrets remove "Email:Smtp:UserName" --project src/Ghuri.Api
+  dotnet user-secrets remove "Email:Smtp:Password" --project src/Ghuri.Api
+  ```
+  and restart the API. (`Agency:BookingsEmail` can stay: smtp4dev catches
+  every address.)
 
 ---
 
@@ -373,7 +444,8 @@ other: both use the same `CallbackBaseUrl` / `IpnUrl` settings.
    `appsettings.Development.json`. Everyone has to log in again once.
 4. **Restart the API.** Settings are read only at start.
 
-Check: `dotnet user-secrets list --project src/Ghuri.Api` shows five settings.
+Check: `dotnet user-secrets list --project src/Ghuri.Api` shows these five
+settings (plus the Gmail ones, if you set up section 8's real inboxes).
 
 ### Every time
 
@@ -415,7 +487,9 @@ warning page after every payment, and that needs a fix before they start.
   click **Visit Site**. The browser then skips it for 7 days. Paid ngrok
   plans don't show it.
 - **Emails** land in smtp4dev on **this** PC (`http://localhost:5000`),
-  which testers can't open. Show them on your screen.
+  which testers can't open. Show them on your screen - or switch to Gmail
+  (section 8, "Send to real inboxes"): then each tester gets them in their
+  own inbox, as long as they registered with a real email address.
 - **"Too many attempts"** on login, register or forgot-password: those
   allow 5 tries a minute per internet address. Testers in one office share
   one address, so they share those 5. Wait a minute and try again.
@@ -444,6 +518,38 @@ dotnet user-secrets remove "PaymentGateway:SslCommerz:CallbackBaseUrl" --project
 dotnet user-secrets remove "PaymentGateway:SslCommerz:IpnUrl" --project src/Ghuri.Api
 ```
 Keep the JWT key: it's better than the one in Git anyway.
+
+---
+
+## 10. Refunds through SSLCommerz
+
+When a booking that was paid online is cancelled, its refund shows up in
+**Admin → Refunds → To process**. Staff with money rights (Super Admin,
+Manager, Accounts) click **Refund via SSLCommerz**, and SSLCommerz sends the
+money back to the bKash, Nagad or card the customer paid with. Nobody sends
+anything by hand.
+
+| Status | What it means | What staff do |
+|---|---|---|
+| To process | Owed, nothing sent yet | **Refund via SSLCommerz** (paid online), or send it by hand and **Mark refunded**, or **Reject** |
+| With SSLCommerz | SSLCommerz accepted it and is sending the money | Nothing. The API asks SSLCommerz every 15 minutes; **Check now** asks at once |
+| Refunded | The money is back with the customer | - |
+| Failed | SSLCommerz refused or cancelled it. Nothing was sent, it's still owed | **Try SSLCommerz again**, or send it by hand and **Mark refunded** |
+
+- Payments recorded at the office (cash, bank transfer…) never went through
+  SSLCommerz, so their refunds only have **Mark refunded**.
+- While a refund is **With SSLCommerz**, Mark refunded and Reject are
+  refused: SSLCommerz is already sending the money, and sending it by hand
+  as well would pay the customer twice.
+- Refunds need **no tunnel** (section 7): our API calls SSLCommerz, and
+  SSLCommerz never calls us back about refunds - that's why the API asks.
+- The 15 minutes is `Jobs:RefundStatus:IntervalSeconds` in `appsettings.json`.
+- **Sandbox:** works from any PC, and no real money moves. How fast a
+  sandbox refund turns to Refunded is up to SSLCommerz's test system - use
+  **Check now**.
+- **Before going live:** SSLCommerz accepts LIVE refund requests only from a
+  public IP address registered with them. Ask SSLCommerz support to register
+  the server's IP at deployment (a home PC's address usually changes).
 
 ---
 

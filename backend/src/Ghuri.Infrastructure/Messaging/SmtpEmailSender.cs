@@ -22,8 +22,10 @@ internal sealed class SmtpEmailOptions
 
 /// <summary>
 /// "Email:Smtp". Locally smtp4dev: localhost:25, Security None, no login.
-/// A real server (e.g. port 587, StartTls, a user name) gets its password from
-/// an environment variable (Email__Smtp__Password) - never from git.
+/// A real server - Gmail (smtp.gmail.com, 587, StartTls, the Gmail address +
+/// an App Password) so emails reach real inboxes - gets its settings from
+/// user-secrets (README section 8), or on a server from environment
+/// variables (Email__Smtp__Password). Never from git: the repository is public.
 /// </summary>
 internal sealed class SmtpServerOptions
 {

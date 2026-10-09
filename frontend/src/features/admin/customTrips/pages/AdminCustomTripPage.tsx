@@ -213,7 +213,7 @@ function Details({ data }: { data: AdminTrip }) {
               <QuoteEditor
                 trip={trip}
                 secondaryAction={
-                  <Button variant="ghost" className="text-clay-600 hover:bg-clay-50 hover:text-clay-700" onClick={() => setRejectOpen(true)}>
+                  <Button variant="outline" className="text-clay-600 hover:border-clay-300 hover:bg-clay-50 hover:text-clay-700" onClick={() => setRejectOpen(true)}>
                     <XCircleIcon />
                     We can't do this trip…
                   </Button>

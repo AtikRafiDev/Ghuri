@@ -59,6 +59,35 @@ public static class PaymentErrors
     public static readonly Error RefundNotOpen =
         Error.Conflict("refund_not_open", "This refund has already been completed or rejected.");
 
+    // Refunds through SSLCommerz
+
+    /// <summary>SSLCommerz is sending this refund: completing or rejecting it by hand now could pay the customer twice.</summary>
+    public static readonly Error RefundInProgress =
+        Error.Conflict("refund_in_progress", "SSLCommerz is already sending this refund. It completes here by itself when SSLCommerz is done.");
+
+    /// <summary>Paid at the office (cash, bank, bKash to our number): SSLCommerz never had this money.</summary>
+    public static readonly Error RefundNotOnline =
+        Error.Conflict("refund_not_online", "This payment wasn't made through SSLCommerz. Send the money back by hand, then use Mark refunded.");
+
+    /// <summary>A validated SSLCommerz payment always has one; this would be very old or hand-made data.</summary>
+    public static readonly Error RefundNoBankTransaction =
+        Error.Conflict("refund_no_bank_transaction", "SSLCommerz's transaction id for this payment is missing, so SSLCommerz can't refund it. Send it back by hand.");
+
+    /// <summary>
+    /// SSLCommerz said no - nothing was sent. CommitChanges: the refund is
+    /// saved as Failed with SSLCommerz's reason, still owed, so staff can try
+    /// again or send it by hand.
+    /// </summary>
+    public static Error RefundRefused(string reason) =>
+        Error.Failure("refund_refused", reason) with { CommitChanges = true };
+
+    /// <summary>
+    /// No answer from SSLCommerz, or one we can't act on. NOT committed:
+    /// nothing changes here; trying again is safe (SSLCommerz knows the refund by its RefundNo).
+    /// </summary>
+    public static Error RefundUnconfirmed(string reason) =>
+        Error.Failure("refund_unconfirmed", reason);
+
     public static readonly Error SeatsNoLongerAvailable =
         Error.Conflict("seats_no_longer_available", "This booking expired and its seats have been taken - it can't be revived. Make a new booking instead.");
 }

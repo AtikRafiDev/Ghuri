@@ -1,12 +1,9 @@
 using FluentValidation;
-using Ghuri.Application.Abstractions.Data;
 using Ghuri.Application.Abstractions.Messaging;
 using Ghuri.Application.Abstractions.Ports;
 using Ghuri.Application.Common;
 using Ghuri.Application.Features.Identity;
-using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Ghuri.Application.Features.Payments.Commands.CompleteRefund;
@@ -33,12 +30,12 @@ internal sealed class CompleteRefundValidator : AbstractValidator<CompleteRefund
 /// <remarks>
 /// The refund row is LOCKED first: two staff clicking at the same moment
 /// run one after the other, and the second gets "already completed" - the
-/// money is never recorded as sent twice.
+/// money is never recorded as sent twice. A refund SSLCommerz is sending
+/// is refused: it completes by itself (CheckGatewayRefund).
 /// </remarks>
 internal sealed class CompleteRefundHandler(
     IRefundRepository refunds,
-    IPaymentRepository payments,
-    IReadDbContext db,
+    RefundSettlement settlement,
     ICurrentUser currentUser,
     TimeProvider clock,
     ILogger<CompleteRefundHandler> logger) : ICommandHandler<CompleteRefundCommand>
@@ -53,16 +50,11 @@ internal sealed class CompleteRefundHandler(
             return PaymentErrors.RefundNotFound;
         if (!refund.IsOpen)
             return PaymentErrors.RefundNotOpen;
+        if (refund.IsWithGateway)
+            return PaymentErrors.RefundInProgress;
 
         refund.MarkCompleted(command.Reference, staffId, clock.GetUtcNow().UtcDateTime);
-
-        // Everything already given back from this payment (committed earlier) + this one.
-        var refundedBefore = await db.Refunds
-            .Where(r => r.PaymentId == refund.PaymentId && r.Status == RefundStatus.Completed)
-            .SumAsync(r => (decimal?)r.Amount, cancellationToken) ?? 0;
-        var payment = await payments.GetByIdAsync(refund.PaymentId, cancellationToken)
-                      ?? throw new InvalidOperationException($"Refund {refund.RefundNo} has no payment.");
-        payment.MarkRefunded(refundedBefore + refund.Amount);
+        var payment = await settlement.ApplyAsync(refund, cancellationToken);
 
         logger.LogInformation("Refund {RefundNo} ({Amount}) marked as sent; payment {PaymentNo} is now {Status}.",
             refund.RefundNo, refund.Amount, payment.PaymentNo, payment.Status);
