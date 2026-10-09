@@ -329,18 +329,22 @@ is a real password, and this repository is public.
    (without it, Google doesn't offer App Passwords).
 3. Create an App Password: https://myaccount.google.com/apppasswords → name
    it `Ghuri` → Google shows a 16-letter password **once**. Copy it.
-   (The spaces in it don't matter.)
+   Google shows it in four groups (`abcd efgh ijkl mnop`): type it
+   **without the spaces**.
 
-**Tell the API** (replace the address and password with yours):
+**Tell the API.** Replace `YOUR-GMAIL@gmail.com` with your real Gmail
+address and `YOUR-APP-PASSWORD` with the 16 letters. Don't copy the
+placeholders as they are: Gmail would refuse to log in
+(`535 5.7.8 Username and Password not accepted`).
 ```
 cd backend
-dotnet user-secrets set "Email:FromAddress" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:FromAddress" "YOUR-GMAIL@gmail.com" --project src/Ghuri.Api
 dotnet user-secrets set "Email:Smtp:Host" "smtp.gmail.com" --project src/Ghuri.Api
 dotnet user-secrets set "Email:Smtp:Port" "587" --project src/Ghuri.Api
 dotnet user-secrets set "Email:Smtp:Security" "StartTls" --project src/Ghuri.Api
-dotnet user-secrets set "Email:Smtp:UserName" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
-dotnet user-secrets set "Email:Smtp:Password" "abcdefghijklmnop" --project src/Ghuri.Api
-dotnet user-secrets set "Agency:BookingsEmail" "ghuri.bookings@gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:UserName" "YOUR-GMAIL@gmail.com" --project src/Ghuri.Api
+dotnet user-secrets set "Email:Smtp:Password" "YOUR-APP-PASSWORD" --project src/Ghuri.Api
+dotnet user-secrets set "Agency:BookingsEmail" "YOUR-GMAIL@gmail.com" --project src/Ghuri.Api
 ```
 Then **restart the API**. User-secrets win over `appsettings.Development.json`,
 so smtp4dev is simply not used any more (it can keep running).

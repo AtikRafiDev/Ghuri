@@ -1,5 +1,6 @@
 using System.Net;
 using Ghuri.Application.Abstractions.Ports;
+using Ghuri.Application.Common;
 using Ghuri.Domain.Entities.Iam;
 using Ghuri.Domain.Enums;
 using Ghuri.Domain.Repositories;
@@ -29,12 +30,15 @@ internal sealed class PasswordLinkSender(
     public Task SendResetLinkAsync(User user, DateTime nowUtc, CancellationToken cancellationToken)
     {
         var minutes = options.Value.PasswordResetLinkMinutes;
-        return SendAsync(user, nowUtc, TimeSpan.FromMinutes(minutes), "Reset your Ghuri password", link =>
-            $"""
-            <p>Hi {WebUtility.HtmlEncode(user.FullName)},</p>
-            <p><a href="{WebUtility.HtmlEncode(link)}">Set a new password</a> - this link works once, for {minutes} minutes.</p>
-            <p>If you didn't ask for this, ignore this email. Your password stays the same.</p>
-            """, cancellationToken);
+        var expires = $"{minutes} minute{(minutes == 1 ? "" : "s")}";
+        return SendAsync(user, nowUtc, TimeSpan.FromMinutes(minutes), "Reset your Ghuri password", link => EmailLayout.Page(
+            "Reset your password",
+            $"Choose a new password for your Ghuri account - the link works for {expires}.",
+            EmailLayout.Paragraph($"Hi {WebUtility.HtmlEncode(user.FullName)},") +
+            EmailLayout.Paragraph("We got a request to reset the password for your Ghuri account. Click the button below to choose a new one.") +
+            EmailLayout.Button("Set a new password", link) +
+            EmailLayout.Note($"This link works <strong>once</strong> and expires in <strong>{expires}</strong>.") +
+            EmailLayout.Note("Didn't ask for this? Just ignore this email - your password stays the same.")), cancellationToken);
     }
 
     /// <summary>
@@ -44,14 +48,16 @@ internal sealed class PasswordLinkSender(
     public Task SendStaffInviteAsync(User user, string roleName, DateTime nowUtc, CancellationToken cancellationToken)
     {
         var hours = options.Value.StaffInviteLinkHours;
-        return SendAsync(user, nowUtc, TimeSpan.FromHours(hours), "Your Ghuri staff account", link =>
-            $"""
-            <p>Hi {WebUtility.HtmlEncode(user.FullName)},</p>
-            <p>A Ghuri staff account has been made for you, with the role <b>{WebUtility.HtmlEncode(roleName)}</b>.</p>
-            <p><a href="{WebUtility.HtmlEncode(link)}">Set your password</a> - this link works once, for {hours} hours.
-            Then log in with this email or your mobile number.</p>
-            <p>If you weren't expecting this, ignore this email.</p>
-            """, cancellationToken);
+        var expires = $"{hours} hour{(hours == 1 ? "" : "s")}";
+        return SendAsync(user, nowUtc, TimeSpan.FromHours(hours), "Your Ghuri staff account", link => EmailLayout.Page(
+            "Welcome to the Ghuri team",
+            $"Set your password to start using your Ghuri staff account - the link works for {expires}.",
+            EmailLayout.Paragraph($"Hi {WebUtility.HtmlEncode(user.FullName)},") +
+            EmailLayout.Paragraph($"A Ghuri staff account has been made for you, with the role <strong>{WebUtility.HtmlEncode(roleName)}</strong>. Set a password to get started.") +
+            EmailLayout.Button("Set your password", link) +
+            EmailLayout.Paragraph("After that, log in with this email address or your mobile number.") +
+            EmailLayout.Note($"This link works <strong>once</strong> and expires in <strong>{expires}</strong>.") +
+            EmailLayout.Note("Weren't expecting this? Just ignore this email.")), cancellationToken);
     }
 
     private async Task SendAsync(

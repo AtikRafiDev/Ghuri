@@ -49,7 +49,8 @@ const lineColumns = 'sm:grid-cols-[10rem_minmax(0,1fr)_9.5rem_2.5rem]'
  * text, price lines (hotel, transport, meals…), total, validity"). Starts
  * from the current quote when re-quoting; sending replaces it and emails the
  * customer, and a toast confirms it went. secondaryAction sits at the start
- * of the footer (the page's "We can't do this trip…").
+ * of the footer (the page's "Reject trip"); it renders inside the <form>, so
+ * give it type="button".
  */
 export function QuoteEditor({ trip, secondaryAction }: { trip: Trip; secondaryAction?: ReactNode }) {
   const queryClient = useQueryClient()
